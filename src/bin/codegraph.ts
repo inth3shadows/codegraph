@@ -941,7 +941,8 @@ program
   .command('sync [path]')
   .description('Sync changes since last index')
   .option('-q, --quiet', 'Suppress output (for git hooks)')
-  .action(async (pathArg: string | undefined, options: { quiet?: boolean }) => {
+  .option('--no-upgrade', 'Sync incrementally even when the index was built by an older extractor')
+  .action(async (pathArg: string | undefined, options: { quiet?: boolean; upgrade?: boolean }) => {
     const projectPath = resolveProjectPath(pathArg);
 
     try {
@@ -964,6 +965,30 @@ program
       const clack = await importESM('@clack/prompts');
       clack.intro('Syncing CodeGraph');
 
+      // A sync re-extracts only the files that changed, so when the running
+      // engine extracts MORE than the one that built the index, every unchanged
+      // file keeps the old extractor's symbols and edges — indefinitely, since
+      // no content hash ever moves. `status` already computes this
+      // (`reindexRecommended`); sync used to run anyway and report success on an
+      // index it left stale. Escalate to a full re-index instead. (#1798)
+      const build = cg.getIndexBuildInfo();
+      if (cg.isIndexStale() && options.upgrade !== false) {
+        const from = build.extractionVersion == null ? 'an unstamped engine' : `extractor ${build.extractionVersion}`;
+        clack.log.warn(`Index was built by ${from}; this engine extracts ${EXTRACTION_VERSION}.`);
+        clack.log.info('Re-indexing in full — an incremental sync would leave every unchanged file stale.');
+        process.stdout.write(`${colors.dim}${getGlyphs().rail}${colors.reset}\n`);
+        const fullProgress = createShimmerProgress();
+        const full = await cg.indexAll({ onProgress: fullProgress.onProgress });
+        await fullProgress.stop();
+        // `nodesCreated` is a DELTA against what was already stored, so on a
+        // re-index of the same tree it is ~0 and reads as "found nothing".
+        // Files and duration are the honest numbers for this path.
+        clack.log.success(`Re-indexed ${formatNumber(full.filesIndexed)} files with extractor ${EXTRACTION_VERSION} in ${formatDuration(full.durationMs)}`);
+        clack.outro('Done');
+        cg.destroy();
+        return;
+      }
+
       process.stdout.write(`${colors.dim}${getGlyphs().rail}${colors.reset}\n`);
       const progress = createShimmerProgress();
 
@@ -972,6 +997,12 @@ program
       });
 
       await progress.stop();
+
+      if (result.staleEngine) {
+        // --no-upgrade: the user asked for incremental anyway. Say what it did
+        // not do, so "Done" is not read as "current".
+        clack.log.warn(`Unchanged files still carry extractor ${build.extractionVersion ?? '?'} output — run "codegraph index" to refresh them.`);
+      }
 
       const totalChanges = result.filesAdded + result.filesModified + result.filesRemoved;
 

@@ -881,3 +881,196 @@ describe('Scoped sync parity (#watcher-scoped)', () => {
     expect(cg.searchNodes('gamma').length).toBe(1);
   });
 });
+
+// A change that is COMMITTED but not yet indexed used to read as zero pending
+// changes: getChangedFiles' git fast path built its candidate list from
+// `git status --porcelain`, and committing is exactly what removes a file from
+// that output. The hash comparison below it was correct and simply never
+// reached. Committed work is now sourced from `git diff <indexed commit> HEAD`.
+// (#1829)
+describe('committed-but-unindexed changes (#1829)', () => {
+  let testDir: string;
+  let cg: CodeGraph;
+
+  const git = (...args: string[]) =>
+    execFileSync('git', args, { cwd: testDir, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+
+  beforeEach(async () => {
+    testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codegraph-1829-'));
+    git('init');
+    git('config', 'user.email', 'test@test.com');
+    git('config', 'user.name', 'Test');
+
+    fs.mkdirSync(path.join(testDir, 'src'));
+    fs.writeFileSync(path.join(testDir, 'src', 'one.ts'), `export function alpha() { return 1; }`);
+    git('add', '-A');
+    git('commit', '-m', 'initial');
+
+    cg = CodeGraph.initSync(testDir, { config: { include: ['**/*.ts'], exclude: [] } });
+    await cg.indexAll();
+  });
+
+  afterEach(() => {
+    if (cg) cg.destroy();
+    if (fs.existsSync(testDir)) fs.rmSync(testDir, { recursive: true, force: true });
+  });
+
+  it('sees a committed NEW file (git status shows nothing; the DB has no row)', async () => {
+    fs.writeFileSync(path.join(testDir, 'src', 'two.ts'), `export function beta() { return 2; }`);
+    git('add', '-A');
+    git('commit', '-m', 'add two');
+
+    const changes = cg.getChangedFiles();
+    expect(changes.added).toContain('src/two.ts');
+
+    // status and sync must agree — the whole point is that the number a user
+    // reads matches the work that is actually outstanding.
+    const result = await cg.sync();
+    expect(result.filesAdded).toBe(1);
+    expect(cg.searchNodes('beta').length).toBeGreaterThan(0);
+  });
+
+  it('sees a committed MODIFICATION to an already-tracked file', async () => {
+    fs.writeFileSync(path.join(testDir, 'src', 'one.ts'), `export function alphaRenamed() { return 99; }`);
+    git('add', '-A');
+    git('commit', '-m', 'edit one');
+
+    expect(cg.getChangedFiles().modified).toContain('src/one.ts');
+    const result = await cg.sync();
+    expect(result.filesModified).toBe(1);
+    expect(cg.searchNodes('alphaRenamed').length).toBeGreaterThan(0);
+  });
+
+  it('sees a committed DELETE', async () => {
+    fs.writeFileSync(path.join(testDir, 'src', 'two.ts'), `export function beta() { return 2; }`);
+    git('add', '-A');
+    git('commit', '-m', 'add two');
+    await cg.sync();
+
+    fs.rmSync(path.join(testDir, 'src', 'two.ts'));
+    git('add', '-A');
+    git('commit', '-m', 'remove two');
+
+    expect(cg.getChangedFiles().removed).toContain('src/two.ts');
+    const result = await cg.sync();
+    expect(result.filesRemoved).toBe(1);
+  });
+
+  it('reports zero once the sync has absorbed the commit (the stamp advances)', async () => {
+    fs.writeFileSync(path.join(testDir, 'src', 'two.ts'), `export function beta() { return 2; }`);
+    git('add', '-A');
+    git('commit', '-m', 'add two');
+    await cg.sync();
+
+    const after = cg.getChangedFiles();
+    expect(after.added).toHaveLength(0);
+    expect(after.modified).toHaveLength(0);
+    expect(after.removed).toHaveLength(0);
+  });
+
+  it('counts a file once when it was committed AND edited again since', async () => {
+    // The same path now reaches the candidate list from both sources — the
+    // committed diff and `git status`. It is still one changed file.
+    fs.writeFileSync(path.join(testDir, 'src', 'one.ts'), `export function alpha() { return 2; }`);
+    git('add', '-A');
+    git('commit', '-m', 'edit one');
+    fs.writeFileSync(path.join(testDir, 'src', 'one.ts'), `export function alpha() { return 3; }`);
+
+    const changes = cg.getChangedFiles();
+    expect(changes.modified.filter((f) => f === 'src/one.ts')).toHaveLength(1);
+    expect(changes.added).toHaveLength(0);
+
+    const result = await cg.sync();
+    expect(result.filesModified).toBe(1);
+  });
+
+  it('still filters committed changes by the rules the full index uses', async () => {
+    // vendor/ is a built-in exclude git knows nothing about. Sourcing candidates
+    // from `git diff` must not smuggle in files `git status` would have had
+    // filtered out (#766) — same classifier, both sources.
+    fs.mkdirSync(path.join(testDir, 'vendor'));
+    fs.writeFileSync(path.join(testDir, 'vendor', 'lib.ts'), `export function vendored() { return 1; }`);
+    git('add', '-A');
+    git('commit', '-m', 'add vendor');
+
+    const changes = cg.getChangedFiles();
+    expect(changes.added).not.toContain('vendor/lib.ts');
+    expect(changes.modified).not.toContain('vendor/lib.ts');
+  });
+
+  it('falls back to the full scan when history moved under the index', async () => {
+    // A rebase/gc/shallow clone can leave the stamped commit unreachable. The
+    // fast path cannot diff against a commit that is gone, so the (correct,
+    // slower) full scan has to answer instead of silently reporting zero.
+    fs.writeFileSync(path.join(testDir, 'src', 'two.ts'), `export function beta() { return 2; }`);
+    git('add', '-A');
+    git('commit', '-m', 'add two');
+    (cg as unknown as { queries: { setMetadata(k: string, v: string): void } })
+      .queries.setMetadata('indexed_at_commit', '0'.repeat(40));
+
+    expect(cg.getChangedFiles().added).toContain('src/two.ts');
+  });
+
+  it('an index with no stamp still answers correctly (pre-#1829 index upgrading)', async () => {
+    (cg as unknown as { queries: { setMetadata(k: string, v: string): void } })
+      .queries.setMetadata('indexed_at_commit', '');
+    fs.writeFileSync(path.join(testDir, 'src', 'two.ts'), `export function beta() { return 2; }`);
+    git('add', '-A');
+    git('commit', '-m', 'add two');
+
+    expect(cg.getChangedFiles().added).toContain('src/two.ts');
+
+    // ...and it self-heals: the sync writes a stamp, so the next read is clean.
+    await cg.sync();
+    expect(cg.getChangedFiles().added).toHaveLength(0);
+  });
+});
+
+// A sync re-extracts only what changed, so an index built by an older extractor
+// keeps that extractor's output for every unchanged file — forever, since no
+// content hash ever moves. sync used to report success without ever consulting
+// the staleness signal `status` already computes. (#1798)
+describe('stale-engine reporting from sync (#1798)', () => {
+  let testDir: string;
+  let cg: CodeGraph;
+
+  beforeEach(async () => {
+    testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codegraph-1798-'));
+    fs.mkdirSync(path.join(testDir, 'src'));
+    fs.writeFileSync(path.join(testDir, 'src', 'one.ts'), `export function alpha() { return 1; }`);
+    cg = CodeGraph.initSync(testDir, { config: { include: ['**/*.ts'], exclude: [] } });
+    await cg.indexAll();
+  });
+
+  afterEach(() => {
+    if (cg) cg.destroy();
+    if (fs.existsSync(testDir)) fs.rmSync(testDir, { recursive: true, force: true });
+  });
+
+  const setExtractionStamp = (v: string) =>
+    (cg as unknown as { queries: { setMetadata(k: string, v: string): void } })
+      .queries.setMetadata('indexed_with_extraction_version', v);
+
+  it('a fresh index syncs with staleEngine false', async () => {
+    const result = await cg.sync();
+    expect(result.staleEngine).toBe(false);
+  });
+
+  it('reports staleEngine when the index predates the running extractor', async () => {
+    setExtractionStamp('1');
+    expect(cg.isIndexStale()).toBe(true);
+
+    const result = await cg.sync();
+    expect(result.staleEngine).toBe(true);
+    // And it stays stale: a sync must NOT advance the extraction stamp, since
+    // it only re-extracted a subset. Only a full index can clear this.
+    expect(cg.isIndexStale()).toBe(true);
+  });
+
+  it('a full re-index clears it', async () => {
+    setExtractionStamp('1');
+    await cg.indexAll();
+    expect(cg.isIndexStale()).toBe(false);
+    expect((await cg.sync()).staleEngine).toBe(false);
+  });
+});
