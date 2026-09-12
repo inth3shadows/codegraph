@@ -41,6 +41,13 @@
       "question": "How does cobra parse commands and flags?"
     },
     {
+      "name": "runecho",
+      "repo": "https://github.com/inth3shadows/runecho.git",
+      "size": "Small",
+      "files": "~113",
+      "question": "How does runecho's incremental repo reindex determine which files changed and skip re-parsing unchanged ones?"
+    },
+    {
       "name": "gin",
       "repo": "https://github.com/gin-gonic/gin",
       "size": "Medium",
