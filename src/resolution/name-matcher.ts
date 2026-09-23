@@ -2467,6 +2467,19 @@ export function matchMethodCall(
     return matchTsThisFieldCall(objectOrClass!.slice('this.'.length), methodName!, ref, context);
   }
 
+  // Python call through an attribute — `self.data.append(x)`,
+  // `cls.registry.lookup(k)`, `cfg.client.send(x)` — which the extractor emits
+  // with its receiver (`self.data.append`) instead of a bare method name.
+  // EXCLUSIVE, for the same reason as the Go, Rust and TS branches above:
+  // everything past this point is name matching, and a bare-name match is how
+  // `self.data.append(1)` bound to an unrelated class's `append`. The evidence
+  // this path accepts is the type the class body gives the attribute. A dotted
+  // MODULE path (`pkg.mod.func()`) never gets here: import resolution claims it
+  // first, through the module the import names.
+  if (ref.language === 'python' && dotMatch && objectOrClass!.includes('.')) {
+    return matchPythonAttrCall(objectOrClass!, methodName!, ref, context);
+  }
+
   // Java/Kotlin: receiver may be a field whose name doesn't match the type by
   // Java naming convention (`userbo` → class `UserBO`, abbreviated). Look up
   // the field in the enclosing class to get its declared type, then resolve
@@ -2661,6 +2674,261 @@ export function matchMethodCall(
   }
 
   return null;
+}
+
+/** Python types whose methods are the runtime's, never a project symbol's. */
+const PYTHON_RUNTIME_TYPES: ReadonlySet<string> = new Set([
+  'list', 'dict', 'set', 'frozenset', 'tuple', 'str', 'bytes', 'bytearray',
+  'int', 'float', 'complex', 'bool', 'object', 'type', 'range', 'slice',
+  'List', 'Dict', 'Set', 'FrozenSet', 'Tuple', 'Sequence', 'Mapping',
+  'MutableMapping', 'MutableSequence', 'Iterable', 'Iterator', 'Callable',
+  'deque', 'defaultdict', 'OrderedDict', 'Counter',
+  'collections.deque', 'collections.defaultdict', 'collections.OrderedDict', 'collections.Counter',
+]);
+
+/** What a python class body says an attribute holds. */
+type PythonAttrEvidence = { type: string } | 'runtime' | null;
+
+/**
+ * The type an annotation names — `Client`, `"Client"`, `Optional[Client]`,
+ * `Client | None`, `models.Client` — or 'runtime' for a builtin container, or
+ * null when it says nothing usable (`Any`, a generic of a project type).
+ */
+function pythonAnnotationEvidence(raw: string): PythonAttrEvidence {
+  let t = raw.trim().replace(/^['"]|['"]$/g, '').trim();
+  for (let i = 0; i < 4 && t; i++) {
+    const opt = t.match(/^(?:typing\.)?Optional\s*\[\s*(.+)\s*\]$/)
+      ?? t.match(/^(?:typing\.)?Union\s*\[\s*([^,\]]+?)\s*,\s*None\s*\]$/)
+      ?? t.match(/^(.+?)\s*\|\s*None$/)
+      ?? t.match(/^None\s*\|\s*(.+)$/);
+    if (!opt) break;
+    t = opt[1]!.trim().replace(/^['"]|['"]$/g, '').trim();
+  }
+  const head = t.split('[')[0]!.trim().replace(/^typing\./, '');
+  if (PYTHON_RUNTIME_TYPES.has(head)) return 'runtime';
+  if (t.includes('[') || !/^[A-Za-z_][\w.]*$/.test(t) || head === 'Any') return null;
+  return { type: t };
+}
+
+/** Same question for an assigned value: `Client(...)`, `[]`, `cap` (a parameter). */
+function pythonValueEvidence(raw: string, signature: string | null): PythonAttrEvidence {
+  const v = raw.trim();
+  if (/^(?:[[{(\d'"-]|[rbfu]['"]|True\b|False\b)/.test(v)) return 'runtime';
+  const ctor = v.match(/^([A-Za-z_][\w.]*)\s*\(/);
+  if (ctor) {
+    if (PYTHON_RUNTIME_TYPES.has(ctor[1]!)) return 'runtime';
+    // A capitalised callee constructs that class; `make_client()` returns
+    // something this file does not say.
+    return /^[A-Z]/.test(ctor[1]!.split('.').pop()!) ? { type: ctor[1]! } : null;
+  }
+  // `self.cap = cap` — the parameter's annotation in the enclosing `def`.
+  if (signature && /^[A-Za-z_]\w*$/.test(v)) {
+    const param = new RegExp(`[(,]\\s*\\*{0,2}${v}\\s*:\\s*([^,)=]+)`).exec(signature);
+    if (param) return pythonAnnotationEvidence(param[1]!);
+  }
+  return null;
+}
+
+/**
+ * What `owner`'s body says `attr` holds: a class-level declaration
+ * (`registry = Registry()`, `conn: Client`) or an assignment through `self` /
+ * `cls` (`self.cap = Capture()`, `self.cap: Capture`, `self.cap = cap` with
+ * `cap: Capture` in the signature). Two statements that disagree are no
+ * evidence at all.
+ *
+ * Comments and docstrings are blanked before reading, and nested classes are
+ * skipped, so neither can supply the type: a regex over raw class lines took a
+ * type from a docstring once and turned a correct edge into a wrong one.
+ */
+function pythonAttrEvidence(owner: Node, attr: string, context: ResolutionContext): PythonAttrEvidence {
+  const source = context.readFile(owner.filePath);
+  if (!source) return null;
+  const lines = stripCommentsForRegex(source, 'python').split('\n');
+  const nested = context
+    .getNodesInFile(owner.filePath)
+    .filter((n) => n.kind === 'class' && n.id !== owner.id && n.startLine > owner.startLine && n.endLine <= owner.endLine);
+  const indent = (l: string) => l.length - l.trimStart().length;
+  let bodyIndent = -1;
+  const a = attr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const classLevel = new RegExp(`^${a}\\s*(?::\\s*([^=]+?))?\\s*(?:=\\s*(.+?))?\\s*$`);
+  const viaSelf = new RegExp(`\\b(?:self|cls)\\.${a}\\s*(?::\\s*([^=]+?))?\\s*(?:=(?!=)\\s*(.+?))?\\s*$`);
+  let signature: string | null = null;
+  const found = new Set<string>();
+
+  for (let ln = owner.startLine + 1; ln <= owner.endLine; ln++) {
+    const line = lines[ln - 1];
+    if (!line || !line.trim()) continue;
+    if (nested.some((n) => ln >= n.startLine && ln <= n.endLine)) continue;
+    if (bodyIndent < 0) bodyIndent = indent(line);
+    const text = line.trim();
+    if (/^(?:async\s+)?def\s/.test(text)) {
+      // The enclosing method's signature, possibly over several lines.
+      signature = text;
+      for (let k = ln; k < owner.endLine && !/\)\s*(?:->[^:]*)?:\s*$/.test(signature); k++) {
+        signature += ' ' + (lines[k] ?? '').trim();
+      }
+      continue;
+    }
+    const m = indent(line) === bodyIndent ? classLevel.exec(text) : viaSelf.exec(text);
+    if (!m || (!m[1] && !m[2])) continue;
+    const ev = m[1]
+      ? pythonAnnotationEvidence(m[1])
+      : pythonValueEvidence(m[2]!, indent(line) === bodyIndent ? null : signature);
+    if (ev) found.add(ev === 'runtime' ? '' : ev.type);
+  }
+  if (found.size !== 1) return null;
+  const only = [...found][0]!;
+  return only === '' ? 'runtime' : { type: only };
+}
+
+/**
+ * The class `className` declared in the python module `modulePath` as seen
+ * from `fromFile` — `pkg.a` / `.a` / `..core` — or null. Relative paths are
+ * anchored at `fromFile`'s package; an absolute one may sit under a source root
+ * (`src/pkg/a.py`), so it matches by path suffix and must be unique.
+ */
+function pythonModuleClass(modulePath: string, className: string, fromFile: string, context: ResolutionContext): Node | null {
+  const dots = /^\.*/.exec(modulePath)![0].length;
+  let rel = modulePath.slice(dots).replace(/\./g, '/');
+  if (dots > 0) {
+    const dir = fromFile.replace(/\\/g, '/').split('/').slice(0, -1);
+    for (let i = 1; i < dots; i++) {
+      if (dir.length === 0) return null;
+      dir.pop();
+    }
+    rel = [...dir, ...(rel ? [rel] : [])].join('/');
+  }
+  if (!rel) return null;
+  const wanted = [`${rel}.py`, `${rel}/__init__.py`, `${rel}.pyi`];
+  const hits = context.getNodesByName(className).filter((n) => {
+    if (n.kind !== 'class' || n.language !== 'python') return false;
+    const fp = n.filePath.replace(/\\/g, '/');
+    return wanted.some((w) => fp === w || (dots === 0 && fp.endsWith(`/${w}`)));
+  });
+  return hits.length === 1 ? hits[0]! : null;
+}
+
+/**
+ * The project class a python type name means in `fromFile`: the class in the
+ * module its import names, or the file's own declaration. An import that names
+ * a module outside the project (`requests.Session`) is null, never a same-named
+ * project class — that is the guess this whole path exists to stop.
+ */
+function pythonClassNamed(typeName: string, fromFile: string, context: ResolutionContext): Node | null {
+  const segs = typeName.split('.');
+  const className = segs[segs.length - 1]!;
+  const imports = context.getImportMappings(fromFile, 'python');
+  const candidates: Array<Node | null> = [];
+  for (const imp of imports) {
+    if (imp.isNamespace && segs.length > 1 && typeName.startsWith(`${imp.source}.`)) {
+      // `import pkg.models` then `pkg.models.User`.
+      const middle = typeName.slice(imp.source.length + 1).split('.').slice(0, -1);
+      candidates.push(pythonModuleClass([imp.source, ...middle].join('.'), className, fromFile, context));
+    } else if (imp.localName === segs[0]) {
+      if (segs.length === 1) {
+        // `from pkg.a import Capture` / `... import Capture as C`.
+        candidates.push(imp.isNamespace ? null : pythonModuleClass(imp.source, imp.exportedName, fromFile, context));
+      } else {
+        // `from pkg import models` then `models.User`; `import models as m` then `m.User`.
+        const base = imp.isNamespace
+          ? imp.source
+          : imp.source.endsWith('.') ? imp.source + imp.exportedName : `${imp.source}.${imp.exportedName}`;
+        candidates.push(pythonModuleClass([base, ...segs.slice(1, -1)].join('.'), className, fromFile, context));
+      }
+    }
+  }
+  if (candidates.length > 0) {
+    // Every binding of the name must agree on one class.
+    const ids = new Set(candidates.map((c) => c?.id ?? ''));
+    return ids.size === 1 && candidates[0] ? candidates[0] : null;
+  }
+  if (segs.length > 1) return null;
+  const local = context
+    .getNodesByName(typeName)
+    .filter((n) => n.kind === 'class' && n.language === 'python' && n.filePath === fromFile);
+  return local.length === 1 ? local[0]! : null;
+}
+
+/**
+ * `method` on class `cls`, or on a base its own `class` line names (resolved
+ * the same way, from `cls`'s file). Reading the bases off the header rather
+ * than the `extends` edges keeps this answerable in the first pass.
+ */
+function pythonMethodOnClass(
+  cls: Node,
+  methodName: string,
+  ref: UnresolvedRef,
+  context: ResolutionContext,
+  seen: Set<string> = new Set(),
+): ResolvedRef | null {
+  if (seen.has(cls.id) || seen.size >= 5) return null;
+  seen.add(cls.id);
+  const own = context
+    .getNodesByName(methodName)
+    .find((m) =>
+      m.kind === 'method' && m.language === 'python' && m.filePath === cls.filePath &&
+      (m.qualifiedName === `${cls.name}::${methodName}` || m.qualifiedName.endsWith(`::${cls.name}::${methodName}`)));
+  if (own) return { original: ref, targetNodeId: own.id, confidence: 0.85, resolvedBy: 'instance-method' };
+
+  const source = context.readFile(cls.filePath);
+  if (!source) return null;
+  const header = stripCommentsForRegex(source, 'python')
+    .split('\n')
+    .slice(cls.startLine - 1, cls.startLine + 4)
+    .join(' ');
+  const bases = new RegExp(`\\bclass\\s+${cls.name}\\s*\\(([^)]*)\\)`).exec(header)?.[1];
+  for (const base of (bases ?? '').split(',').map((b) => b.trim())) {
+    if (!/^[A-Za-z_][\w.]*$/.test(base)) continue; // `metaclass=...`, generics
+    const baseCls = pythonClassNamed(base, cls.filePath, context);
+    const hit = baseCls && pythonMethodOnClass(baseCls, methodName, ref, context, seen);
+    if (hit) return { ...hit, confidence: 0.8 };
+  }
+  return null;
+}
+
+/**
+ * Python call through one attribute of a class — `self.cap.stop()`,
+ * `cls.registry.lookup()`, `Svc.registry.lookup()`, `config.llm.rebuild()`.
+ * The class is the one the call sits in (`self` / `cls`), the one the receiver
+ * names, or the declared type of a local; the attribute's type comes from that
+ * class's body; the method is looked up on that type.
+ *
+ * Anything the class body does not type — a builtin container, a factory
+ * function's result, an attribute declared on a base class, an untyped local,
+ * a deeper chain — resolves to nothing rather than to a same-named method
+ * somewhere else.
+ */
+function matchPythonAttrCall(
+  receiver: string,
+  methodName: string,
+  ref: UnresolvedRef,
+  context: ResolutionContext,
+): ResolvedRef | null {
+  const segs = receiver.split('.');
+  if (segs.length !== 2) return null;
+  const [head, attr] = segs as [string, string];
+
+  let owner: Node | null = null;
+  if (head === 'self' || head === 'cls') {
+    // The innermost class whose extent holds the call.
+    for (const n of context.getNodesInFile(ref.filePath)) {
+      if (n.kind !== 'class' || n.startLine > ref.line || n.endLine < ref.line) continue;
+      if (!owner || n.startLine > owner.startLine) owner = n;
+    }
+  } else if (/^[A-Z]/.test(head)) {
+    owner = pythonClassNamed(head, ref.filePath, context);
+  } else {
+    // A local or parameter whose own type the scope states — `config: Config`,
+    // `controller = Controller(...)` — then the attribute on that class.
+    const headType = inferLocalReceiverType(head, ref, context);
+    if (headType) owner = pythonClassNamed(headType, ref.filePath, context);
+  }
+  if (!owner) return null;
+
+  const evidence = pythonAttrEvidence(owner, attr, context);
+  if (!evidence || evidence === 'runtime') return null;
+  const cls = pythonClassNamed(evidence.type, owner.filePath, context);
+  return cls ? pythonMethodOnClass(cls, methodName, ref, context) : null;
 }
 
 /** Go builtin/primitive field types that can never carry a project method. */
