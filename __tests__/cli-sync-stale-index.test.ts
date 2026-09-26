@@ -5,13 +5,17 @@ import * as os from 'os';
 import * as path from 'path';
 import { CodeGraph } from '../src';
 import { EXTRACTION_VERSION } from '../src/extraction/extraction-version';
+import { NODE_RUNTIME_FLAGS } from '../src/extraction/wasm-runtime-flags';
 
 const BIN = path.resolve(__dirname, '../dist/bin/codegraph.js');
 const { DatabaseSync } = require('node:sqlite');
 let root: string;
 
 function run(...args: string[]) {
-  return spawnSync(process.execPath, [BIN, ...args], {
+  // CODEGRAPH_WASM_RELAUNCHED skips the relaunch that normally adds
+  // NODE_RUNTIME_FLAGS, so pass them here: without them node:sqlite's
+  // ExperimentalWarning lands on stderr and breaks the one-line assertion.
+  return spawnSync(process.execPath, [...NODE_RUNTIME_FLAGS, BIN, ...args], {
     cwd: root,
     encoding: 'utf8',
     timeout: 30_000,
