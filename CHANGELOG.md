@@ -148,6 +148,8 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A call like `Logger.log()` now links to `Logger`'s own method instead of the same-named method of a class whose name merely contains it, such as `FileLogger`.
 
 - Git sync hooks now refresh the project they were installed for, so a project inside a larger repository stays current after commit, pull and checkout; installing them no longer breaks an existing hook written in another language, and runs even when your own hook ends with `exit`.
+
+- Setting `CODEGRAPH_WATCHDOG_TIMEOUT_MS` or `CODEGRAPH_STARTUP_HANDSHAKE_TIMEOUT_MS` to a very large value no longer makes it fire at once and stop the MCP server; values past about 24 days are now treated as that maximum. (#1966)
 - Rust calls on `self` now stay with the enclosing type instead of linking to an unrelated type’s same-named method. Thanks @L4XB. (#1861)
 
 - Turning telemetry off now resets its identity and stops running processes from recording, sending, or restoring unsent data. (#1869)
