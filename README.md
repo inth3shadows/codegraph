@@ -1,3 +1,22 @@
+> [!NOTE]
+> **This is a personal fork of [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph).**
+> It carries fixes for bugs that put wrong edges in the graph, found while using CodeGraph
+> as the ground truth for other tools. Wrong edges are worse than missing ones: a
+> fabricated call makes every tool built on the graph confidently wrong. The fixes:
+>
+> - **Python calls through an attribute** (`self.data.append`, `d[k].append`) no longer bind
+>   to any project method that happens to share the name ([#1704](https://github.com/colbymchenry/codegraph/pull/1704)).
+> - **Python imports** resolve from the project's own package roots, so `import json` no
+>   longer binds to a project's `app/utils/json.py`.
+> - **Python attributes set by a factory or a base class** are typed, so calls through them
+>   resolve ([#750](https://github.com/colbymchenry/codegraph/issues/750)).
+> - **Dart 3 extension types** and their members are indexed ([#1784](https://github.com/colbymchenry/codegraph/issues/1784)).
+> - **One index opened twice** through a symlink or a case-variant path now shares one
+>   connection ([#1057](https://github.com/colbymchenry/codegraph/issues/1057)).
+>
+> Not published to npm; build from source (`npm install && npm run build`). For everything
+> else, use upstream. The rest of this README is upstream's, unchanged.
+
 <div align="center">
 
 # CodeGraph
