@@ -152,6 +152,8 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Setting `CODEGRAPH_WATCHDOG_TIMEOUT_MS` or `CODEGRAPH_STARTUP_HANDSHAKE_TIMEOUT_MS` to a very large value no longer makes it fire at once and stop the MCP server; values past about 24 days are now treated as that maximum. (#1966)
 
 - `codegraph_explore` now points out where a flow stops at a dynamic import built from a template string or by joining strings, such as a locale or plugin loader, instead of saying nothing. (#1967)
+
+- The "edited since the last index sync" warning no longer names a file the answer never showed just because its path is part of one that it did, such as `src/app.ts` next to `src/app.tsx`. (#1968)
 - Rust calls on `self` now stay with the enclosing type instead of linking to an unrelated type’s same-named method. Thanks @L4XB. (#1861)
 
 - Turning telemetry off now resets its identity and stops running processes from recording, sending, or restoring unsent data. (#1869)
