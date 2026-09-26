@@ -150,6 +150,8 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Git sync hooks now refresh the project they were installed for, so a project inside a larger repository stays current after commit, pull and checkout; installing them no longer breaks an existing hook written in another language, and runs even when your own hook ends with `exit`.
 
 - Setting `CODEGRAPH_WATCHDOG_TIMEOUT_MS` or `CODEGRAPH_STARTUP_HANDSHAKE_TIMEOUT_MS` to a very large value no longer makes it fire at once and stop the MCP server; values past about 24 days are now treated as that maximum. (#1966)
+
+- `codegraph_explore` now points out where a flow stops at a dynamic import built from a template string or by joining strings, such as a locale or plugin loader, instead of saying nothing. (#1967)
 - Rust calls on `self` now stay with the enclosing type instead of linking to an unrelated type’s same-named method. Thanks @L4XB. (#1861)
 
 - Turning telemetry off now resets its identity and stops running processes from recording, sending, or restoring unsent data. (#1869)
