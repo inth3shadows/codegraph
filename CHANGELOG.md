@@ -155,6 +155,8 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - The "edited since the last index sync" warning no longer names a file the answer never showed just because its path is part of one that it did, such as `src/app.ts` next to `src/app.tsx`. (#1968)
 
+- An empty or table-less `codegraph.db` left behind in a parent directory (by an interrupted `codegraph init`, or a never-populated `~/.codegraph/`) no longer counts as an initialized project, so it can no longer hide the real index of every project beneath it. Only a database that actually carries the codegraph schema is treated as initialized, and `codegraph init` in the directory with the broken file now repairs it instead of refusing with "Already initialized". (#1895)
+
 - Rust calls on `self` now stay with the enclosing type instead of linking to an unrelated type’s same-named method. Thanks @L4XB. (#1861)
 
 - Turning telemetry off now resets its identity and stops running processes from recording, sending, or restoring unsent data. (#1869)
