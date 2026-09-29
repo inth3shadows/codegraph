@@ -4,33 +4,24 @@
 > as the ground truth for other tools. Wrong edges are worse than missing ones: a
 > fabricated call makes every tool built on the graph confidently wrong. The fixes:
 >
-> - **Python calls through an attribute** (`self.data.append`, `d[k].append`) no longer bind
->   to any project method that happens to share the name ([#1704](https://github.com/colbymchenry/codegraph/pull/1704)).
-> - **Python imports** resolve from the project's own package roots, so `import json` no
->   longer binds to a project's `app/utils/json.py`.
-> - **Python attributes set by a factory or a base class** are typed, so calls through them
->   resolve ([#750](https://github.com/colbymchenry/codegraph/issues/750)).
-> - **Dart 3 extension types** and their members are indexed ([#1784](https://github.com/colbymchenry/codegraph/issues/1784)).
-> - **One index opened twice** through a symlink or a case-variant path now shares one
->   connection ([#1057](https://github.com/colbymchenry/codegraph/issues/1057)).
-> - **`Class.method()`** binds to that class, not to another class whose name contains it
->   ([#1935](https://github.com/colbymchenry/codegraph/pull/1935)).
 > - **TypeScript `type` imports and re-exports** are honoured
 >   ([#1955](https://github.com/colbymchenry/codegraph/pull/1955)).
 > - **Express routes**: only the handler argument decides whether a route is inline
 >   ([#1957](https://github.com/colbymchenry/codegraph/pull/1957)).
 > - **Git sync hooks** refresh the sub-project they were installed for, and leave non-shell
 >   hooks alone ([#1965](https://github.com/colbymchenry/codegraph/pull/1965)).
-> - **Huge watchdog / handshake timeouts** no longer fire after 1 ms
->   ([#1969](https://github.com/colbymchenry/codegraph/pull/1969)).
-> - **Dynamic imports** built from a template or concatenation are reported as boundaries
->   ([#1970](https://github.com/colbymchenry/codegraph/pull/1970)).
-> - **The stale-file banner** matches whole paths (`src/app.ts` ≠ `src/app.tsx`)
->   ([#1971](https://github.com/colbymchenry/codegraph/pull/1971)).
 > - **A schema-less `codegraph.db`** no longer makes an ancestor (e.g. `$HOME`) a project
 >   (upstream [#1913](https://github.com/colbymchenry/codegraph/pull/1913) by @danusha2345).
 > - **`codegraph sync`** refuses an index built by an older extractor instead of saying
 >   "Already up to date" (upstream [#1842](https://github.com/colbymchenry/codegraph/pull/1842) by @bompus).
+>
+> Earlier fork fixes (Dart extension types, #1057 path spellings, timer caps, dynamic-import
+> boundaries, the stale-file banner) are now in upstream. The Python resolution fixes
+> ([#1704](https://github.com/colbymchenry/codegraph/pull/1704),
+> [#1921](https://github.com/colbymchenry/codegraph/pull/1921),
+> [#1926](https://github.com/colbymchenry/codegraph/pull/1926)) and
+> [#1935](https://github.com/colbymchenry/codegraph/pull/1935) are off the fork until they are
+> rebased onto upstream's rewrite of the same resolver code.
 >
 > Not published to npm; build from source (`npm install && npm run build`). For everything
 > else, use upstream. The rest of this README is upstream's, unchanged.
@@ -929,7 +920,7 @@ Framework routing is validated the same way, on a canonical app per framework: E
 
 **Missing symbols** — The MCP server auto-syncs on save (wait a couple seconds). Run `codegraph sync` manually if needed. Check that the file's language is supported and isn't inside a `.gitignore`d or default-excluded directory (e.g. `node_modules`, `dist`).
 
-**Sharing one checkout between Windows and WSL** — Don't point both at the same `.codegraph/`: the background-server lock and the SQLite index are tied to the OS that wrote them, and SQLite locking across the WSL2/Windows filesystem boundary is unreliable. Give each side its own index in the same tree by setting `CODEGRAPH_DIR` to a distinct name on one of them — e.g. `CODEGRAPH_DIR=.codegraph-win` on Windows, leaving WSL on the default `.codegraph`. CodeGraph skips any sibling `.codegraph-*` directory when indexing and watching, so the two never trip over each other.
+**Sharing one checkout between Windows and WSL** — Don't point both at the same `.codegraph/`: the background-server lock and the SQLite index are tied to the OS that wrote them, and SQLite locking across the WSL2/Windows filesystem boundary is unreliable (WSL reports it as a `disk I/O error`). For a project on a Windows drive (a `/mnt/c/…` path), WSL keeps its own index automatically: an index first built from WSL goes in `.codegraph-wsl/`, leaving `.codegraph/` to Windows. An index already in `.codegraph/` stays where it is, so if Windows built that one, give WSL its own by setting `CODEGRAPH_DIR=.codegraph-wsl` in WSL and running `codegraph init` there. `CODEGRAPH_DIR` always picks the name when set, on either side. CodeGraph skips any sibling `.codegraph-*` directory when indexing and watching, so the two never trip over each other.
 
 **Very large repositories (hundreds of thousands of files), or a large `.codegraph/codegraph.db-wal` file** — The `-wal` file is SQLite's write-ahead log: writes waiting to be folded into `codegraph.db`. While a big index is being built, CodeGraph lets it grow in proportion to the index (soft threshold = the larger of 256 MB and a quarter of the index size, up to 2 GB) before folding it back, because folding too often is what made large indexes slow on ordinary disks. At rest it is trimmed to 64 MB, and a leftover from a killed session is folded and trimmed the next time the project opens — the index itself has no size limit. Two environment variables tune this: `CODEGRAPH_WAL_VALVE_MB` (the soft threshold during indexing) and `CODEGRAPH_WAL_HEAL_MB` (the resting size and the trim threshold). `CODEGRAPH_WAL_VALVE_DEBUG=1` prints every decision to stderr.
 

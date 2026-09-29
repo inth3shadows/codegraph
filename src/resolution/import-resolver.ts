@@ -4,7 +4,6 @@
  * Resolves import paths to actual files and symbols.
  */
 
-import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Language, Node } from '../types';
@@ -12,10 +11,10 @@ import { UnresolvedRef, ResolvedRef, ResolutionContext, ImportMapping, ReExport 
 import { applyAliases } from './path-aliases';
 import { extractLocalExportAliases } from './alias-binding';
 import { resolveWorkspaceImport } from './workspace-packages';
-import { stripCommentsForRegex } from './strip-comments';
 import {
   resolveMethodOnType,
   resolveObjectLiteralMember,
+  resolveObjectLiteralBinding,
   localReceiverTypePatterns,
   normalizeInferredTypeName,
 } from './name-matcher';
@@ -77,8 +76,15 @@ const exportedSymbolMemos = new WeakMap<ResolutionContext, Map<string, Node | un
  * `getNodesInFile` arrays (a barrel-heavy repo scans its biggest files once
  * per referencing symbol otherwise). First-wins insertion preserves exactly
  * the array-order semantics of the `.find` calls it replaces.
+ *
+ * Built from the file's exported rows alone: every worker of the resolver
+ * pool builds its own index for each file an import reaches, and decoding
+ * whole files there cost more than resolving through them. The two answers
+ * that need more — the default-export binding and names a local export
+ * clause introduces — read the source and name-targeted rows on first use.
  */
 interface FileExportIndex {
+  /** Exported declarations by name. Read through {@link exportedByName}. */
   byName: Map<string, Node>;
   defaultComponent: Node | undefined;
   defaultFnClass: Node | undefined;
@@ -88,9 +94,16 @@ interface FileExportIndex {
    * guess. `const Home = () => …; export default Home` and the namespace
    * object `const UploadApi = { uploadARCapture }; export default UploadApi`
    * are both invisible to the `isExported` index above: neither declaration
-   * has an `export_statement` ancestor.
+   * has an `export_statement` ancestor. `undefined` until first read through
+   * {@link defaultExportBindingNode}; `null` when there is none.
    */
-  defaultBinding: Node | undefined;
+  defaultBinding?: Node | null;
+  /**
+   * Names a local export clause (`export { impl as alias }`) binds to a
+   * declaration the extractor never flagged isExported, for names not in
+   * `byName`. `undefined` until first read through {@link exportedByName}.
+   */
+  clauseAliases?: Map<string, Node>;
 }
 
 const DEFAULT_BINDING_KINDS = new Set<string>(['function', 'class', 'component', 'constant', 'variable']);
@@ -114,42 +127,57 @@ function getFileExportIndex(filePath: string, context: ResolutionContext): FileE
   }
   let idx = perFile.get(filePath);
   if (!idx) {
-    idx = { byName: new Map(), defaultComponent: undefined, defaultFnClass: undefined, defaultBinding: undefined };
-    const nodesInFile = context.getNodesInFile(filePath);
-    // Python has no export keyword: every module-level def is importable, and
-    // the extractor never flags one isExported. Without this a Python named
-    // import could only ever resolve through the bare-name matcher.
-    const pythonFile = PYTHON_MODULE_FILE.test(filePath);
-    // Every declaration, exported or not: a local `export { impl as alias }`
-    // clause exports a declaration the extractor never flagged isExported.
-    const declared = new Map<string, Node>();
-    for (const n of nodesInFile) {
-      if (!declared.has(n.name)) declared.set(n.name, n);
-      if (!n.isExported && !(pythonFile && isPythonModuleLevelDef(n))) continue;
+    idx = { byName: new Map(), defaultComponent: undefined, defaultFnClass: undefined };
+    const exported = context.getExportedNodesInFile?.(filePath) ?? context.getNodesInFile(filePath).filter((n) => n.isExported);
+    for (const n of exported) {
       if (!idx.byName.has(n.name)) idx.byName.set(n.name, n);
       if (idx.defaultComponent === undefined && n.kind === 'component') idx.defaultComponent = n;
       if (idx.defaultFnClass === undefined && (n.kind === 'function' || n.kind === 'class')) idx.defaultFnClass = n;
     }
-    const bound = defaultExportBinding(filePath, context);
-    if (bound !== null) {
-      idx.defaultBinding = nodesInFile
-        .filter((n) => n.name === bound && DEFAULT_BINDING_KINDS.has(n.kind))
-        .sort((a, b) => a.startLine - b.startLine || a.startColumn - b.startColumn)[0];
-    }
-    // Bind names introduced by a local export clause to their declarations, so
-    // an importer asking for the renamed name gets the real symbol instead of
-    // falling through to the name-matcher (which cannot cross the rename).
-    const content = context.readFile(filePath);
-    if (content && content.includes('export')) {
-      for (const { exportedName, localName } of extractLocalExportAliases(content)) {
-        if (idx.byName.has(exportedName)) continue;
-        const decl = declared.get(localName);
-        if (decl) idx.byName.set(exportedName, decl);
-      }
-    }
     perFile.set(filePath, idx);
   }
   return idx;
+}
+
+/** The file's nodes named `name`, in `getNodesInFile` order. */
+function nodesInFileNamed(filePath: string, name: string, context: ResolutionContext): Node[] {
+  return context.getNodesInFileNamed?.(filePath, name) ?? context.getNodesInFile(filePath).filter((n) => n.name === name);
+}
+
+/** The declaration `export default NAME` names in this file (see FileExportIndex.defaultBinding). */
+function defaultExportBindingNode(filePath: string, idx: FileExportIndex, context: ResolutionContext): Node | undefined {
+  if (idx.defaultBinding === undefined) {
+    const bound = defaultExportBinding(filePath, context);
+    idx.defaultBinding =
+      bound === null
+        ? null
+        : (nodesInFileNamed(filePath, bound, context)
+            .filter((n) => DEFAULT_BINDING_KINDS.has(n.kind))
+            .sort((a, b) => a.startLine - b.startLine || a.startColumn - b.startColumn)[0] ?? null);
+  }
+  return idx.defaultBinding ?? undefined;
+}
+
+/** What this file exports as `name`: an exported declaration, else a local export clause's binding. */
+function exportedByName(filePath: string, idx: FileExportIndex, name: string, context: ResolutionContext): Node | undefined {
+  const direct = idx.byName.get(name);
+  if (direct) return direct;
+  if (idx.clauseAliases === undefined) {
+    // Bind names introduced by a local export clause to their declarations, so
+    // an importer asking for the renamed name gets the real symbol instead of
+    // falling through to the name-matcher (which cannot cross the rename).
+    // The declaration is the file's first node of that name, exported or not.
+    idx.clauseAliases = new Map();
+    const content = context.readFile(filePath);
+    if (content && content.includes('export')) {
+      for (const { exportedName, localName } of extractLocalExportAliases(content)) {
+        if (idx.byName.has(exportedName) || idx.clauseAliases.has(exportedName)) continue;
+        const decl = nodesInFileNamed(filePath, localName, context)[0];
+        if (decl) idx.clauseAliases.set(exportedName, decl);
+      }
+    }
+  }
+  return idx.clauseAliases.get(name);
 }
 
 /** Drop the per-context memo tables (see ReferenceResolver.clearCaches). */
@@ -159,8 +187,7 @@ export function clearImportResolverMemos(context: ResolutionContext): void {
   fileExportIndexes.delete(context);
   luaFileBasenameIndexes.delete(context);
   cobolCopybookIndexes.delete(context);
-  pythonModuleIndexes.delete(context);
-  pythonStarExportMemos.delete(context);
+  pythonModuleFileMemos.delete(context);
 }
 
 export function resolveImportPath(
@@ -202,12 +229,6 @@ function resolveImportPathUncached(
   // otherwise be misclassified as npm).
   if (isExternalImport(importPath, language, context)) {
     return null;
-  }
-
-  // Python names modules, not paths: one resolver answers relative and
-  // absolute specifiers alike, so every caller gets the same answer.
-  if (language === 'python') {
-    return resolvePythonModule(importPath, fromFile, context);
   }
 
   const projectRoot = context.getProjectRoot();
@@ -307,549 +328,6 @@ function resolveCobolCopybook(
     }
   }
   return best;
-}
-
-/**
- * Python module resolution. Python imports name MODULES (`pkg.sub.mod`,
- * `..sibling`), which the interpreter finds by searching `sys.path` roots, so
- * the answer depends on where packages start — not on any file that merely
- * ends in `pkg/sub/mod.py`. The old suffix match bound `import json` to a
- * project's `app/utils/json.py` and picked an arbitrary twin when two services
- * both carry `core/models.py`.
- *
- * Two kinds of root, both derived from evidence:
- *  - PROJECT roots — what `sys.path` holds for any code in the repo: the repo
- *    root; each service root (a directory with its own `pyproject.toml`,
- *    `setup.cfg` or `setup.py`); the `src/` of any of those; and the package
- *    directories their build config declares. These may answer an importer
- *    anywhere, but only unambiguously.
- *  - LOCAL roots — the parent of every top-level regular package, a script's
- *    own directory, a namespace package's parent seen from inside it. These
- *    answer only importers within their REACH: a fixture's `tests/fixtures/
- *    proj/requests/` must never become the application's `requests`.
- *
- * A service root counts as a project root unless it is nested inside a
- * package (its reach is then itself) or under a directory whose NAME marks
- * code that isn't the project's API ({@link PYTHON_NON_PROJECT_DIRS} — its
- * reach is then that directory, so sibling projects under `examples/` still
- * import each other). The nearest root containing the importer wins;
- * otherwise exactly one root within reach must provide the module. Only
- * indexed files count — a module the index doesn't hold has no node to link to.
- */
-interface PythonModuleIndex {
-  files: Set<string>;
-  /** Directories holding an `__init__.py` — regular packages. */
-  packageDirs: Set<string>;
-  /** Every directory that holds a `.py` file at any depth — namespace candidates. */
-  dirs: Set<string>;
-  projectRoots: Set<string>;
-  /** Local roots, each with the directory whose importers it may answer. */
-  localRoots: Map<string, string>;
-  /**
-   * Per top-level name, the roots (project and local) that provide it, split by kind
-   * (a regular package or module shadows a namespace portion). Memoised so a
-   * large monorepo pays for the scan once per name, not once per reference.
-   */
-  headsByName: Map<string, { concrete: string[]; namespace: string[] }>;
-}
-
-const pythonModuleIndexes = new WeakMap<ResolutionContext, PythonModuleIndex>();
-const PYTHON_MODULE_FILE = /\.py$/;
-const PYTHON_MODULE_LEVEL_KINDS = new Set<string>(['function', 'class', 'variable', 'constant']);
-/**
- * Directory names that, by near-universal convention, hold code that is not
- * the project's importable API: test inputs, sample projects, vendored copies.
- * Used ONLY to keep a root nested under one from answering importers outside
- * that directory — never to drop an edge inside it. A name, not content: a
- * shared `conftest.py` or a `smoke_test.py` script proves a directory holds
- * tests, not that the services beneath it aren't the project.
- *
- * The trade-off: a library kept under one of these names but installed into
- * the environment (`third_party/foo` with its own `pyproject.toml`, `pip
- * install -e`'d, imported as `import foo`) is not resolved from outside that
- * directory — an editable install is invisible to a static index, and
- * treating every such tree as importable would let fixtures capture the
- * application's imports. A missed edge, never a wrong one.
- */
-const PYTHON_NON_PROJECT_DIRS = new Set([
-  'tests', 'test', 'testing', 'fixtures', 'testdata', 'examples', 'example', 'samples', 'vendor', 'third_party',
-]);
-
-/** A def at module level — what `from mod import name` can bind. */
-function isPythonModuleLevelDef(n: Node): boolean {
-  return PYTHON_MODULE_LEVEL_KINDS.has(n.kind) && !n.qualifiedName.includes('::');
-}
-
-function parentDir(dir: string): string {
-  const slash = dir.lastIndexOf('/');
-  return slash < 0 ? '' : dir.slice(0, slash);
-}
-
-function joinRel(dir: string, rel: string): string {
-  return dir ? `${dir}/${rel}` : rel;
-}
-
-/** Whether `dir` is `scope` or inside it. */
-function isWithin(dir: string, scope: string): boolean {
-  return scope === '' || dir === scope || dir.startsWith(`${scope}/`);
-}
-
-function pythonModuleIndex(context: ResolutionContext): PythonModuleIndex {
-  let index = pythonModuleIndexes.get(context);
-  if (!index) {
-    index = buildPythonModuleIndex(context);
-    pythonModuleIndexes.set(context, index);
-  }
-  return index;
-}
-
-function buildPythonModuleIndex(context: ResolutionContext): PythonModuleIndex {
-  const files = new Set<string>();
-  const packageDirs = new Set<string>();
-  const dirs = new Set<string>(['']);
-  for (const f of context.getAllFiles()) {
-    const norm = f.replace(/\\/g, '/');
-    if (!PYTHON_MODULE_FILE.test(norm)) continue;
-    files.add(norm);
-    const dir = parentDir(norm);
-    if (norm === '__init__.py' || norm.endsWith('/__init__.py')) packageDirs.add(dir);
-    for (let d = dir; d && !dirs.has(d); d = parentDir(d)) dirs.add(d);
-  }
-
-  // Where a service's roots may answer from: everywhere (null), only itself
-  // when a package encloses it, or the nearest enclosing directory named as
-  // non-project code.
-  const serviceReach = (service: string): string | null => {
-    if (packageDirs.has(service)) return service;
-    for (let a = parentDir(service); a; a = parentDir(a)) {
-      if (packageDirs.has(a)) return service;
-      if (PYTHON_NON_PROJECT_DIRS.has(a.slice(a.lastIndexOf('/') + 1))) return a;
-    }
-    return null;
-  };
-
-  const projectRoots = new Set<string>(['']);
-  const localRoots = new Map<string, string>();
-  const addLocal = (root: string, reach: string): void => {
-    const prior = localRoots.get(root);
-    // Two claims on one root: the wider reach wins.
-    if (prior === undefined || isWithin(prior, reach)) localRoots.set(root, reach);
-  };
-  for (const dir of packageDirs) {
-    let top = dir;
-    while (top && packageDirs.has(parentDir(top))) top = parentDir(top);
-    if (top) addLocal(parentDir(top), parentDir(top));
-  }
-  for (const service of dirs) {
-    const hasConfig =
-      files.has(joinRel(service, 'setup.py')) ||
-      context.fileExists(joinRel(service, 'pyproject.toml')) ||
-      context.fileExists(joinRel(service, 'setup.cfg'));
-    if (!hasConfig && service !== '') continue;
-    const reach = service === '' ? null : serviceReach(service);
-    const roots = [service];
-    const src = joinRel(service, 'src');
-    if (dirs.has(src) && !packageDirs.has(src)) roots.push(src);
-    for (const declared of declaredPythonRoots(context, service)) {
-      if (dirs.has(declared)) roots.push(declared);
-    }
-    for (const root of roots) {
-      if (reach === null) projectRoots.add(root);
-      else addLocal(root, reach);
-    }
-  }
-  for (const root of projectRoots) localRoots.delete(root);
-  return { files, packageDirs, dirs, projectRoots, localRoots, headsByName: new Map() };
-}
-
-/**
- * Package roots a build config declares, relative to the repo root. Only the
- * keys that mean "packages live here" are read, each in its own table:
- * setuptools `[tool.setuptools.packages.find] where` and
- * `[tool.setuptools.package-dir] "" =` (or the inline `package-dir` of
- * `[tool.setuptools]`), poetry `packages = [{ from = … }]`, hatch
- * `packages = ["src/pkg"]`, and `setup.cfg`'s `[options] package_dir` and
- * `[options.packages.find] where`. A miss only costs the namespace-package
- * case, which the `__init__.py` chain can't see either.
- */
-function declaredPythonRoots(context: ResolutionContext, service: string): string[] {
-  const out: string[] = [];
-  const add = (raw: string): void => {
-    const dir = raw.trim().replace(/^["']|["']$/g, '').replace(/^\.(?:\/|$)/, '').replace(/\/+$/, '');
-    if (!dir || dir.startsWith('..') || path.isAbsolute(dir)) return;
-    out.push(joinRel(service, dir));
-  };
-  const toml = context.readFile(joinRel(service, 'pyproject.toml'));
-  if (toml) {
-    for (const [table, body] of iniTables(toml)) {
-      if (table === 'tool.setuptools.packages.find') {
-        const m = body.match(/^\s*where\s*=\s*\[([^\]]*)\]/m);
-        if (m) for (const item of m[1]!.split(',')) add(item);
-      } else if (table === 'tool.setuptools.package-dir') {
-        const m = body.match(/^\s*["']{2}\s*=\s*["']([^"']+)["']/m);
-        if (m) add(m[1]!);
-      } else if (table === 'tool.setuptools') {
-        const m = body.match(/package-dir\s*=\s*\{[^}]*?["']{2}\s*=\s*["']([^"']+)["']/);
-        if (m) add(m[1]!);
-      } else if (table === 'tool.poetry') {
-        const pkgs = body.match(/^\s*packages\s*=\s*\[([\s\S]*?)\]\s*$/m);
-        if (pkgs) for (const m of pkgs[1]!.matchAll(/\bfrom\s*=\s*["']([^"']+)["']/g)) add(m[1]!);
-      } else if (table === 'tool.hatch.build.targets.wheel') {
-        const pkgs = body.match(/^\s*packages\s*=\s*\[([^\]]*)\]/m);
-        if (pkgs) {
-          for (const item of pkgs[1]!.split(',')) {
-            const p = item.trim().replace(/^["']|["']$/g, '');
-            if (p.includes('/')) add(p.slice(0, p.lastIndexOf('/')));
-          }
-        }
-      }
-    }
-  }
-  const cfg = context.readFile(joinRel(service, 'setup.cfg'));
-  if (cfg) {
-    for (const [table, body] of iniTables(cfg)) {
-      if (table === 'options') {
-        const m = body.match(/^\s*package_dir\s*=\s*(?:\n\s+)?=\s*(\S+)\s*$/m);
-        if (m) add(m[1]!);
-      } else if (table === 'options.packages.find') {
-        const m = body.match(/^\s*where\s*=\s*(\S+)\s*$/m);
-        if (m) add(m[1]!);
-      }
-    }
-  }
-  return out;
-}
-
-/** `[table]` sections of a TOML / INI file, with the body under each. */
-function iniTables(content: string): Array<[string, string]> {
-  const out: Array<[string, string]> = [];
-  const headers = [...content.matchAll(/^[ \t]*\[([^\[\]\n]+)\][ \t]*(?:#.*)?$/gm)];
-  headers.forEach((h, i) => {
-    const end = i + 1 < headers.length ? headers[i + 1]!.index! : content.length;
-    out.push([h[1]!.trim().replace(/["']/g, ''), content.slice(h.index! + h[0].length, end)]);
-  });
-  return out;
-}
-
-/**
- * The module file at `base` (dir-relative path), in Python's own order: a
- * regular package `base/__init__.py` beats a module `base.py`; a bare
- * directory (a namespace portion) has no file of its own.
- */
-function pythonModuleAt(base: string, index: PythonModuleIndex): string | null {
-  const init = joinRel(base, '__init__.py');
-  if (index.files.has(init)) return init;
-  return index.files.has(`${base}.py`) ? `${base}.py` : null;
-}
-
-/**
- * The module file for the dotted path `relPath` (slash-joined) under `root`,
- * walking it the way the import system does: every prefix must be a package
- * — regular, or a namespace directory — so a prefix that is a plain module
- * (`pkg/sub.py` with no `pkg/sub/__init__.py`) ends the walk, and
- * `pkg.sub.x` does not exist even if `pkg/sub/x.py` does.
- */
-function pythonModuleUnder(root: string, relPath: string, index: PythonModuleIndex): string | null {
-  const parts = relPath.split('/');
-  let base = root;
-  for (let i = 0; i < parts.length - 1; i++) {
-    base = joinRel(base, parts[i]!);
-    if (index.files.has(joinRel(base, '__init__.py'))) continue;
-    if (index.files.has(`${base}.py`) || !index.dirs.has(base)) return null;
-  }
-  return pythonModuleAt(joinRel(root, relPath), index);
-}
-
-/** How `root` provides the top-level name `head`: concretely, as a namespace portion, or not at all. */
-function pythonHeadKind(root: string, head: string, index: PythonModuleIndex): 'concrete' | 'namespace' | null {
-  const base = joinRel(root, head);
-  if (pythonModuleAt(base, index)) return 'concrete';
-  return index.dirs.has(base) ? 'namespace' : null;
-}
-
-/** Every root (project or local) providing the top-level name `head`, by kind. */
-function pythonRootHeads(head: string, index: PythonModuleIndex): { concrete: string[]; namespace: string[] } {
-  let heads = index.headsByName.get(head);
-  if (!heads) {
-    heads = { concrete: [], namespace: [] };
-    for (const root of [...index.projectRoots, ...index.localRoots.keys()]) {
-      const kind = pythonHeadKind(root, head, index);
-      if (kind) heads[kind].push(root);
-    }
-    index.headsByName.set(head, heads);
-  }
-  return heads;
-}
-
-/**
- * Resolve a Python import specifier to the file of the module it names —
- * `pkg.sub.mod` → `pkg/sub/mod.py`, `pkg` → `pkg/__init__.py`, `..sibling`
- * relative to `fromFile`'s package. Null when the module isn't in the index,
- * when a relative import climbs above its top-level package, or when two
- * project roots that don't contain the importer both provide it.
- */
-function resolvePythonModule(
-  specifier: string,
-  fromFile: string,
-  context: ResolutionContext
-): string | null {
-  if (!/^\.*[\w.]*$/.test(specifier) || specifier === '') return null;
-  const index = pythonModuleIndex(context);
-  const importerDir = parentDir(fromFile.replace(/\\/g, '/'));
-
-  // Relative: leading dots are package levels (one dot = the importer's own
-  // package), the rest a dotted path below it.
-  const dots = specifier.length - specifier.replace(/^\.+/, '').length;
-  if (dots > 0) {
-    let base = importerDir;
-    for (let level = 1; level < dots; level++) {
-      // Python refuses to climb out of the top-level package ("attempted
-      // relative import beyond top-level package"). Only a regular package
-      // proves where the top is; a namespace package's boundary is unknown.
-      if (index.packageDirs.has(base) && !index.packageDirs.has(parentDir(base))) return null;
-      if (!base) return null;
-      base = parentDir(base);
-    }
-    const rest = specifier.slice(dots);
-    if (rest) return pythonModuleUnder(base, rest.replace(/\./g, '/'), index);
-    // `from . import x` — the package itself, i.e. its `__init__.py`.
-    const init = joinRel(base, '__init__.py');
-    return index.files.has(init) ? init : null;
-  }
-
-  const relPath = specifier.replace(/\./g, '/');
-  const head = specifier.split('.')[0]!;
-
-  // Roots that contain the importer, nearest first — the ones Python would
-  // search for this file before any other.
-  const containing: string[] = [];
-  for (let dir: string | null = importerDir; dir !== null; dir = dir ? parentDir(dir) : null) {
-    const isRoot =
-      index.projectRoots.has(dir) ||
-      index.localRoots.has(dir) ||
-      (!index.packageDirs.has(dir) &&
-        (dir === importerDir || importerDir === joinRel(dir, head) || importerDir.startsWith(`${joinRel(dir, head)}/`)));
-    if (isRoot) containing.push(dir);
-  }
-
-  // A root containing the importer is on its path: the nearest one that holds
-  // the module answers. If one holds `head` itself as a regular package or
-  // module but not the rest of the path, Python stops there too.
-  let headIsLocal = false;
-  for (const root of containing) {
-    const hit = pythonModuleUnder(root, relPath, index);
-    if (hit) return hit;
-    if (pythonHeadKind(root, head, index) === 'concrete') headIsLocal = true;
-  }
-  if (headIsLocal) return null;
-
-  // Otherwise a root elsewhere whose reach includes the importer, as
-  // `sys.path` would rank them: a root holding `head` concretely shadows any
-  // namespace portion, and either way the answer must be unambiguous.
-  const heads = pythonRootHeads(head, index);
-  const reaches = (root: string): boolean =>
-    !containing.includes(root) &&
-    (index.projectRoots.has(root) || isWithin(importerDir, index.localRoots.get(root)!));
-  const concrete = heads.concrete.filter(reaches);
-  if (concrete.length > 0) {
-    return concrete.length === 1 ? pythonModuleUnder(concrete[0]!, relPath, index) : null;
-  }
-  let found: string | null = null;
-  for (const root of heads.namespace) {
-    if (!reaches(root)) continue;
-    const hit = pythonModuleUnder(root, relPath, index);
-    if (!hit) continue;
-    if (found !== null && found !== hit) return null;
-    found = hit;
-  }
-  return found;
-}
-
-/**
- * A digest of the Python root set — each root with its tier and reach. A
- * change here can move the answer for any import anywhere, so sync re-opens
- * every Python resolution when it changes. Changes below the roots (a module
- * or package added or removed) only move answers for the module names they
- * touch; see {@link pythonReopenScope}. Built fresh, not from the memo.
- */
-export function pythonRootFingerprint(context: ResolutionContext): string {
-  const index = buildPythonModuleIndex(context);
-  if (index.files.size === 0) return '';
-  const hash = crypto.createHash('sha1');
-  hash.update([...index.projectRoots].sort().join('\n'));
-  hash.update('\0');
-  hash.update([...index.localRoots].map(([root, reach]) => `${root}\t${reach}`).sort().join('\n'));
-  return hash.digest('hex');
-}
-
-/**
- * What a sync must re-open when Python files were added or removed but the
- * root set held. Each file names a module under every root containing it
- * (`pkg/sub/__init__.py` is `pkg.sub`); an already-resolved edge can move only
- * if its target is that module or inside it — shadowed (`pkg/sub/` now beats
- * `pkg/sub.py`), un-shadowed, or newly ambiguous. A changed `__init__.py` also
- * moves where a package starts for code inside it (relative imports, a
- * script's own directory), so edges FROM that directory re-open too. The
- * module names' last segments pick out the parked failures that may now
- * resolve.
- */
-export function pythonReopenScope(
-  context: ResolutionContext,
-  changedFiles: string[]
-): { targetFiles: string[]; sourceDirs: string[]; moduleLeaves: string[] } {
-  const index = buildPythonModuleIndex(context);
-  const roots = [...index.projectRoots, ...index.localRoots.keys()];
-  const moduleNames = (file: string): string[] => {
-    const out: string[] = [];
-    const mod = file.replace(/(?:^|\/)__init__\.py$/, '').replace(/\.py$/, '');
-    for (const root of roots) {
-      if (root && !mod.startsWith(`${root}/`)) continue;
-      const rel = root ? mod.slice(root.length + 1) : mod;
-      if (rel) out.push(rel.replace(/\//g, '.'));
-    }
-    return out;
-  };
-  const affected = new Set<string>();
-  const sourceDirs = new Set<string>();
-  for (const raw of changedFiles) {
-    const file = raw.replace(/\\/g, '/');
-    if (!PYTHON_MODULE_FILE.test(file)) continue;
-    for (const m of moduleNames(file)) affected.add(m);
-    if (file === '__init__.py' || file.endsWith('/__init__.py')) sourceDirs.add(parentDir(file));
-  }
-  const targetFiles: string[] = [];
-  for (const file of index.files) {
-    const hit = moduleNames(file).some((m) => {
-      for (let i = m.length; i > 0; i = m.lastIndexOf('.', i - 1)) {
-        if (affected.has(m.slice(0, i))) return true;
-      }
-      return false;
-    });
-    if (hit) targetFiles.push(file);
-  }
-  const moduleLeaves = [...new Set([...affected].map((m) => m.slice(m.lastIndexOf('.') + 1)))];
-  return { targetFiles, sourceDirs: [...sourceDirs], moduleLeaves };
-}
-
-/**
- * The Python files that import one of the packages whose `__init__.py` is in
- * `initFiles`, each with the local names bound from it and what each name
- * binds to NOW (`file\0name` of the definition, `file\0` for a submodule,
- * null when it can't be said — a namespace import used as `pkg.N`). A caller
- * compares that with what the importer's edge says it bound before and
- * leaves unmoved names alone. An importer that is itself a package
- * `__init__.py` passes the binding on (`from .sub import N` re-exported), so
- * its own importers are included too, to a fixed point.
- */
-export function pythonPackageImporters(
-  context: ResolutionContext,
-  initFiles: string[]
-): Map<string, Map<string, string | null>> {
-  const index = pythonModuleIndex(context);
-  const packages = new Set(initFiles.map((f) => f.replace(/\\/g, '/')));
-  const out = new Map<string, Map<string, string | null>>();
-  const bindingNow = (imp: ImportMapping, file: string): string | null => {
-    if (imp.isNamespace || imp.exportedName === '*') return null;
-    const packageFile = resolveImportPath(imp.source, file, 'python', context);
-    if (!packageFile) return null;
-    const symbol = findExportedSymbol(
-      packageFile,
-      { isDefault: false, isNamespace: false, exportedName: imp.exportedName, memberName: null },
-      'python',
-      context,
-      new Set()
-    );
-    if (symbol) return `${symbol.filePath}\0${symbol.name}`;
-    const sub = resolveImportPath(
-      imp.source.endsWith('.') ? imp.source + imp.exportedName : `${imp.source}.${imp.exportedName}`,
-      file,
-      'python',
-      context
-    );
-    return sub ? `${sub}\0` : '\0';
-  };
-  // Candidate importers from the import nodes (named by their specifier),
-  // so only files that import an edited package pay for a mapping parse.
-  const importNodes = context.getNodesByKind('import').filter((n) => PYTHON_MODULE_FILE.test(n.filePath));
-  for (let grew = true; grew; ) {
-    grew = false;
-    const candidates = new Set<string>();
-    for (const n of importNodes) {
-      const target = resolveImportPath(n.name, n.filePath, 'python', context);
-      if (target && packages.has(target) && index.files.has(n.filePath)) candidates.add(n.filePath);
-    }
-    for (const file of candidates) {
-      for (const imp of context.getImportMappings(file, 'python')) {
-        const target = resolveImportPath(imp.source, file, 'python', context);
-        if (!target || !packages.has(target) || target === file) continue;
-        let names = out.get(file);
-        if (!names) out.set(file, (names = new Map()));
-        names.set(imp.localName, bindingNow(imp, file));
-        // `import pkg.sub` is used as `pkg.sub.N`.
-        if (imp.isNamespace) names.set(imp.source.split('.')[0]!, null);
-        if (/(?:^|\/)__init__\.py$/.test(file) && !packages.has(file)) {
-          packages.add(file);
-          grew = true;
-        }
-      }
-    }
-  }
-  return out;
-}
-
-/** The file node of the module `specifier` names, as seen from `fromFile`. */
-function pythonModuleFileNode(specifier: string, fromFile: string, context: ResolutionContext): Node | null {
-  const file = resolveImportPath(specifier, fromFile, 'python', context);
-  if (!file || file === fromFile) return null;
-  return context.getNodesInFile(file).find((n) => n.kind === 'file') ?? null;
-}
-
-/**
- * The names `from <file> import *` binds: the string literals of the module's
- * `__all__` when it assigns one, otherwise every public (non-`_`) name.
- * Returns null for "every public name". Memoised per context.
- */
-const pythonStarExportMemos = new WeakMap<ResolutionContext, Map<string, Set<string> | null>>();
-
-function pythonStarExports(filePath: string, context: ResolutionContext): Set<string> | null {
-  let memo = pythonStarExportMemos.get(context);
-  if (!memo) {
-    memo = new Map();
-    pythonStarExportMemos.set(context, memo);
-  }
-  if (memo.has(filePath)) return memo.get(filePath)!;
-  let names: Set<string> | null = null;
-  const content = context.readFile(filePath);
-  if (content && content.includes('__all__')) {
-    // Locate every statement that builds `__all__` on blanked source (so a
-    // docstring mention is ignored), then read the literals from the original
-    // at the same offsets. Only a list written out in full is trusted: one
-    // assembled from other names (`__all__ = fields_all + [...]`,
-    // `__all__.extend(...)`) is unknown, and falls back to the public names.
-    const code = stripCommentsForRegex(content, 'python');
-    let literal = true;
-    const collected = new Set<string>();
-    for (const m of code.matchAll(/^[ \t]*__all__\b[ \t]*(\.|\+=|=|:[^=\n]*=)?[ \t]*(.?)/gm)) {
-      const open = m.index! + m[0].length - 1;
-      const bracket = m[2];
-      const close = bracket === '[' ? code.indexOf(']', open) : bracket === '(' ? code.indexOf(')', open) : -1;
-      const assigns = m[1] !== undefined && m[1] !== '.';
-      const tail = close < 0 ? '' : code.slice(close + 1, code.indexOf('\n', close) < 0 ? undefined : code.indexOf('\n', close));
-      if (!assigns || close < 0 || tail.trim() !== '') {
-        literal = false;
-        break;
-      }
-      for (const lit of content.slice(open, close).matchAll(/["']([A-Za-z_]\w*)["']/g)) collected.add(lit[1]!);
-    }
-    if (literal && collected.size > 0) names = collected;
-  }
-  memo.set(filePath, names);
-  return names;
-}
-
-function pythonStarAllows(filePath: string, name: string, context: ResolutionContext): boolean {
-  const names = pythonStarExports(filePath, context);
-  return names ? names.has(name) : !name.startsWith('_');
 }
 
 /**
@@ -1004,6 +482,24 @@ function resolveRelativeImport(
 ): string | null {
   const projectRoot = context.getProjectRoot();
   const extensions = EXTENSION_RESOLUTION[language] || [];
+
+  // Python dotted-relative imports (`from .certs import x`, `from ..pkg.mod
+  // import y`): leading dots are PACKAGE levels (1 = current package), and the
+  // remainder is a dotted submodule path. `path.resolve(dir, '.certs')` would
+  // treat `.certs` as a literal hidden filename, so translate the Python form
+  // to a real filesystem-relative path before resolving.
+  if (language === 'python' && importPath.startsWith('.')) {
+    const dots = importPath.length - importPath.replace(/^\.+/, '').length;
+    const up = '../'.repeat(Math.max(0, dots - 1));    // 1 dot = current dir
+    const rest = importPath.slice(dots).replace(/\./g, '/'); // 'sub.mod' -> 'sub/mod'
+    const pyBase = path.resolve(fromDir, up + rest);
+    const pyRel = path.relative(projectRoot, pyBase).replace(/\\/g, '/');
+    for (const ext of extensions) {
+      if (context.fileExists(pyRel + ext)) return pyRel + ext;
+    }
+    if (pyRel && context.fileExists(pyRel)) return pyRel;
+    return null;
+  }
 
   // Try the path as-is first
   const basePath = path.resolve(fromDir, importPath);
@@ -1653,79 +1149,54 @@ function extractJSImports(content: string): ImportMapping[] {
   return mappings;
 }
 
-interface PythonFromImport {
-  source: string;
-  names: Array<{ name: string; alias: string }>;
-  star: boolean;
-}
-
-/**
- * The `from X import …` statements of a Python file, read over comment- and
- * docstring-blanked source so a usage example in a docstring binds nothing.
- * Handles the parenthesised multi-line list (`from .x import (\n  a,\n  b,\n)`,
- * the usual shape of a package `__init__.py`) and backslash continuations,
- * which a single-line match silently dropped.
- */
-function pythonFromImports(code: string): PythonFromImport[] {
-  const out: PythonFromImport[] = [];
-  const fromRe = /^[ \t]*from[ \t]+(\.*[\w.]*)[ \t]+import[ \t]*(\([^)]*\)|(?:[^\n\\;]|\\\r?\n)+)/gm;
-  let m: RegExpExecArray | null;
-  while ((m = fromRe.exec(code)) !== null) {
-    const source = m[1]!;
-    if (!source) continue;
-    const list = m[2]!.replace(/^\(|\)$/g, '').replace(/\\\r?\n/g, ' ');
-    const names: PythonFromImport['names'] = [];
-    let star = false;
-    for (const raw of list.split(',')) {
-      const item = raw.trim();
-      if (item === '*') {
-        star = true;
-        continue;
-      }
-      const im = item.match(/^(\w+)(?:\s+as\s+(\w+))?$/);
-      if (im) names.push({ name: im[1]!, alias: im[2] ?? im[1]! });
-    }
-    out.push({ source, names, star });
-  }
-  return out;
-}
-
 /**
  * Extract Python import mappings
  */
 function extractPythonImports(content: string): ImportMapping[] {
   const mappings: ImportMapping[] = [];
-  const code = stripCommentsForRegex(content, 'python');
 
-  // from X import Y [as Z], …
-  for (const { source, names } of pythonFromImports(code)) {
-    for (const { name, alias } of names) {
-      mappings.push({
-        localName: alias,
-        exportedName: name,
-        source,
-        isDefault: false,
-        isNamespace: false,
-      });
+  // from X import Y
+  const fromImportRegex = /from\s+([\w.]+)\s+import\s+([^#\n]+)/g;
+  let match;
+
+  while ((match = fromImportRegex.exec(content)) !== null) {
+    const [, source, imports] = match;
+    const names = imports!.split(',').map((s) => s.trim());
+
+    for (const name of names) {
+      const aliasMatch = name.match(/(\w+)\s+as\s+(\w+)/);
+      if (aliasMatch) {
+        mappings.push({
+          localName: aliasMatch[2]!,
+          exportedName: aliasMatch[1]!,
+          source: source!,
+          isDefault: false,
+          isNamespace: false,
+        });
+      } else if (name && name !== '*') {
+        mappings.push({
+          localName: name,
+          exportedName: name,
+          source: source!,
+          isDefault: false,
+          isNamespace: false,
+        });
+      }
     }
   }
 
-  // import X [as Y], … — at any indentation: a function-local import binds
-  // the name for the calls in that function.
-  const importRe = /^[ \t]*import[ \t]+((?:[^\n\\;]|\\\r?\n)+)/gm;
-  let match: RegExpExecArray | null;
-  while ((match = importRe.exec(code)) !== null) {
-    for (const raw of match[1]!.replace(/\\\r?\n/g, ' ').split(',')) {
-      const im = raw.trim().match(/^([\w.]+)(?:\s+as\s+(\w+))?$/);
-      if (!im) continue;
-      mappings.push({
-        localName: im[2] || im[1]!.split('.').pop()!,
-        exportedName: '*',
-        source: im[1]!,
-        isDefault: false,
-        isNamespace: true,
-      });
-    }
+  // import X
+  const importRegex = /^import\s+([\w.]+)(?:\s+as\s+(\w+))?/gm;
+  while ((match = importRegex.exec(content)) !== null) {
+    const [, source, alias] = match;
+    const localName = alias || source!.split('.').pop()!;
+    mappings.push({
+      localName,
+      exportedName: '*',
+      source: source!,
+      isDefault: false,
+      isNamespace: true,
+    });
   }
 
   return mappings;
@@ -1961,7 +1432,6 @@ function stripJsComments(content: string): string {
  * fall through silently; resolution simply skips the broken file.
  */
 export function extractReExports(content: string, language: Language): ReExport[] {
-  if (language === 'python') return extractPythonReExports(content);
   if (
     language !== 'typescript' &&
     language !== 'javascript' &&
@@ -2006,23 +1476,6 @@ export function extractReExports(content: string, language: Language): ReExport[
     }
   }
 
-  return out;
-}
-
-/**
- * A Python module's imports ARE its re-exports: `from .impl import foo` makes
- * `foo` an attribute of the module, which is exactly how a package
- * `__init__.py` publishes its API. Chased only after a direct lookup misses,
- * with the shared cycle guard and depth cap.
- */
-function extractPythonReExports(content: string): ReExport[] {
-  const out: ReExport[] = [];
-  for (const { source, names, star } of pythonFromImports(stripCommentsForRegex(content, 'python'))) {
-    if (star) out.push({ kind: 'wildcard', source });
-    for (const { name, alias } of names) {
-      out.push({ kind: 'named', exportedName: alias, originalName: name, source });
-    }
-  }
   return out;
 }
 
@@ -2346,12 +1799,18 @@ export function resolveViaImport(
   for (const imp of imports) {
     if (imp.localName === ref.referenceName || ref.referenceName.startsWith(imp.localName + '.')) {
       // Resolve the import path
-      const resolvedPath = resolveImportPath(
+      let resolvedPath = resolveImportPath(
         imp.source,
         ref.filePath,
         ref.language,
         context
       );
+
+      // Named Python imports need the same absolute-module lookup as namespace
+      // imports, including aliases used as receiver types (#1820).
+      if (!resolvedPath && ref.language === 'python') {
+        resolvedPath = findPythonModuleFile(imp.source, context, ref.filePath)?.filePath ?? null;
+      }
 
       if (resolvedPath) {
         const exportedName = imp.isDefault ? 'default' : imp.exportedName;
@@ -2365,7 +1824,11 @@ export function resolveViaImport(
           ref.language,
           context,
           new Set()
-        );
+        ) ?? (ref.language === 'python'
+          ? context.getNodesInFile(resolvedPath).find(n =>
+              n.name === (memberName ?? exportedName) && !n.qualifiedName.includes('::') &&
+              (n.kind === 'class' || n.kind === 'function' || n.kind === 'variable' || n.kind === 'constant'))
+          : undefined);
 
         if (targetNode) {
           // `Foo.bar()` / `Foo.CONST` — a NAMED (non-namespace) class import
@@ -2413,11 +1876,13 @@ export function resolveViaImport(
             // constant edge below rather than fabricating a wrong one.
             const instanceMember = resolveImportedInstanceMember(targetNode, ref, imp.localName, context);
             if (instanceMember) return instanceMember;
-            // Python: `send_welcome.delay()` on an imported Celery task, or
-            // `settings.DEBUG`, is an attribute of the imported object, not a use
-            // of it — landing on the function or constant would record a call
-            // that never happens. Only a member resolved above counts.
-            if (ref.language === 'python') continue;
+
+            // Finding a named Python import proves the receiver exists, not
+            // its requested attribute. In particular, task.delay() enqueues
+            // work; it does not call the imported task function directly.
+            // Keep unknown members unresolved (including callback values)
+            // instead of falling back to the receiver as their target.
+            if (ref.language === 'python') return null;
           }
 
           return {
@@ -2458,19 +1923,12 @@ function resolvePythonModuleMember(
   const dotIdx = ref.referenceName.indexOf('.');
   if (dotIdx <= 0) return null;
   const receiver = ref.referenceName.substring(0, dotIdx);
-
-  // Package roots make resolveImportPath answer absolute dotted paths too
-  // (`pkg.module`), so no dotted-file fallback is needed here.
-  const moduleFile = (modulePath: string, fromFile: string): string | null =>
-    resolveImportPath(modulePath, fromFile, ref.language, context);
+  // The immediate member of the module (first segment after the receiver).
+  const member = ref.referenceName.substring(dotIdx + 1).split('.')[0];
+  if (!member) return null;
 
   for (const imp of imports) {
-    // `import pkg.mod` binds `pkg`, so a call spells the whole path out —
-    // `pkg.mod.func()`. The mapping names the module by its last segment, which
-    // never matches that receiver; match the full dotted source instead.
-    const spelledOut = imp.isNamespace && imp.localName === imp.source.split('.').pop()
-      && imp.source.includes('.') && ref.referenceName.startsWith(`${imp.source}.`);
-    if (imp.localName !== receiver && !spelledOut) continue;
+    if (imp.localName !== receiver) continue;
 
     // `import mod` / `import numpy as np` bind the module at `source` itself;
     // `from . import certs` / `from pkg import mod` bind a SUBMODULE whose
@@ -2483,90 +1941,40 @@ function resolvePythonModuleMember(
     // form (where the two names coincide) worked (#1626). For an unaliased
     // import the two are identical, so this changes nothing there.
     const moduleName = imp.exportedName === '*' ? imp.localName : imp.exportedName;
-    let modulePath = imp.isNamespace
+    const modulePath = imp.isNamespace
       ? imp.source
       : imp.source.endsWith('.')
         ? imp.source + moduleName
         : imp.source + '.' + moduleName;
-    const rest = ref.referenceName
-      .substring(spelledOut ? imp.source.length + 1 : dotIdx + 1)
-      .split('.');
 
-    if (!imp.isNamespace && pythonPackageBinds(imp, ref.filePath, context)) continue;
-    let resolvedPath = moduleFile(modulePath, ref.filePath);
+    // resolveImportPath only maps RELATIVE dotted paths (`.mod`, `..pkg.mod`); an
+    // ABSOLUTE package path (`pkg.module` from `from pkg import module`, or a bare
+    // `import pkg.mod`) resolves to null there, so fall back to the dotted-module
+    // file lookup — the same asymmetry resolveModuleImportToFile already handles
+    // for the file→file import edge. Without this, a `module.func()` call after
+    // `from pkg import module` dropped its `calls` edge even though the import
+    // edge resolved (#578).
+    let resolvedPath = resolveImportPath(modulePath, ref.filePath, ref.language, context);
+    if (!resolvedPath) {
+      resolvedPath = findPythonModuleFile(modulePath, context, ref.filePath)?.filePath ?? null;
+    }
     if (!resolvedPath || resolvedPath === ref.filePath) continue;
 
-    // A CALL through a longer path — `utils.helpers.do_x()`, `mod.Klass.run()`
-    // — names submodules and then one symbol. Descend while the next segment
-    // is a module file; what is left must be a top-level callable, or a class
-    // and one of its methods. Anything else is not something this path can
-    // prove, so it is no edge — never the first segment's symbol, which for
-    // `mod.Klass.run()` would record a call to the class. Other reference
-    // kinds keep the single-member lookup below.
-    if (ref.referenceKind === 'calls' && rest.length > 1) {
-      while (rest.length > 1) {
-        const sub = moduleFile(`${modulePath}.${rest[0]}`, resolvedPath);
-        if (!sub) break;
-        modulePath = `${modulePath}.${rest.shift()}`;
-        resolvedPath = sub;
-      }
-      const inFile = context.getNodesInFile(resolvedPath);
-      let target: Node | undefined;
-      if (rest.length === 1) {
-        target = inFile.find((n) => n.name === rest[0] && (n.kind === 'function' || n.kind === 'class'));
-      } else if (rest.length === 2) {
-        const cls = inFile.find((n) => n.name === rest[0] && n.kind === 'class');
-        target = cls && inFile.find((n) =>
-          n.kind === 'method' && n.name === rest[1] && n.qualifiedName.endsWith(`${cls.name}::${rest[1]}`));
-      }
-      if (target) {
-        return { original: ref, targetNodeId: target.id, confidence: 0.85, resolvedBy: 'import' };
-      }
-      continue;
-    }
-
-    // The member as the module binds it: a module-level def (never a method —
-    // `mod.foo` must not land on a same-named class method, and never a nested
-    // def), or a name the module re-exports from elsewhere (`pkg/__init__.py`
-    // doing `from .impl import foo`).
-    const member = rest[0];
-    if (!member) continue;
-    const target = findExportedSymbol(
-      resolvedPath,
-      { isDefault: false, isNamespace: false, exportedName: member, memberName: null },
-      'python',
-      context,
-      new Set()
+    // Find the member as a top-level definition in the module file. Exclude
+    // `method` so `mod.foo` never lands on a same-named class method.
+    const target = context.getNodesInFile(resolvedPath).find(
+      (n) =>
+        n.name === member &&
+        (n.kind === 'function' ||
+          n.kind === 'class' ||
+          n.kind === 'variable' ||
+          n.kind === 'constant')
     );
     if (target) {
       return { original: ref, targetNodeId: target.id, confidence: 0.85, resolvedBy: 'import' };
     }
   }
   return null;
-}
-
-/**
- * Whether `from P import N` binds something `P/__init__.py` defines or
- * re-exports, rather than the submodule `P.N`. CPython's `_handle_fromlist`
- * looks `N` up as an attribute of the package first and imports the
- * submodule only when the package has no such attribute — so a def, a
- * constant or a re-export of `N` in `__init__.py` wins over a `P/N.py` or
- * `P/N/` beside it. A package that doesn't bind `N` leaves the submodule to
- * answer, as before.
- */
-function pythonPackageBinds(imp: ImportMapping, fromFile: string, context: ResolutionContext): boolean {
-  if (imp.isNamespace || imp.exportedName === '*') return false;
-  const packageFile = resolveImportPath(imp.source, fromFile, 'python', context);
-  if (!packageFile || !/(?:^|\/)__init__\.py$/.test(packageFile)) return false;
-  return (
-    findExportedSymbol(
-      packageFile,
-      { isDefault: false, isNamespace: false, exportedName: imp.exportedName, memberName: null },
-      'python',
-      context,
-      new Set()
-    ) !== undefined
-  );
 }
 
 /**
@@ -2652,54 +2060,8 @@ function resolveObjectLiteralAlias(
 ): ResolvedRef | null {
   if (container.kind !== 'constant' && container.kind !== 'variable') return null;
   if (!JS_FAMILY_FILE.test(container.filePath)) return null;
-  if (!/^[A-Za-z_$][\w$]*$/.test(member)) return null;
-  const lines = context.getFileLines?.(container.filePath) ?? context.readFile(container.filePath)?.split('\n');
-  if (!lines) return null;
-  const extent = lines.slice(container.startLine - 1, container.endLine).join('\n');
-  const brace = extent.indexOf('{');
-  if (brace < 0) return null;
-  const body = extent.slice(brace);
-  const keyed = new RegExp(`[{,\\s]${member}\\s*:\\s*([A-Za-z_$][\\w$]*)\\s*[,}]`);
-  const shorthand = new RegExp(`[{,\\s]${member}\\s*[,}]`);
-  const k = body.match(keyed);
-  const binding = k ? k[1]! : shorthand.test(body) ? member : null;
-  if (binding === null) return null;
-
-  const callable = (n: Node) => n.kind === 'function' || n.kind === 'method' || n.kind === 'class';
-  const accepts =
-    ref.referenceKind === 'calls'
-      ? callable
-      : (n: Node) => callable(n) || n.kind === 'constant' || n.kind === 'variable' || n.kind === 'component';
-
-  // Declared in the object's own file, outside the literal.
-  const local = context
-    .getNodesInFile(container.filePath)
-    .filter((n) => n.name === binding && n.id !== container.id && accepts(n))
-    .sort((a, b) => a.startLine - b.startLine || a.startColumn - b.startColumn)[0];
-  if (local) return { original: ref, targetNodeId: local.id, confidence: 0.9, resolvedBy: 'import' };
-
-  // Imported into the object's file.
-  for (const imp of context.getImportMappings(container.filePath, container.language)) {
-    if (imp.localName !== binding || imp.isNamespace) continue;
-    const resolvedPath = resolveImportPath(imp.source, container.filePath, container.language, context);
-    if (!resolvedPath) continue;
-    const target = findExportedSymbol(
-      resolvedPath,
-      {
-        isDefault: imp.isDefault,
-        isNamespace: false,
-        exportedName: imp.isDefault ? 'default' : imp.exportedName,
-        memberName: null,
-      },
-      container.language,
-      context,
-      new Set()
-    );
-    if (target && accepts(target)) {
-      return { original: ref, targetNodeId: target.id, confidence: 0.9, resolvedBy: 'import' };
-    }
-  }
-  return null;
+  const resolved = resolveObjectLiteralBinding(container, member, ref, context);
+  return resolved ? { ...resolved, confidence: 0.9, resolvedBy: 'import' } : null;
 }
 
 function resolveModuleImportToFile(
@@ -2724,11 +2086,9 @@ function resolveModuleImportToFile(
       // (no file), so `import React from 'react'` creates no edge.
       modulePath = imp.source;
     } else if (ref.language === 'python') {
-      // `from . import certs` — the imported NAME is a submodule of the source,
-      // unless the package itself binds that name (see pythonPackageBinds).
+      // `from . import certs` — the imported NAME is a submodule of the source.
       // As in resolvePythonModuleMember, use the exported name so an alias
       // still links to the real module file (#1626).
-      if (pythonPackageBinds(imp, ref.filePath, context)) continue;
       const moduleName = imp.exportedName === '*' ? imp.localName : imp.exportedName;
       modulePath = imp.source.endsWith('.')
         ? imp.source + moduleName
@@ -2745,12 +2105,75 @@ function resolveModuleImportToFile(
         return { original: ref, targetNodeId: fileNode.id, confidence: 0.9, resolvedBy: 'import' };
       }
     }
+
+    // Python absolute `from a.b import submodule` (a FastAPI router aggregator's
+    // `from app.api.routes import authentication`): resolveImportPath only maps
+    // RELATIVE dotted paths to a file, so resolve the absolute dotted module
+    // directly to its file node.
+    if (ref.language === 'python') {
+      const modFile = findPythonModuleFile(modulePath, context, ref.filePath);
+      if (modFile) {
+        return { original: ref, targetNodeId: modFile.id, confidence: 0.9, resolvedBy: 'import' };
+      }
+    }
   }
   return null;
 }
 
 /**
- * Resolve a Python dotted module import (`import a.b.c`, `from .a.b import x`) to its file —
+ * Find the file node for a Python dotted module path `a.b.c` — a module file
+ * ending in `a/b/c.py`, or a package `a/b/c/__init__.py` (suffix-matched, so a
+ * package rooted under `src/` etc. still resolves). Returns null for
+ * stdlib/external modules (no matching repo file node), so `import os` creates
+ * no edge. Shared by absolute `import a.b.c` and absolute `from a.b import c`
+ * (where `c` is a submodule) resolution.
+ */
+/**
+ * Per-context memo for findPythonModuleFile: module path → the `<mod>.py` and
+ * `<mod>/__init__.py` file nodes whose path ends with it, in name-lookup
+ * order. Only the importing file's own path is excluded per call, so taking
+ * the first survivor returns the node the unmemoized scan found. Without it,
+ * every ref naming a module outside the project (`from unittest import mock`)
+ * rescanned every `__init__.py` in the tree. Same stable window as the name
+ * caches; dropped by clearImportResolverMemos.
+ */
+const pythonModuleFileMemos = new WeakMap<ResolutionContext, Map<string, { module: Node[]; pkg: Node[] }>>();
+
+function findPythonModuleFile(
+  mod: string,
+  context: ResolutionContext,
+  excludeFilePath: string
+): Node | null {
+  if (!mod || mod.startsWith('.')) return null; // relative imports handled elsewhere
+  let memo = pythonModuleFileMemos.get(context);
+  if (!memo) {
+    memo = new Map();
+    pythonModuleFileMemos.set(context, memo);
+  }
+  let files = memo.get(mod);
+  if (!files) {
+    const rel = mod.replace(/\./g, '/');
+    const lastSeg = mod.split('.').pop()!;
+    const endsWith = (p: string, want: string): boolean => p === want || p.endsWith('/' + want);
+    files = {
+      module: context
+        .getNodesByName(`${lastSeg}.py`)
+        .filter((n) => n.kind === 'file' && endsWith(n.filePath, `${rel}.py`)),
+      pkg: context
+        .getNodesByName('__init__.py')
+        .filter((n) => n.kind === 'file' && endsWith(n.filePath, `${rel}/__init__.py`)),
+    };
+    memo.set(mod, files);
+  }
+  return (
+    files.module.find((n) => n.filePath !== excludeFilePath) ??
+    files.pkg.find((n) => n.filePath !== excludeFilePath) ??
+    null
+  );
+}
+
+/**
+ * Resolve a Python ABSOLUTE dotted module import (`import a.b.c`) to its file —
  * the Django `AppConfig.ready(): import myapp.signals` pattern and any
  * side-effect module import.
  */
@@ -2764,7 +2187,7 @@ function resolvePythonAbsoluteModule(
   // `authentication.py` files may exist — so leave it to resolveModuleImportToFile,
   // which uses the import's source (`app.api.routes`) to build the full path.
   if (!ref.referenceName.includes('.')) return null;
-  const hit = pythonModuleFileNode(ref.referenceName, ref.filePath, context);
+  const hit = findPythonModuleFile(ref.referenceName, context, ref.filePath);
   return hit ? { original: ref, targetNodeId: hit.id, confidence: 0.9, resolvedBy: 'import' } : null;
 }
 
@@ -3106,13 +2529,14 @@ function findExportedSymbolWalk(
     // resolves and the component shows a false 0 callers (#629).
     // A component file IS its default export; otherwise the statement that
     // names the binding beats the first-exported-function guess.
-    const direct = exportIndex.defaultComponent ?? exportIndex.defaultBinding ?? exportIndex.defaultFnClass;
+    const direct =
+      exportIndex.defaultComponent ?? defaultExportBindingNode(filePath, exportIndex, context) ?? exportIndex.defaultFnClass;
     if (direct) return direct;
   } else if (want.isNamespace && want.memberName) {
-    const direct = exportIndex.byName.get(want.memberName);
+    const direct = exportedByName(filePath, exportIndex, want.memberName, context);
     if (direct) return direct;
   } else {
-    const direct = exportIndex.byName.get(want.exportedName);
+    const direct = exportedByName(filePath, exportIndex, want.exportedName, context);
     if (direct) return direct;
   }
 
@@ -3151,8 +2575,6 @@ function findExportedSymbolWalk(
     if (rex.kind === 'wildcard') {
       const next = resolveImportPath(rex.source, filePath, language, context);
       if (!next) continue;
-      // Python's `from m import *` binds only `m.__all__`, else m's public names.
-      if (PYTHON_MODULE_FILE.test(next) && !want.isDefault && !pythonStarAllows(next, want.exportedName, context)) continue;
       const chained = findExportedSymbol(next, want, language, context, visited, depth + 1);
       if (chained) return chained;
     }

@@ -35,6 +35,7 @@ import ignore, { Ignore } from 'ignore';
 import { detectFrameworks } from '../resolution/frameworks';
 import type { ResolutionContext } from '../resolution/types';
 import { createYielder, type MaybeYield } from '../resolution/cooperative-yield';
+import { MAX_SOURCE_FILE_SIZE_BYTES } from '../file-limits';
 
 /**
  * Number of files to read in parallel during indexing.
@@ -119,6 +120,12 @@ export interface IndexResult {
  * Result of a sync operation
  */
 export interface SyncResult {
+  /** References attempted by the pending-reference recovery sweep, if run. */
+  pendingRefsProcessed?: number;
+  /** Pending references successfully resolved by the recovery sweep. */
+  pendingRefsResolved?: number;
+  /** Pending references the recovery sweep could not resolve. */
+  pendingRefsUnresolved?: number;
   filesChecked: number;
   filesAdded: number;
   filesModified: number;
@@ -142,8 +149,6 @@ export interface SyncResult {
    * nothing downstream.
    */
   definitionDelta?: string[];
-  /** Tracked files this sync found gone and deleted from the index. */
-  removedFilePaths?: string[];
 }
 
 /**
@@ -152,13 +157,6 @@ export interface SyncResult {
 export function hashContent(content: string): string {
   return crypto.createHash('sha256').update(content).digest('hex');
 }
-
-/**
- * Skip files larger than this (bytes). Generated bundles, minified JS, and
- * vendored blobs blow the WASM heap and the worker-recycle budget for no useful
- * symbols. 1 MB covers essentially all hand-written source.
- */
-const MAX_FILE_SIZE = 1024 * 1024;
 
 /**
  * Directory names that are dependency, build, cache, or tooling output across the
@@ -241,6 +239,13 @@ const DEFAULT_IGNORE_PATTERNS: string[] = [
   'bazel-*/',        // Bazel output symlink trees
   // Android resource dirs at any depth, with their qualifier variants (#1047).
   ...ANDROID_RES_TYPES.map((t) => `**/res/${t}*/`),
+  // `build` is also a legal JVM package segment. Keep it under conventional
+  // source roots (any source set: main, test, androidTest, ...) while continuing
+  // to exclude module/build output (#1642). Unignore only the directory, not its
+  // subtree: other defaults still apply.
+  '!**/src/*/java/**/build/',
+  '!**/src/*/kotlin/**/build/',
+  '!**/src/*/scala/**/build/',
 ];
 
 /** True if `buf` decodes as strict UTF-8 (no invalid byte sequences). */
@@ -2230,8 +2235,11 @@ export class ExtractionOrchestrator {
       // window has room. When nothing is in flight but the window is still full,
       // the async commit chain is what's behind — await it so the cursor
       // advances (buffered items hold whole file contents, so this bound is
-      // load-bearing for memory).
-      while (nextSeq - nextToStore >= windowSize) {
+      // load-bearing for memory). Once a store has failed the cursor never
+      // moves again — flushOrdered returns at once — so stop waiting and let
+      // the drain below rethrow; waiting would spin on microtasks forever,
+      // pinning a core and starving every timer in the process.
+      while (nextSeq - nextToStore >= windowSize && !flushError && !aborted) {
         if (inFlight.size > 0) await Promise.race(inFlight);
         else await flushOrdered();
       }
@@ -2282,18 +2290,18 @@ export class ExtractionOrchestrator {
           continue;
         }
 
-        // Honour MAX_FILE_SIZE. Without this check, vendored generated
+        // Honour MAX_SOURCE_FILE_SIZE_BYTES. Without this check, vendored generated
         // headers, minified bundles, and other multi-MB files get indexed,
         // wasting WASM heap and the worker recycle budget on inputs with no
         // useful symbols. The single-file extractFile path already enforces
         // this; the bulk path used to silently skip the check.
-        if (stats.size > MAX_FILE_SIZE) {
+        if (stats.size > MAX_SOURCE_FILE_SIZE_BYTES) {
           await storeResult(filePath, content, stats, {
             nodes: [],
             edges: [],
             unresolvedReferences: [],
             errors: [{
-              message: `File exceeds max size (${stats.size} > ${MAX_FILE_SIZE})`,
+              message: `File exceeds max size (${stats.size} > ${MAX_SOURCE_FILE_SIZE_BYTES})`,
               filePath,
               severity: 'warning',
               code: 'size_exceeded',
@@ -2318,6 +2326,8 @@ export class ExtractionOrchestrator {
       await flushOrdered();
       if (flushError) {
         if (storeWriter) await storeWriter.close();
+        // Its worker threads would otherwise outlive the failed index.
+        if (pool) await pool.destroy();
         throw flushError;
       }
       // All bundles are posted; wait for the writer to apply them, then close
@@ -2623,14 +2633,14 @@ export class ExtractionOrchestrator {
     const language = detectLanguage(relativePath, content, loadExtensionOverrides(this.rootDir));
 
     // Check file size
-    if (stats.size > MAX_FILE_SIZE) {
+    if (stats.size > MAX_SOURCE_FILE_SIZE_BYTES) {
       const result: ExtractionResult = {
         nodes: [],
         edges: [],
         unresolvedReferences: [],
         errors: [
           {
-            message: `File exceeds max size (${stats.size} > ${MAX_FILE_SIZE})`,
+            message: `File exceeds max size (${stats.size} > ${MAX_SOURCE_FILE_SIZE_BYTES})`,
             filePath: relativePath,
             severity: 'warning',
             code: 'size_exceeded',
@@ -3008,130 +3018,6 @@ export class ExtractionOrchestrator {
   }
 
   /**
-   * Re-open every resolution a language made, for the sync's sweep to redo
-   * against the current graph — the answer when an input to that language's
-   * resolution changed project-wide rather than per definition. Python
-   * package roots are that kind of input: an added `__init__.py` or an edited
-   * `pyproject.toml` moves where modules start for importers in files the
-   * sync never touched, and CG-33's per-name rebind can't see it. Parked
-   * failures are re-queued too, since some of them now resolve. Same
-   * conservatism as {@link resurrectStaleResolutionEdges}: an edge without a
-   * refName stamp is never deleted.
-   */
-  resurrectResolutionEdgesForLanguage(language: Language): number {
-    return (
-      this.reopenEdges(this.queries.getResolutionEdgesBySourceLanguage(language)) +
-      this.queries.requeueFailedReferencesByLanguage(language)
-    );
-  }
-
-  /**
-   * The narrow form, for modules or packages that appeared or vanished below
-   * an unchanged set of roots: re-open the edges whose target lies in
-   * `targetFiles` or whose source lies under `sourceDirs`, and re-queue the
-   * parked failures naming one of `moduleLeaves`. Returns the files whose
-   * references were re-opened.
-   */
-  resurrectResolutionEdgesTouching(
-    language: Language,
-    scope: { targetFiles: string[]; sourceDirs: string[]; moduleLeaves: string[] }
-  ): string[] {
-    const files = new Set<string>();
-    const edges = this.queries.getResolutionEdgesTouchingFiles(language, scope.targetFiles, scope.sourceDirs, scope.moduleLeaves);
-    for (const e of edges) files.add(e.sourceFilePath);
-    this.reopenEdges(edges);
-    this.queries.requeueFailedReferencesByLanguage(language, scope.moduleLeaves, files);
-    return [...files];
-  }
-
-  /**
-   * Re-open what importers bound from a Python package whose `__init__.py`
-   * was edited: in each importing file, the edges and parked failures whose
-   * reference starts with a name bound from that package (`N`, `N.run`,
-   * `pkg.N`). A def or re-export added, removed or repointed there moves
-   * exactly those answers — `from pkg import N` prefers what `__init__.py`
-   * binds over a submodule `pkg/N` — and nothing in the importer's other
-   * references. A name whose import edge already lands where the package
-   * binds it now is left alone, so an edit that moves nothing re-resolves
-   * nothing. Returns the files whose references were re-opened.
-   */
-  resurrectPythonPackageImporters(bindings: Map<string, Map<string, string | null>>): string[] {
-    if (bindings.size === 0) return [];
-    const edges = this.queries.getResolutionEdgesFromFiles('python', [...bindings.keys()]);
-    const refHead = (e: { metadata?: Record<string, unknown> }): string | null => {
-      const refName = e.metadata?.refName;
-      return typeof refName === 'string' ? refName.split('.')[0]! : null;
-    };
-    // Where each bound name's own import edge lands today.
-    const bindsNow = new Map<string, string>();
-    for (const e of edges) {
-      const refName = e.metadata?.refName;
-      if (e.kind !== 'imports' || typeof refName !== 'string' || refName.includes('.')) continue;
-      const target = this.queries.getNodeById(e.target);
-      if (target) bindsNow.set(`${e.sourceFilePath}\0${refName}`, `${target.filePath}\0${target.kind === 'file' ? '' : target.name}`);
-    }
-    const moved = new Map<string, Set<string>>();
-    for (const [file, names] of bindings) {
-      for (const [name, binding] of names) {
-        if (binding !== null && bindsNow.get(`${file}\0${name}`) === binding) continue;
-        let set = moved.get(file);
-        if (!set) moved.set(file, (set = new Set()));
-        set.add(name);
-      }
-    }
-    if (moved.size === 0) return [];
-    this.reopenEdges(edges.filter((e) => moved.get(e.sourceFilePath)?.has(refHead(e) ?? '') === true));
-    this.queries.requeueFailedReferencesBinding('python', moved);
-    return [...moved.keys()];
-  }
-
-  private reopenEdges(edges: Array<Edge & { edgeId: number; sourceFilePath: string; sourceLanguage: Language }>): number {
-    const edgeIds: number[] = [];
-    const refs: UnresolvedReference[] = [];
-    for (const e of edges) {
-      const ref = resurrectRefFromDroppedEdge(e);
-      if (!ref) continue;
-      edgeIds.push(e.edgeId);
-      refs.push(ref);
-    }
-    if (refs.length > 0) this.queries.replaceResolutionEdgesWithUnresolvedRefs(edgeIds, refs);
-    return refs.length;
-  }
-
-  /**
-   * Re-open resolution edges whose answer was READ from a file this sync
-   * touched, although neither end of the edge changed: a python attribute typed
-   * through a factory or a base class in another file records those files as
-   * `metadata.typeFrom`. The definition delta cannot see these — editing what a
-   * factory returns, or what a base `__init__` assigns, adds or removes no
-   * definition — so without this a synced index keeps the old type forever.
-   * The edges go back to pending refs; returns the files they come from, whose
-   * pending rows the caller resolves.
-   */
-  resurrectTypeDependentEdges(touchedPaths: string[], changedFilePaths: string[]): string[] {
-    const touched = new Set(touchedPaths.filter((p) => /\.pyi?$/.test(p)));
-    if (touched.size === 0) return [];
-    const alreadyFresh = new Set(changedFilePaths);
-
-    const edgeIds: number[] = [];
-    const refs: UnresolvedReference[] = [];
-    const files = new Set<string>();
-    for (const e of this.queries.getEdgesWithTypeFrom()) {
-      if (alreadyFresh.has(e.sourceFilePath)) continue;
-      const from = e.metadata?.typeFrom;
-      if (!Array.isArray(from) || !from.some((f) => typeof f === 'string' && touched.has(f))) continue;
-      const ref = resurrectRefFromDroppedEdge(e);
-      if (!ref) continue;
-      edgeIds.push(e.edgeId);
-      refs.push(ref);
-      files.add(e.sourceFilePath);
-    }
-    if (refs.length === 0) return [];
-    this.queries.replaceResolutionEdgesWithUnresolvedRefs(edgeIds, refs);
-    return [...files];
-  }
-
-  /**
    * Sync the index with the current file state.
    *
    * Change detection is filesystem-based, never git: a (size, mtime) stat
@@ -3156,7 +3042,9 @@ export class ExtractionOrchestrator {
      * is stored, when no extraction transaction is open, so a checkpoint can
      * safely catch up before the next file grows the WAL further.
      */
-    backpressure?: () => Promise<void> | null
+    backpressure?: () => Promise<void> | null,
+    /** Inspect changed inputs before deletion/re-extraction cascades their edges. */
+    onFileChange?: (filePath: string, content?: string) => void
   ): Promise<SyncResult> {
     await initGrammars(); // Initialize WASM runtime (grammars loaded lazily below)
     const startTime = Date.now();
@@ -3166,7 +3054,6 @@ export class ExtractionOrchestrator {
     let filesRemoved = 0;
     let nodesUpdated = 0;
     const changedFilePaths: string[] = [];
-    const removedFilePaths: string[] = [];
     // `file\0name` definition pairs for the files this sync touches, sampled
     // BEFORE their nodes are replaced/deleted. Compared against the post-store
     // pairs below to derive `definitionDelta` (CG-33).
@@ -3273,8 +3160,8 @@ export class ExtractionOrchestrator {
             this.queries.insertUnresolvedRefsBatch(resurrected);
           }
         }
+        onFileChange?.(tracked.path);
         this.queries.deleteFile(tracked.path);
-        removedFilePaths.push(tracked.path);
         filesRemoved++;
       }
       if (++reconcileChecks % SYNC_RECONCILE_YIELD_INTERVAL === 0) {
@@ -3323,10 +3210,12 @@ export class ExtractionOrchestrator {
       const contentHash = hashContent(content);
 
       if (!tracked) {
+        onFileChange?.(filePath, content);
         filesToIndex.push(filePath);
         changedFilePaths.push(filePath);
         filesAdded++;
       } else if (tracked.contentHash !== contentHash) {
+        onFileChange?.(filePath, content);
         filesToIndex.push(filePath);
         changedFilePaths.push(filePath);
         filesModified++;
@@ -3395,7 +3284,6 @@ export class ExtractionOrchestrator {
       changedFilePaths: changedFilePaths.length > 0 ? changedFilePaths : undefined,
       ...(failedFilePaths.length > 0 ? { failedFilePaths } : {}),
       definitionDelta: definitionDelta.length > 0 ? definitionDelta : undefined,
-      ...(removedFilePaths.length > 0 ? { removedFilePaths } : {}),
     };
   }
 

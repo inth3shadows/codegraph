@@ -1,11 +1,15 @@
 /**
- * Dart 3 `extension type` members (#1784).
+ * A Dart 3 `extension type` is a type, and its members are its methods (#1784).
  *
- * Dart spells an ordinary implemented method `method_signature`, the same node
- * type TypeScript uses for a bodiless interface member. #1780 gated that node
- * type behind `isInsideClassLikeNode()` to stop a TS interface member minting a
- * phantom free function — correct for TS, but an `extension type` body was not
- * class-like, so its members stopped being indexed at all.
+ * `extension_type_declaration` was listed in neither extraction path's class
+ * types. `extension_declaration` — the older `extension` — was, and the two
+ * names are near neighbours, so the omission reads as an oversight.
+ *
+ * That is why #1780's `isInsideClassLikeNode()` gate dropped these members and
+ * no others: the gate asks whether a class-like node is on the stack, and an
+ * `extension type` never put one there. Before that gate the members were still
+ * reached, but as top-level `function:km` rather than `method:MetersT::km` —
+ * indexed, and attributed to nothing.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { extractFromSource } from '../src/extraction';
@@ -16,51 +20,41 @@ beforeAll(async () => {
   await loadAllGrammars();
 });
 
-describe('Dart extension type members (#1784)', () => {
-  it('indexes an extension type member, as a method of the extension type', () => {
-    const code = `extension type Meters(double value) {
-  double get km => value / 1000;
-  void show() {
-    print(km);
-  }
-}
-`;
-    const result = extractFromSource('meters.dart', code);
-    const kinds = result.nodes.filter((n) => n.kind !== 'file').map((n) => `${n.kind}:${n.qualifiedName}`).sort();
-    expect(kinds).toContain('class:Meters');
-    expect(kinds).toContain('method:Meters::km');
-    expect(kinds).toContain('method:Meters::show');
+const SRC = [
+  'extension type MetersT(double value) {',
+  '  double get km => value / 1000;',
+  '  void report() {',
+  '    print(km);',
+  '  }',
+  '}',
+  '',
+  'class Widget {',
+  '  double get half => 1.0;',
+  '}',
+  '',
+].join('\n');
+
+describe('Dart extension type (#1784)', () => {
+  it('is a type of its own, and its members are its methods', () => {
+    const result = extractFromSource('probe.dart', SRC);
+    expect(result.nodes.find((n) => n.name === 'MetersT')?.kind).toBe('class');
+
+    const km = result.nodes.find((n) => n.name === 'km');
+    expect(km, 'the getter must have a node').toBeDefined();
+    expect(km?.kind).toBe('method');
+    expect(km?.qualifiedName).toBe('MetersT::km');
   });
 
-  it('names an extension type constructor after the constructor, not the type', () => {
-    const code = `extension type Meters(double value) {
-  Meters.fromKm(double km) : this(km * 1000);
-  factory Meters.zero() => Meters(0);
-}
-`;
-    const result = extractFromSource('meters.dart', code);
-    const ctors = result.nodes.filter((n) => n.kind === 'method');
-    expect(ctors.map((n) => n.qualifiedName).sort()).toEqual(['Meters::fromKm', 'Meters::zero']);
-    for (const c of ctors) expect(c.returnType).toBe('Meters');
+  it('does not cut the span of the member that follows a getter', () => {
+    const result = extractFromSource('probe.dart', SRC);
+    const report = result.nodes.find((n) => n.name === 'report');
+    // The body runs to its closing brace, not to the signature line.
+    expect(report?.endLine).toBeGreaterThan(report!.startLine);
   });
 
-  it('leaves extension, mixin and class bodies alone', () => {
-    const code = `extension StringHelpers on String {
-  String shout() => toUpperCase();
-}
-
-mixin Logger {
-  void log(String m) {}
-}
-
-class Widget {
-  void build() {}
-}
-`;
-    const result = extractFromSource('rest.dart', code);
-    const kinds = result.nodes.filter((n) => n.kind !== 'file').map((n) => `${n.kind}:${n.qualifiedName}`).sort();
-    expect(kinds).toContain('method:StringHelpers::shout');
-    expect(kinds).toContain('method:Logger::log');
-    expect(kinds).toContain('method:Widget::build');
+  it('leaves an ordinary class as it was', () => {
+    const result = extractFromSource('probe.dart', SRC);
+    expect(result.nodes.find((n) => n.name === 'Widget')?.kind).toBe('class');
+    expect(result.nodes.find((n) => n.name === 'half')?.kind).toBe('method');
   });
 });

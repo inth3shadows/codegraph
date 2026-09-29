@@ -5,6 +5,7 @@
  * knowledge graph from any codebase.
  */
 
+import * as fs from 'fs';
 import * as path from 'path';
 import {
   Node,
@@ -47,6 +48,7 @@ import {
   createResolver,
   ResolutionResult,
 } from './resolution';
+import { hasSynthesisPattern } from './resolution/callback-synthesizer';
 import { GraphTraverser, GraphQueryManager } from './graph';
 import { ContextBuilder, createContextBuilder } from './context';
 import { Mutex, FileLock } from './utils';
@@ -139,9 +141,6 @@ export interface IndexOptions {
  *
  * Provides the primary interface for interacting with the code knowledge graph.
  */
-/** project_metadata key for the Python package-root digest (see sync). */
-const PYTHON_ROOTS_METADATA_KEY = 'python_root_fingerprint';
-
 export class CodeGraph {
   private db: DatabaseConnection;
   private queries: QueryBuilder;
@@ -256,7 +255,7 @@ export class CodeGraph {
     // Open the live file FIRST — if that throws (e.g. mid-recreate), the old
     // handle stays in place and the caller retries on the next query, rather
     // than leaving this instance with no connection at all.
-    const fresh = DatabaseConnection.open(dbPath);
+    const fresh = DatabaseConnection.open(dbPath, { readOnly: this.db.readOnly });
     const stale = this.db;
     this.db = fresh;
     this.queries = new QueryBuilder(fresh.getDb());
@@ -353,14 +352,19 @@ export class CodeGraph {
 
     // Open database
     const dbPath = getDatabasePath(resolvedRoot);
-    const db = DatabaseConnection.open(dbPath);
+    const db = DatabaseConnection.open(dbPath, { readOnly: options.readOnly });
     const queries = new QueryBuilder(db.getDb());
 
     const instance = new CodeGraph(db, queries, resolvedRoot);
 
     // Sync if requested
-    if (options.sync) {
-      await instance.sync();
+    if (options.sync && !options.readOnly) {
+      try {
+        await instance.sync();
+      } catch (err) {
+        instance.destroy();
+        throw err;
+      }
     }
 
     return instance;
@@ -417,7 +421,7 @@ export class CodeGraph {
   /**
    * Open synchronously (without sync)
    */
-  static openSync(projectRoot: string): CodeGraph {
+  static openSync(projectRoot: string, options: Pick<OpenOptions, 'readOnly'> = {}): CodeGraph {
     const resolvedRoot = path.resolve(projectRoot);
 
     // Check if initialized
@@ -433,7 +437,7 @@ export class CodeGraph {
 
     // Open database
     const dbPath = getDatabasePath(resolvedRoot);
-    const db = DatabaseConnection.open(dbPath);
+    const db = DatabaseConnection.open(dbPath, { readOnly: options.readOnly });
     const queries = new QueryBuilder(db.getDb());
 
     return new CodeGraph(db, queries, resolvedRoot);
@@ -692,8 +696,6 @@ export class CodeGraph {
         // engine produces richer extraction than the one on disk. Only on a
         // real full index — a sync touches a subset, so it must NOT advance the
         // extraction stamp (the bulk would still be stale). See extraction-version.ts.
-        if (result.success) this.stampPythonRootFingerprint();
-
         if (result.success && result.filesIndexed > 0) {
           try {
             this.queries.setMetadata('indexed_with_version', CodeGraphPackageVersion);
@@ -782,28 +784,19 @@ export class CodeGraph {
   }
 
   /**
-   * Sync with current file state (incremental update)
+   * Sync with current file state (incremental update).
+   * Throws LockUnavailableError if the cross-process write lock is unavailable.
    *
    * Uses a mutex to prevent concurrent indexing operations.
    */
-  /** Indexed Python file paths — the before/after sets a sync diffs. */
-  private pythonFilePaths(): Set<string> {
-    return new Set(this.queries.getAllFilePaths().filter((f) => f.endsWith('.py')));
-  }
-
-  /** Record the Python package-root digest a later sync compares against. */
-  private stampPythonRootFingerprint(fingerprint = this.resolver.getPythonRootFingerprint()): void {
-    try {
-      this.queries.setMetadata(PYTHON_ROOTS_METADATA_KEY, fingerprint);
-    } catch { /* metadata is advisory */ }
-  }
-
   async sync(options: IndexOptions = {}): Promise<SyncResult> {
     return this.indexMutex.withLock(async () => {
       try {
         this.fileLock.acquire();
-      } catch {
-        return { filesChecked: 0, filesAdded: 0, filesModified: 0, filesRemoved: 0, nodesUpdated: 0, durationMs: 0 };
+      } catch (err) {
+        throw new LockUnavailableError(
+          `Sync could not acquire the file lock; retry when the index is available. ${err instanceof Error ? err.message : String(err)}`
+        );
       }
       // Defer WAL auto-checkpointing for the whole incremental run, exactly
       // as indexAll does for the bulk path (#1231): sync's store loop and its
@@ -848,8 +841,20 @@ export class CodeGraph {
         const fullReconcile = !options.paths || options.paths.length === 0;
         const gitState = this.orchestrator.beginGitIndexState(fullReconcile);
 
-        const pythonFilesBefore = this.pythonFilePaths();
-        const result = await this.orchestrator.sync(options.onProgress, options.paths, backpressure);
+        // An interrupted index may have absorbed its changed files before
+        // resolution/synthesis. Detect those orphans BEFORE this sync adds refs.
+        let refreshSynthesis = this.queries.getMetadata('synthesis_pending') === '1' ||
+          this.queries.getUnresolvedReferencesCount() > 0;
+        if (refreshSynthesis) this.queries.setMetadata('synthesis_pending', '1');
+        const result = await this.orchestrator.sync(options.onProgress, options.paths, backpressure,
+          (filePath, content) => {
+            if (!refreshSynthesis && (this.queries.hasSynthesizedEdgesTouchingFile(filePath) ||
+              this.queries.wasSynthesisInput(filePath) ||
+              (content !== undefined && hasSynthesisPattern(filePath, content)))) {
+              refreshSynthesis = true;
+              this.queries.setMetadata('synthesis_pending', '1');
+            }
+          });
 
         // Fold the store phase's WAL BEFORE the post-store reads below
         // (resolution reads on the main thread) — same rationale as
@@ -948,7 +953,8 @@ export class CodeGraph {
                   total: totalPasses,
                 });
               },
-              backpressure
+              backpressure,
+              false
             );
           }
         }
@@ -979,49 +985,6 @@ export class CodeGraph {
           }
         }
 
-        // Python module answers this sync may have moved in files it never
-        // touched. If the root set changed (a top-level package appeared, a
-        // build config was edited) any import anywhere may bind differently:
-        // re-open them all. Otherwise only modules or packages appeared or
-        // vanished below the roots, and only the edges into those module
-        // names, out of a changed package, and the failures naming them can
-        // move. The orphan sweep below re-resolves whatever is re-opened
-        // exactly as a full index would. An index stamped by an older engine
-        // has no fingerprint — record one rather than re-resolving on upgrade.
-        {
-          const before = this.queries.getMetadata(PYTHON_ROOTS_METADATA_KEY);
-          const now = this.resolver.getPythonRootFingerprint();
-          if (before !== null && before !== now) {
-            this.resolver.clearCaches();
-            this.orchestrator.resurrectResolutionEdgesForLanguage('python');
-          } else if (before !== null) {
-            const after = this.pythonFilePaths();
-            const moved = [...after].filter((f) => !pythonFilesBefore.has(f));
-            for (const f of pythonFilesBefore) if (!after.has(f)) moved.push(f);
-            const reopened = new Set<string>();
-            if (moved.length > 0) {
-              this.resolver.clearCaches();
-              for (const f of this.orchestrator.resurrectResolutionEdgesTouching('python', this.resolver.getPythonReopenScope(moved))) reopened.add(f);
-            }
-            // An edited `__init__.py` can add, drop or repoint what its
-            // package binds, which moves what its importers' names resolve to.
-            const editedInits = (result.changedFilePaths ?? []).filter(
-              (f) => pythonFilesBefore.has(f) && after.has(f) && /(?:^|[\\/])__init__\.py$/.test(f)
-            );
-            if (editedInits.length > 0) {
-              this.resolver.clearCaches();
-              for (const f of this.orchestrator.resurrectPythonPackageImporters(this.resolver.getPythonPackageImporters(editedInits))) reopened.add(f);
-            }
-            // Resolve the narrow set now, the way the changed files' own
-            // references were resolved above, rather than leaving a handful of
-            // refs to the orphan sweep and its whole-graph synthesis pass.
-            if (reopened.size > 0) {
-              this.resolver.resolveAndPersist(this.queries.getUnresolvedReferencesByFiles([...reopened]));
-            }
-          }
-          if (before !== now) this.stampPythonRootFingerprint(now);
-        }
-
         // Orphan sweep (#1187). A resolution pass that dies mid-run — the #850
         // daemon liveness watchdog's SIGKILL (#1122), Ctrl-C, a crash — leaves
         // the refs it never reached in unresolved_refs, and the git-scoped fast
@@ -1035,6 +998,9 @@ export class CodeGraph {
         // Grind them down with the batched resolver; this also makes a bare
         // `codegraph sync` the recovery command for a wedged index. On a
         // healthy index this is one COUNT query.
+        result.pendingRefsProcessed = 0;
+        result.pendingRefsResolved = 0;
+        result.pendingRefsUnresolved = 0;
         const orphanCount = this.queries.getUnresolvedReferencesCount();
         if (orphanCount > 0) {
           options.onProgress?.({
@@ -1043,7 +1009,7 @@ export class CodeGraph {
             total: orphanCount,
           });
 
-          await this.resolveReferencesBatched(
+          const recovery = await this.resolveReferencesBatched(
             (current, total) => {
               options.onProgress?.({
                 phase: 'resolving',
@@ -1058,34 +1024,12 @@ export class CodeGraph {
                 total: totalPasses,
               });
             },
-            backpressure
+            backpressure,
+            false
           );
-        }
-
-        // Python attribute types read from OTHER files — a factory's return, a
-        // base class's `__init__` — change with a body-only edit the definition
-        // delta above cannot see. Re-open the edges whose answer was read from a
-        // touched file, and retry the failed attribute calls in files that
-        // import one; both resolve right here. After the orphan sweep, so the
-        // import edges this sync created (a caller whose `from f import make`
-        // only now resolves) are there to find the importers by.
-        if (process.env.CODEGRAPH_NO_REBIND !== '1') {
-          const touched = [...(result.changedFilePaths ?? []), ...(result.removedFilePaths ?? [])];
-          const touchedPy = touched.filter((p) => /\.pyi?$/.test(p));
-          if (touchedPy.length > 0) {
-            const tTypes = Date.now();
-            const reopenedFiles = this.orchestrator.resurrectTypeDependentEdges(touchedPy, result.changedFilePaths ?? []);
-            // CODEGRAPH_PY_ATTR_RETRY_CEILING overrides the candidate ceiling (tests).
-            const ceiling = Number(process.env.CODEGRAPH_PY_ATTR_RETRY_CEILING ?? '') || 2000;
-            const failed = this.resolver.pythonAttrRetryCandidates(touchedPy, ceiling);
-            const retry = [...this.queries.getUnresolvedReferencesByFiles(reopenedFiles), ...(failed ?? [])];
-            if (retry.length > 0) await this.resolver.resolveAndPersistListYielding(retry);
-            if (process.env.CODEGRAPH_SYNTH_TIMINGS) {
-              console.error(
-                `[phase-timing] sync-type-rebind: ${Date.now() - tTypes}ms (${retry.length} refs${failed ? '' : ', failed-ref fan-in over ceiling'})`
-              );
-            }
-          }
+          result.pendingRefsProcessed = recovery.stats.total;
+          result.pendingRefsResolved = recovery.stats.resolved;
+          result.pendingRefsUnresolved = recovery.stats.unresolved;
         }
 
         if (filesChanged || orphanCount > 0) {
@@ -1098,9 +1042,16 @@ export class CodeGraph {
           await this.resolver.resolveDeferredThisMemberRefs();
         }
 
+        if (refreshSynthesis) {
+          await this.resolver.refreshSynthesis(this.db.getPath(), (done, total) => {
+            options.onProgress?.({ phase: 'linking', current: done, total });
+          }, backpressure);
+          this.queries.setMetadata('synthesis_pending', '0');
+        }
+
         // Refresh planner stats + checkpoint the WAL after bulk writes.
         // Off-thread — see indexAll's call site.
-        if (filesChanged || result.filesRemoved > 0 || orphanCount > 0) {
+        if (filesChanged || result.filesRemoved > 0 || orphanCount > 0 || refreshSynthesis) {
           await this.db.runMaintenance();
         }
 
@@ -1152,6 +1103,31 @@ export class CodeGraph {
   // ===========================================================================
 
   /**
+   * Whether an OS watcher event points at a file whose index metadata is still
+   * current. Used on Windows to discard NTFS last-access notifications, which
+   * libuv reports through fs.watch as ordinary change events (#1451).
+   */
+  private isIndexedFileStateCurrent(filePath: string): boolean {
+    const tracked = this.queries.getFileByPath(filePath);
+    if (!tracked) return false;
+
+    try {
+      const stat = fs.statSync(path.join(this.projectRoot, filePath));
+      return (
+        stat.isFile() &&
+        Number.isFinite(stat.mtimeMs) &&
+        Number.isFinite(tracked.modifiedAt) &&
+        stat.size === tracked.size &&
+        Math.floor(stat.mtimeMs) === Math.floor(tracked.modifiedAt)
+      );
+    } catch {
+      // Missing/inaccessible files must still reach sync so removals and
+      // transient filesystem failures are reconciled rather than hidden.
+      return false;
+    }
+  }
+
+  /**
    * Start watching for file changes and auto-syncing.
    *
    * Uses native OS file events (FSEvents on macOS, inotify on Linux 19+,
@@ -1167,18 +1143,13 @@ export class CodeGraph {
       this.projectRoot,
       async (paths?: string[]) => {
         const result = await this.sync({ paths });
-        // sync() returns this exact zero-shape iff it failed to acquire the
-        // file lock (a real empty sync always has filesChecked > 0 because
-        // scanDirectory ran). Surface that to the watcher as a typed error
-        // so it keeps pendingFiles + reschedules instead of clearing them
-        // (#449).
-        if (result.filesChecked === 0 && result.durationMs === 0) {
-          throw new LockUnavailableError();
-        }
         const filesChanged = result.filesAdded + result.filesModified + result.filesRemoved;
         return { filesChanged, durationMs: result.durationMs };
       },
-      options
+      options,
+      process.platform === 'win32'
+        ? (filePath) => this.isIndexedFileStateCurrent(filePath)
+        : undefined
     );
 
     return this.watcher.start();
@@ -1202,12 +1173,11 @@ export class CodeGraph {
   }
 
   /**
-   * True once live watching has permanently degraded (OS watch-resource
-   * exhaustion, or a write lock held past the retry budget) and auto-sync is
-   * disabled until the next {@link watch} call. Distinct from `!isWatching()`:
-   * a stopped/never-started watcher is inactive but NOT degraded. MCP tools use
-   * this to surface a whole-index "results may be stale" notice, since
-   * `getPendingFiles()` goes empty once watching stops (#876).
+   * True once live watching has degraded, or while a re-armed watcher has not
+   * completed its full catch-up. Distinct from `!isWatching()`: a stopped or
+   * never-started watcher is inactive but NOT degraded. MCP tools use this for
+   * a whole-index stale notice, since pending files are lost when watching
+   * stops (#876, #1959).
    */
   isWatcherDegraded(): boolean {
     return this.watcher?.isDegraded() ?? false;
@@ -1216,6 +1186,16 @@ export class CodeGraph {
   /** The reason live watching degraded, or null if it is healthy (#876). */
   getWatcherDegradedReason(): string | null {
     return this.watcher?.getDegradedReason() ?? null;
+  }
+
+  /** Re-arm a lock-degraded watcher; its stale state persists until a full sync. */
+  rearmWatcherAfterLockContention(): boolean {
+    return this.watcher?.rearmAfterLockContention() ?? false;
+  }
+
+  /** True while a re-armed watcher owes a full reconcile of missed changes. */
+  isWatcherRecovering(): boolean {
+    return this.watcher?.isRecoveringFromLock() ?? false;
   }
 
   /**
@@ -1376,7 +1356,8 @@ export class CodeGraph {
     // resolution is timer-driven passive checkpoints, which the pool's
     // continuous reads keep perpetually partial — the WAL then accretes the
     // whole phase's write volume (22GB on a 4.6GB DB at kernel scale).
-    backpressure?: () => Promise<void> | null
+    backpressure?: () => Promise<void> | null,
+    synthesize: boolean = true
   ): Promise<ResolutionResult> {
     return this.resolver.resolveAndPersistBatched(onProgress, undefined, onSynthesisProgress, {
       dbPath: this.db.getPath(),
@@ -1387,14 +1368,15 @@ export class CodeGraph {
       // just degrade to scans until the recreate.
       bulkEdgeLoad: {
         begin: () => this.db.beginBulkEdgeLoad(),
-        end: () => this.db.endBulkEdgeLoad(),
+        end: () => this.db.endBulkEdgeLoad({ deferSynthesisSite: true }),
+        deferred: () => this.db.createSynthesisSiteIndex(),
       },
       refIndexLoad: {
         begin: () => this.db.beginBulkRefLoad(),
         end: () => this.db.endBulkRefLoad(),
       },
       backpressure,
-    });
+    }, synthesize);
   }
 
   /**
@@ -1567,6 +1549,14 @@ export class CodeGraph {
   }
 
   /**
+   * Which of the given symbols extend or implement a type outside the index —
+   * an ancestor the resolver could not follow, so it has no edge (#1973).
+   */
+  getUnresolvedSupertypeSourcesAmong(nodeIds: Iterable<string>): Set<string> {
+    return this.queries.getUnresolvedSupertypeSourcesAmong(nodeIds);
+  }
+
+  /**
    * The symbols with the most distinct dependents, most first — the index's
    * hubs. Distinct dependents, not edges: a helper called forty times from one
    * function has one dependent, and it is dependents a blast radius grows from.
@@ -1673,6 +1663,13 @@ export class CodeGraph {
   }
 
   /**
+   * Get all nodes in several files, in one batched query.
+   */
+  getNodesInFiles(filePaths: readonly string[]): Node[] {
+    return this.queries.getNodesByFiles(filePaths);
+  }
+
+  /**
    * Get all nodes of a specific kind
    */
   getNodesByKind(kind: Node['kind']): Node[] {
@@ -1712,6 +1709,11 @@ export class CodeGraph {
    */
   searchNodes(query: string, options?: SearchOptions): SearchResult[] {
     return this.queries.searchNodes(query, options);
+  }
+
+  /** Lexical evidence for an empty explore result; does not alter retrieval. */
+  getExploreMissDiagnostics(query: string) {
+    return this.queries.getExploreMissDiagnostics(query);
   }
 
   /**
