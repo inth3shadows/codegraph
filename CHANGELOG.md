@@ -147,6 +147,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - The Claude Code prompt hook no longer runs on the task-notification messages Claude Code injects when a background agent finishes, removing a multi-second stall on every such turn. (#1832)
 
+- Git sync hooks now refresh the project they were installed for, so a project inside a larger repository stays current after commit, pull and checkout; installing them no longer breaks an existing hook written in another language, and runs even when your own hook ends with `exit`.
 
 - Rust calls on `self` now stay with the enclosing type instead of linking to an unrelated type’s same-named method. Thanks @L4XB. (#1861)
 
