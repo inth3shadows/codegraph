@@ -4,33 +4,24 @@
 > as the ground truth for other tools. Wrong edges are worse than missing ones: a
 > fabricated call makes every tool built on the graph confidently wrong. The fixes:
 >
-> - **Python calls through an attribute** (`self.data.append`, `d[k].append`) no longer bind
->   to any project method that happens to share the name ([#1704](https://github.com/colbymchenry/codegraph/pull/1704)).
-> - **Python imports** resolve from the project's own package roots, so `import json` no
->   longer binds to a project's `app/utils/json.py`.
-> - **Python attributes set by a factory or a base class** are typed, so calls through them
->   resolve ([#750](https://github.com/colbymchenry/codegraph/issues/750)).
-> - **Dart 3 extension types** and their members are indexed ([#1784](https://github.com/colbymchenry/codegraph/issues/1784)).
-> - **One index opened twice** through a symlink or a case-variant path now shares one
->   connection ([#1057](https://github.com/colbymchenry/codegraph/issues/1057)).
-> - **`Class.method()`** binds to that class, not to another class whose name contains it
->   ([#1935](https://github.com/colbymchenry/codegraph/pull/1935)).
 > - **TypeScript `type` imports and re-exports** are honoured
 >   ([#1955](https://github.com/colbymchenry/codegraph/pull/1955)).
 > - **Express routes**: only the handler argument decides whether a route is inline
 >   ([#1957](https://github.com/colbymchenry/codegraph/pull/1957)).
 > - **Git sync hooks** refresh the sub-project they were installed for, and leave non-shell
 >   hooks alone ([#1965](https://github.com/colbymchenry/codegraph/pull/1965)).
-> - **Huge watchdog / handshake timeouts** no longer fire after 1 ms
->   ([#1969](https://github.com/colbymchenry/codegraph/pull/1969)).
-> - **Dynamic imports** built from a template or concatenation are reported as boundaries
->   ([#1970](https://github.com/colbymchenry/codegraph/pull/1970)).
-> - **The stale-file banner** matches whole paths (`src/app.ts` ≠ `src/app.tsx`)
->   ([#1971](https://github.com/colbymchenry/codegraph/pull/1971)).
 > - **A schema-less `codegraph.db`** no longer makes an ancestor (e.g. `$HOME`) a project
 >   (upstream [#1913](https://github.com/colbymchenry/codegraph/pull/1913) by @danusha2345).
 > - **`codegraph sync`** refuses an index built by an older extractor instead of saying
 >   "Already up to date" (upstream [#1842](https://github.com/colbymchenry/codegraph/pull/1842) by @bompus).
+>
+> Earlier fork fixes (Dart extension types, #1057 path spellings, timer caps, dynamic-import
+> boundaries, the stale-file banner) are now in upstream. The Python resolution fixes
+> ([#1704](https://github.com/colbymchenry/codegraph/pull/1704),
+> [#1921](https://github.com/colbymchenry/codegraph/pull/1921),
+> [#1926](https://github.com/colbymchenry/codegraph/pull/1926)) and
+> [#1935](https://github.com/colbymchenry/codegraph/pull/1935) are off the fork until they are
+> rebased onto upstream's rewrite of the same resolver code.
 >
 > Not published to npm; build from source (`npm install && npm run build`). For everything
 > else, use upstream. The rest of this README is upstream's, unchanged.
