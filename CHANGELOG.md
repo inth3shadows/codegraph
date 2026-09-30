@@ -102,8 +102,6 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - The Claude Code prompt hook no longer runs on the task-notification messages Claude Code injects when a background agent finishes, removing a multi-second stall on every such turn. (#1832)
 
-- Git sync hooks now refresh the project they were installed for, so a project inside a larger repository stays current after commit, pull and checkout; installing them no longer breaks an existing hook written in another language, and runs even when your own hook ends with `exit`.
-
 - Rust calls on `self` now stay with the enclosing type instead of linking to an unrelated type’s same-named method. Thanks @L4XB. (#1861)
 
 - Turning telemetry off now resets its identity and stops running processes from recording, sending, or restoring unsent data. (#1869)
@@ -219,10 +217,6 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 #### Routes and framework detection
 
-- **An Express route keeps its named handler when a middleware before it contains an arrow function.** `rateLimit({ keyGenerator: (req) => req.ip })` or `(req, res, next) => next()` no longer hides the handler at the end of the route (re-index to update an existing project).
-
-- **An Express `function (req, res) { … }` handler now links the calls in its body.** Such routes used to connect to nothing.
-
 - **A SvelteKit layout is no longer a second route at a page's address.** `+layout.svelte` and `+error.svelte` sit at the same path as the `+page.svelte` beside them and were each indexed as a route, so one address appeared in the index two and three times over. Only a page is a route now.
 
 - **A framework whose package lives in a subfolder is detected again.** In a project that keeps its dependencies one level down — a `frontend/` and a `backend/`, or an `apps/web/` — the framework check ran once before any file had been indexed, found no folders to look in, and remembered that empty answer for the rest of the run. Every React, React Router and Next.js behaviour that depends on knowing the framework is there silently did nothing for those projects.
@@ -245,7 +239,6 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 #### Symbols and tests
 
-- TypeScript types imported or re-exported with a `type` modifier (`import { type Foo }`, `import type Foo from`, `export type { Foo } from`) now link to their real declaration instead of a same-named type elsewhere in the project. Re-index to update an existing project.
 - Kotlin functions and methods now carry their signature — `(params): ReturnType` — in `codegraph_explore` and `node`, instead of no signature at all. Re-index Kotlin projects after upgrading. (#1495)
 - TypeScript/JavaScript value aliases — `export const alias = fn`, `export { fn as alias }`, object-literal `api = { run: fn }`, and same-file `const local = fn` — now forward calls edges to the aliased function, so callers and impact on the implementation include consumers that call through the alias instead of stopping at the binding. Genuine wrappers (`() => fn()`) are unchanged. Re-index after upgrading. Thanks @valkyriweb. (#1482, #1485)
 - `codegraph affected` now finds Go, Python and JVM test files that previously went unreported, while preserving custom `--filter` behavior (thanks @danusha2345; #1507, #1688).
