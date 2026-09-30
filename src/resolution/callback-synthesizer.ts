@@ -35,7 +35,7 @@ import { tanstackLinkEdges } from './tanstack-router-synthesizer';
 import { vueRouterLinkEdges } from './vue-router-synthesizer';
 import { svelteKitLinkEdges, svelteKitPageComponentEdges } from './sveltekit-synthesizer';
 import { createYielder, type MaybeYield } from './cooperative-yield';
-import { crossTierEdges, hasCrossTierPattern } from './tier-synthesizer';
+import { crossTierEdges, hasCrossTierPattern, hasTestRequestPattern, testRequestEdges } from './tier-synthesizer';
 import { enclosingFn, makeLineAt } from './synth-utils';
 import { resolveImportPath } from './import-resolver';
 import { crossesCodeBoundary } from './name-matcher';
@@ -1029,6 +1029,25 @@ async function interfaceOverrideEdges(queries: QueryBuilder, onYield: MaybeYield
     methodsMemo.set(classId, methods);
     return methods;
   };
+  // A Swift protocol's methods live in its extensions: requirements are not
+  // extracted as methods, and `extension EventMonitor { func request(…) }` is
+  // where the default implementations a conformer overrides are. A class-kind
+  // node sharing a protocol's name is one of its extensions.
+  const protocolMemo = new Map<string, Node[]>();
+  const baseMethodsOf = (base: Node): Node[] => {
+    if (base.language !== 'swift' || base.kind !== 'interface') return methodsOf(base.id);
+    const hit = protocolMemo.get(base.id);
+    if (hit) return hit;
+    const methods = [
+      ...methodsOf(base.id),
+      ...queries
+        .getNodesByName(base.name)
+        .filter((n) => n.language === 'swift' && n.kind === 'class')
+        .flatMap((n) => methodsOf(n.id)),
+    ];
+    protocolMemo.set(base.id, methods);
+    return methods;
+  };
   // Concrete-side kinds vary by language: `class` covers Java / Kotlin /
   // C# / TS / Swift-classes / Scala-classes; `struct` covers Swift value
   // types that conform to protocols. Iterate both.
@@ -1056,7 +1075,7 @@ async function interfaceOverrideEdges(queries: QueryBuilder, onYield: MaybeYield
         if (arr) arr.push(m); else implByName.set(m.name, [m]);
       }
       let added = 0;
-      for (const bm of methodsOf(base.id)) {
+      for (const bm of baseMethodsOf(base)) {
         if (added >= MAX_CALLBACKS_PER_CHANNEL) break;
         for (const m of implByName.get(bm.name) ?? []) {
           if (added >= MAX_CALLBACKS_PER_CHANNEL) break;
@@ -3635,7 +3654,7 @@ export function hasSynthesisPattern(filePath: string, content: string): boolean 
     /\b(?:struct|union|typedef|virtual|override)\b|#\s*(?:include|define|if)|=|->|\[/.test(content)) return true;
   if (/\b(?:class|interface|protocol|trait|impl|extends|implements|expect|actual)\b/.test(content)) return true;
   if (/\.go$/.test(filePath) && /\b(?:struct|interface)\b|\bfunc\s*\(/.test(content)) return true;
-  if (hasCrossTierPattern(content)) return true;
+  if (hasCrossTierPattern(content) || hasTestRequestPattern(filePath, content)) return true;
   if (/\b(?:render|build|setState|defineStore|createStore|createApi|Store|href|sendEvent|sendEventWithName)\b|<\/|\/>/.test(content)) return true;
   if (/\.(?:forEach|append|add|push|insert|fire|dispatchEvent|addListener|Use|GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD|Any|Handle)\s*\(/.test(content)) return true;
   if (/[\w$]\s*\[\s*[A-Za-z_$]/.test(content) || /\b(?:dispatch|commit)\s*\(/.test(content)) return true;
@@ -3671,6 +3690,10 @@ export const SYNTH_PASSES: SynthPassDef[] = [
   // Before the in-process emitter pass: the same (source, target) pair
   // keeps the more specific edge — the one that says which tier it crosses.
   { name: 'tierEdges', gate: (has) => has(...JS_FAMILY), run: (_q, c, y) => crossTierEdges(c, y) },
+  // A Spring / Laravel test's request (`mockMvc.perform(post("/x"))`,
+  // `$this->postJson('api/x')`) onto the route it reaches, so the handler
+  // counts as tested.
+  { name: 'testRequestEdges', gate: (has) => has('java', 'kotlin', 'php'), run: (_q, c, y) => testRequestEdges(c, y) },
   { name: 'emitterEdges', gate: ALWAYS, run: (_q, c, y) => eventEmitterEdges(c, y) },
   { name: 'renderEdges', gate: ALWAYS, run: (q, c, y) => reactRenderEdges(q, c, y) },
   { name: 'jsxEdges', gate: (has) => has(...JS_FAMILY), run: (_q, c, y) => reactJsxChildEdges(c, y) },

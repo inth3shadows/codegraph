@@ -10,13 +10,11 @@
 >   ([#1957](https://github.com/colbymchenry/codegraph/pull/1957)).
 > - **Git sync hooks** refresh the sub-project they were installed for, and leave non-shell
 >   hooks alone ([#1965](https://github.com/colbymchenry/codegraph/pull/1965)).
-> - **A schema-less `codegraph.db`** no longer makes an ancestor (e.g. `$HOME`) a project
->   (upstream [#1913](https://github.com/colbymchenry/codegraph/pull/1913) by @danusha2345).
 > - **`codegraph sync`** refuses an index built by an older extractor instead of saying
 >   "Already up to date" (upstream [#1842](https://github.com/colbymchenry/codegraph/pull/1842) by @bompus).
 >
 > Earlier fork fixes (Dart extension types, #1057 path spellings, timer caps, dynamic-import
-> boundaries, the stale-file banner) are now in upstream. The Python resolution fixes
+> boundaries, the stale-file banner, the schema-less `codegraph.db` fix) are now in upstream. The Python resolution fixes
 > ([#1704](https://github.com/colbymchenry/codegraph/pull/1704),
 > [#1921](https://github.com/colbymchenry/codegraph/pull/1921),
 > [#1926](https://github.com/colbymchenry/codegraph/pull/1926)) and
