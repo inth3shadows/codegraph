@@ -10,6 +10,9 @@
 >   ([#1957](https://github.com/colbymchenry/codegraph/pull/1957)).
 > - **Git sync hooks** refresh the sub-project they were installed for, and leave non-shell
 >   hooks alone ([#1965](https://github.com/colbymchenry/codegraph/pull/1965)).
+> - **`Class.method()`** binds to that class's own method, not one on a class whose name
+>   contains it (`Logger.log()` used to reach `FileLogger::log`)
+>   ([#1935](https://github.com/colbymchenry/codegraph/pull/1935)).
 > - **`codegraph sync`** refuses an index built by an older extractor instead of saying
 >   "Already up to date" (upstream [#1842](https://github.com/colbymchenry/codegraph/pull/1842) by @bompus).
 >
@@ -17,9 +20,8 @@
 > boundaries, the stale-file banner, the schema-less `codegraph.db` fix) are now in upstream. The Python resolution fixes
 > ([#1704](https://github.com/colbymchenry/codegraph/pull/1704),
 > [#1921](https://github.com/colbymchenry/codegraph/pull/1921),
-> [#1926](https://github.com/colbymchenry/codegraph/pull/1926)) and
-> [#1935](https://github.com/colbymchenry/codegraph/pull/1935) are off the fork until they are
-> rebased onto upstream's rewrite of the same resolver code.
+> [#1926](https://github.com/colbymchenry/codegraph/pull/1926)) are off the fork until they
+> are rebased onto upstream's rewrite of the same resolver code.
 >
 > Not published to npm; build from source (`npm install && npm run build`). For everything
 > else, use upstream. The rest of this README is upstream's, unchanged.
