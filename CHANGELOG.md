@@ -61,6 +61,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A Vapor route now links to the handler it names. `use: SearchController.show` used to link to whichever controller's `show` came first, so routes with a common handler name, like `show`, `index` or `get`, pointed at another endpoint's code in callers, impact and `codegraph_explore` answers. Nested types like `API.PackageController.get` and handlers declared in an extension of the controller now resolve too, and `use: self.index` resolves to the collection's own `index`. Re-index Vapor projects after upgrading.
 - A PHP call written without a receiver, such as `redirect($url)`, `view('books.show')`, `auth()` or `basename($path)`, is a function call, and no longer links to a same-named method, field or class elsewhere in the project. These wrong links showed up in callers, impact and `codegraph_explore` answers wherever a Laravel helper or PHP built-in shared its name with a project member. Re-index PHP projects after upgrading.
 - A call like `Logger.log()` now links to `Logger`'s own method instead of the same-named method of a class whose name merely contains it, such as `FileLogger`.
+- A TypeScript type re-exported through a barrel (`export type { Foo } from`, `export { type Foo } from`, `export type * from`) now links to its real declaration instead of a same-named type elsewhere in the project, and import lists with comments, string names, or a JSDoc `@import` are read correctly. Re-index to update an existing project.
 
 ## [1.6.1] - 2026-09-29
 
