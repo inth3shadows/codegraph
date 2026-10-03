@@ -21,13 +21,13 @@ import {
   isImportableKind,
   CPP_DEFINE_SIGNATURE,
 } from './types';
-import { matchJsStoreBindingCall, isUnresolvedJsMemberCall, isVisibleAcrossFiles, matchReference, matchFunctionRef, matchDottedCallChain, matchScopedCallChain, matchMethodCall, sameLanguageFamily, crossesCodeBoundary, gateLanguageMatch, dumpNameMatcherProfile, clearNameMatcherMemos, isRustNameInScope, CASE_INSENSITIVE_LANGUAGES } from './name-matcher';
+import { isPythonSelfCall, matchJsStoreBindingCall, isUnresolvedJsMemberCall, isVisibleAcrossFiles, matchReference, matchFunctionRef, matchDottedCallChain, matchScopedCallChain, matchMethodCall, sameLanguageFamily, crossesCodeBoundary, gateLanguageMatch, dumpNameMatcherProfile, clearNameMatcherMemos, isRustNameInScope, CASE_INSENSITIVE_LANGUAGES } from './name-matcher';
 import { isVisibleCppMacro, clearCppMacroVisibility } from './cpp-macro-visibility';
 import { isCppConstructorRef, matchCppConstructor } from './cpp-constructor';
 import { gateSwiftTypeTarget, clearSwiftTypeVisibility, swiftExtendedConformances } from './swift-type-visibility';
 import { gateTypeParameter, clearTypeParameterMemos } from './type-parameters';
-import { resolveViaImport, resolvePhpImportedStaticCall, resolveJvmImport, extractImportMappings, extractReExports, loadCppIncludeDirs, isPhpIncludePathRef, isCobolCopybookRef, isNixPathImportRef, isBoundToOutOfRepoImport, clearImportResolverMemos, resolveImportPath, isExternalImport } from './import-resolver';
-import { ResolverPool, minRefsForPool } from './resolver-pool';
+import { resolveViaImport, resolvePhpImportedStaticCall, resolvePhpQualifiedClassRef, resolveJvmImport, extractImportMappings, extractReExports, loadCppIncludeDirs, isPhpIncludePathRef, isCobolCopybookRef, isNixPathImportRef, isJsPathImportRef, isBoundToOutOfRepoImport, clearImportResolverMemos, resolveImportPath, isExternalImport } from './import-resolver';
+import { ResolverPool, minRefsForPool, shouldEngageAdaptively } from './resolver-pool';
 import { resolveAliasBinding } from './alias-binding';
 import { detectFrameworks } from './frameworks';
 import { synthesizeCallbackEdges } from './callback-synthesizer';
@@ -307,6 +307,8 @@ export class ReferenceResolver {
   // `null` = computed and absent. Treated as immutable for the
   // resolver's lifetime; callers re-create the resolver if config changes.
   private projectAliases: AliasMap | null | undefined = undefined;
+  // Per directory: the aliases of the nearest non-root tsconfig declaring `paths`.
+  private dirAliases = new Map<string, AliasMap | null>();
   // go.mod module path. Same lazy/immutable convention as projectAliases.
   private goModule: GoModule | null | undefined = undefined;
   // Monorepo workspace member packages. Same lazy/immutable convention.
@@ -776,6 +778,31 @@ export class ReferenceResolver {
         return this.projectAliases;
       },
 
+      getNearestAliases: (fromFile: string) => {
+        let dir = path.posix.dirname(fromFile.replace(/\\/g, '/'));
+        const walked: string[] = [];
+        let found: AliasMap | null = null;
+        while (dir && dir !== '.' && dir !== '/') {
+          const hit = this.dirAliases.get(dir);
+          if (hit !== undefined) {
+            found = hit;
+            break;
+          }
+          walked.push(dir);
+          const abs = path.join(this.projectRoot, dir);
+          if (['tsconfig.json', 'jsconfig.json'].some((name) => fs.existsSync(path.join(abs, name)))) {
+            const aliases = loadProjectAliases(abs);
+            if (aliases) {
+              found = aliases;
+              break;
+            }
+          }
+          dir = path.posix.dirname(dir);
+        }
+        for (const d of walked) this.dirAliases.set(d, found);
+        return found;
+      },
+
       getGoModule: () => {
         if (this.goModule === undefined) {
           this.goModule = loadGoModule(this.projectRoot);
@@ -1064,6 +1091,13 @@ export class ReferenceResolver {
       return this.resolveCfmlComponentPath(ref);
     }
 
+    // A PHP class written with a namespace in it — `new Alias\X()` through a
+    // `use Ns as Alias;` namespace alias, `extends Sub\Base`, `\Ns\X::make()`
+    // (#2256). The pre-filter below would drop most of these before any import
+    // strategy ran, and PHP gives each one exactly one meaning; resolve it first.
+    const phpQualified = resolvePhpQualifiedClassRef(ref, this.context);
+    if (phpQualified !== undefined) return this.gateLanguage(phpQualified, ref);
+
     // Fast pre-filter: skip if no symbol with this name exists anywhere
     // AND the name doesn't match a local import. The import escape is
     // necessary because re-export rename chains (`import { login }
@@ -1073,8 +1107,9 @@ export class ReferenceResolver {
     // ArkTS chained-attribute refs carry a leading dot (`.titleStyle`) that
     // routes them to the decorator-gated matcher; the symbol itself is
     // indexed under the bare name, so the existence check strips the dot.
-    // Nix static path imports (`import ./x.nix`) name a FILE, not a symbol —
-    // they bypass the symbol-existence check and resolve via resolveViaImport.
+    // Nix static path imports (`import ./x.nix`) and JS/TS module paths
+    // (`require('./x')`) name a FILE, not a symbol — they bypass the
+    // symbol-existence check and resolve via resolveViaImport.
     let existenceName =
       ref.language === 'arkts' && ref.referenceName.startsWith('.')
         ? ref.referenceName.slice(1)
@@ -1085,6 +1120,7 @@ export class ReferenceResolver {
     const tPre = this.profileStages ? process.hrtime.bigint() : 0n;
     const preFilterPass =
       isNixPathImportRef(ref) ||
+      isJsPathImportRef(ref) ||
       this.hasAnyPossibleMatch(existenceName) ||
       // PHP, Pascal, CFML, COBOL and VB.NET names ignore case: `formatprice()`
       // calls `FormatPrice`, which the exact-name set never lists.
@@ -1160,7 +1196,11 @@ export class ReferenceResolver {
     const tFw = this.profileStages ? process.hrtime.bigint() : 0n;
     let fwEarly: ResolvedRef | null = null;
     for (const framework of this.frameworks) {
-      const result = this.gateFrameworkLanguage(framework.resolve(ref, this.context), ref);
+      const resolved = this.gateFrameworkLanguage(framework.resolve(ref, this.context), ref);
+      // Name the resolver on the edge (`metadata.framework`): a Swift→ObjC or
+      // React Native bridge hop says how it got into the graph, as a
+      // synthesized edge's `synthesizedBy` does.
+      const result = resolved ? { ...resolved, metadata: { ...resolved.metadata, framework: framework.name } } : null;
       if (result) {
         if (result.confidence >= 0.9) {
           fwEarly = result; // High confidence, return immediately (below)
@@ -1173,7 +1213,17 @@ export class ReferenceResolver {
     if (fwEarly) return fwEarly;
     // A retained untyped chain supplies effect/call-site evidence only. In
     // particular, importing its root does not make the root its call target.
-    if (isUnresolvedJsMemberCall(ref)) return null;
+    // A path through module namespaces is not untyped: `z.coerce.number()`
+    // after `import * as z`, where the barrel has `export * as coerce`.
+    if (isUnresolvedJsMemberCall(ref)) {
+      const root = ref.referenceName.slice(0, ref.referenceName.indexOf('.'));
+      const namespace = this.context.getImportMappings(ref.filePath, ref.language).some((m) => m.isNamespace && m.localName === root);
+      if (!namespace) return null;
+      const viaNamespace = this.gateLanguage(resolveViaImport(ref, this.context), ref);
+      const target = viaNamespace ? this.nodeById(viaNamespace.targetNodeId) : null;
+      return target && (target.kind === 'function' || target.kind === 'method' || target.kind === 'class' || target.kind === 'constant' || target.kind === 'variable')
+        ? viaNamespace : null;
+    }
 
     // Strategy 2: Try import-based resolution
     // A TS/JS/Python call-receiver chain (`useStore.getState().reset`, #1683)
@@ -1190,7 +1240,12 @@ export class ReferenceResolver {
     }
 
     const tImp = this.profileStages ? process.hrtime.bigint() : 0n;
-    const importResult = this.gateLanguage(resolveViaImport(ref, this.context), ref);
+    // `self.get_ip()` is a method call on the instance even when the file
+    // also imports a function named `get_ip`: the import never names it.
+    const selfCall = ref.language === 'python' && ref.referenceKind === 'calls' &&
+      this.context.getImportMappings(ref.filePath, ref.language).some((m) => m.localName === ref.referenceName) &&
+      isPythonSelfCall(ref, this.context);
+    const importResult = selfCall ? null : this.gateLanguage(resolveViaImport(ref, this.context), ref);
     if (this.profileStages) this.stageAdd('viaImport', ref, !!importResult, tImp);
     if (importResult) {
       if (importResult.confidence >= 0.9) return importResult;
@@ -2054,7 +2109,7 @@ export class ReferenceResolver {
         adaptiveSeqRefs += batch.length;
         const remaining = total - processed - batch.length;
         const projectedMs = (adaptiveSeqMs / Math.max(1, adaptiveSeqRefs)) * Math.max(0, remaining);
-        if (projectedMs >= ADAPTIVE_ENGAGE_SETTLE_MS) {
+        if (shouldEngageAdaptively(projectedMs, remaining, ADAPTIVE_ENGAGE_SETTLE_MS)) {
           if (process.env.CODEGRAPH_SYNTH_TIMINGS) {
             console.error(`[pool-timing] adaptive engage: projected ${Math.round(projectedMs)}ms sequential settle over ${remaining} remaining refs`);
           }

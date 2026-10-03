@@ -55,6 +55,34 @@ const JS_KEYWORDS = new Set([
 ]);
 
 /**
+ * The calls an inline handler's body makes, each once, framework noise aside.
+ * A member call keeps its receiver (`userService.find`, `c.text`) so it
+ * resolves as one: bare, hono's `c.text('…')` matched its client's
+ * `ClientResponse.text` 423 times. A member of an expression (`a.b().c(`)
+ * names nothing this can follow.
+ */
+function handlerCallNames(body: string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const callRe = /((?:[A-Za-z_$][\w$]*\s*\??\.\s*)*)([A-Za-z_$][\w$]*)\s*\(/g;
+  let cm: RegExpExecArray | null;
+  while ((cm = callRe.exec(body)) !== null) {
+    const method = cm[2]!;
+    const receiver = cm[1]!.replace(/\s|\?/g, '').replace(/\.$/, '');
+    if (!receiver && /\.\s*$/.test(body.slice(0, cm.index))) continue;
+    // A keyword is only a keyword when it isn't a member: `if (` is not a
+    // call, `userService.delete(` is. `function helper(` declares helper.
+    if (!receiver && JS_KEYWORDS.has(method)) continue;
+    if (!receiver && /\bfunction\s*\*?\s*$/.test(body.slice(Math.max(0, cm.index - 12), cm.index))) continue;
+    const name = receiver ? `${receiver}.${method}` : method;
+    if (seen.has(name) || RESERVED_CALLS.has(method)) continue;
+    seen.add(name);
+    out.push(name);
+  }
+  return out;
+}
+
+/**
  * The replies an inline handler makes — `res.status(404).json({…})`,
  * `res.json(user)`, `reply.send(…)`, `ctx.body = …` aside — as references the
  * Steps view's effect table reads at their own line and column. The body's
@@ -109,9 +137,16 @@ export const expressResolver: FrameworkResolver = {
   },
 
   resolve(ref: UnresolvedRef, context: ResolutionContext): ResolvedRef | null {
+    // A JS/TS module reaches another file's middleware, controller or service
+    // only through an `import` / `require` — the import resolver's — never by
+    // name: SvelteKit's remote functions' `validate(arg)` went to the config
+    // loader's `validate` in another package. The patterns below stay for the
+    // file's own declarations.
+    const sameFile = (id: string | null): string | null =>
+      id !== null && context.getNodeById?.(id)?.filePath === ref.filePath ? id : null;
     // Pattern 1: Middleware references
     if (isMiddlewareName(ref.referenceName)) {
-      const result = resolveMiddleware(ref.referenceName, context);
+      const result = sameFile(resolveMiddleware(ref.referenceName, context, ref.filePath));
       if (result) {
         return {
           original: ref,
@@ -126,7 +161,7 @@ export const expressResolver: FrameworkResolver = {
     const controllerMatch = ref.referenceName.match(/^(\w+)Controller\.(\w+)$/);
     if (controllerMatch) {
       const [, controller, method] = controllerMatch;
-      const result = resolveControllerMethod(controller!, method!, context);
+      const result = sameFile(resolveControllerMethod(controller!, method!, context));
       if (result) {
         return {
           original: ref,
@@ -141,7 +176,7 @@ export const expressResolver: FrameworkResolver = {
     const serviceMatch = ref.referenceName.match(/^(\w+)(Service|Helper|Utils?)\.(\w+)$/);
     if (serviceMatch) {
       const [, name, suffix, method] = serviceMatch;
-      const result = resolveServiceMethod(name! + suffix!, method!, context);
+      const result = sameFile(resolveServiceMethod(name! + suffix!, method!, context));
       if (result) {
         return {
           original: ref,
@@ -422,14 +457,7 @@ function regexLiteralEndAt(safe: string, i: number): number {
 
 
 
-/** Whether the name at `i` is a member access (`x.name`, `x .name`). */
-function followsDot(s: string, i: number): boolean {
-  let j = i - 1;
-  while (j >= 0 && /\s/.test(s[j]!)) j--;
-  return j >= 0 && s[j] === '.';
-}
 
-/** Where the body `{…}` of the `function` at `fnAt` ends, or -1. */
 function functionBodyEnd(text: string, fnAt: number): number {
   const paramsOpen = text.indexOf('(', fnAt);
   const paramsClose = paramsOpen >= 0 ? matchDelim(text, paramsOpen, '(', ')') : -1;
@@ -565,24 +593,12 @@ function handlerRefs(
     }
   }
 
-  const refs: UnresolvedRef[] = [];
-  const callRe = /\b([A-Za-z_$][\w$]*)\s*\(/g;
-  const seen = new Set<string>();
-  let cm: RegExpExecArray | null;
   // Positions came from the blanked structure; the calls are read from `safe`
   // at the same offsets, so a call inside a template interpolation counts.
   const source = safe.slice(bodyStart, bodyStart + body.length);
-  while ((cm = callRe.exec(source)) !== null) {
-    const name = cm[1]!;
-    if (seen.has(name) || RESERVED_CALLS.has(name)) continue;
-    // A keyword is only a keyword when it isn't a member: `if (` is not a
-    // call, `userService.delete(` is.
-    if (JS_KEYWORDS.has(name) && !followsDot(source, cm.index)) continue;
-    // `function helper(` declares helper; it doesn't call it.
-    if (/\bfunction\s*\*?\s*$/.test(source.slice(Math.max(0, cm.index - 12), cm.index))) continue;
-    seen.add(name);
-    refs.push({ fromNodeId, referenceName: name, referenceKind: 'calls', line, column: 0, filePath, language });
-  }
+  const refs: UnresolvedRef[] = handlerCallNames(source).map((name) => (
+    { fromNodeId, referenceName: name, referenceKind: 'calls', line, column: 0, filePath, language }
+  ));
   refs.push(...replyRefs(safe, bodyStart, bodyStart + body.length, fromNodeId, filePath, language));
   return refs;
 }
@@ -637,12 +653,20 @@ function isMiddlewareName(name: string): boolean {
 /**
  * Resolve middleware reference using name-based lookup
  */
+/** Node kinds a middleware can be declared as. */
+const MIDDLEWARE_KINDS: ReadonlySet<string> = new Set(['function', 'method', 'variable', 'constant', 'class']);
+
 function resolveMiddleware(
   name: string,
-  context: ResolutionContext
+  context: ResolutionContext,
+  fromFile?: string,
 ): string | null {
-  // Try exact name first
-  const candidates = context.getNodesByName(name);
+  // Try exact name first — the calling file's own first. A middleware is a
+  // declaration (a function, a value, a class), never the file's import of a
+  // package (`import cors from 'cors'`) nor a heading or a module node.
+  const candidates = context.getNodesByName(name)
+    .filter((n) => MIDDLEWARE_KINDS.has(n.kind))
+    .sort((a, b) => Number(b.filePath === fromFile) - Number(a.filePath === fromFile));
   const match = candidates.find((n) =>
     n.name.toLowerCase() === name.toLowerCase() ||
     n.name.toLowerCase() === name.replace(/Middleware$/i, '').toLowerCase()
@@ -652,7 +676,7 @@ function resolveMiddleware(
   // Try without Middleware suffix
   const baseName = name.replace(/Middleware$/i, '');
   if (baseName !== name) {
-    const baseCandidates = context.getNodesByName(baseName);
+    const baseCandidates = context.getNodesByName(baseName).filter((n) => MIDDLEWARE_KINDS.has(n.kind));
     const MIDDLEWARE_DIRS = ['/middleware/', '/middlewares/'];
     const preferred = baseCandidates.filter((n) =>
       MIDDLEWARE_DIRS.some((d) => n.filePath.includes(d))
