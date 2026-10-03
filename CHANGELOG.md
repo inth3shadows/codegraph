@@ -17,6 +17,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - An Express route keeps its named handler when a middleware before it contains an arrow function. `rateLimit({ keyGenerator: (req) => req.ip })` or `(req, res, next) => next()` no longer hides the handler at the end of the route (re-index to update an existing project).
 - A TypeScript type re-exported through a barrel (`export type { Foo } from`, `export { type Foo } from`, `export type * from`) now links to its real declaration instead of a same-named type elsewhere in the project, and import lists with comments, string names, or a JSDoc `@import` are read correctly. Re-index to update an existing project.
 - Git sync hooks now refresh the project they were installed for, so a project inside a larger repository stays current after commit, pull and checkout; installing them no longer breaks an existing hook written in another language, and runs even when your own hook ends with `exit`.
+- A call like `Logger.log()` now links to `Logger`'s own method instead of the same-named method of a class whose name merely contains it, such as `FileLogger`.
 
 ## [1.6.2] - 2026-10-03
 
