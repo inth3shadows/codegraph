@@ -344,7 +344,7 @@ describe('expressResolver.extract', () => {
   });
 
   it('regex literals in handlers do not cost the route its edges', () => {
-    expect(refsOf(`router.get('/u/:id', async (req, res) => { if (!/^\\d+/.test(req.params.id)) return res.sendStatus(400); const user = await userService.findById(req.params.id); res.json(user); });\n`)).toContain('calls:findById');
+    expect(refsOf(`router.get('/u/:id', async (req, res) => { if (!/^\\d+/.test(req.params.id)) return res.sendStatus(400); const user = await userService.findById(req.params.id); res.json(user); });\n`)).toContain('calls:userService.findById');
     const chained = expressResolver.extract!('routes.ts', `router.route('/:id').get((req, res) => { if (!/^\\w+/.test(req.params.id)) return bad(res); load(req); }).put(protect, updateThing);\n`);
     expect(chained.nodes.map((n) => n.name)).toEqual(['GET /:id', 'PUT /:id']);
     expect(chained.references.map((r) => `${r.referenceKind}:${r.referenceName}`)).toEqual(expect.arrayContaining(['calls:load', 'references:updateThing']));
@@ -366,7 +366,7 @@ describe('expressResolver.extract', () => {
 
   it('a division after `)` with a `/` in a later string does not cost the route', () => {
     const refs = refsOf(`router.get('/s', (req, res) => { res.json({ pct: Math.round(s.done) / s.total, next: '/stats/2' }); audit(req); });\n`);
-    expect(refs).toEqual(expect.arrayContaining(['calls:round', 'calls:audit']));
+    expect(refs).toEqual(expect.arrayContaining(['calls:Math.round', 'calls:audit']));
     expect(refsOf(`router.get('/p', (req, res) => { const n = Math.ceil(count(req)) / size; res.redirect('/p/' + n); after(req); });\n`)).toContain('calls:after');
     expect(refsOf(`router.get('/c', cfg(f(a) / 2, 'x/y'), handler);\n`)).toContain('references:handler');
   });
@@ -390,7 +390,7 @@ describe('expressResolver.extract', () => {
   it('JSX apostrophes, a trailing options object, a callback before a named handler', () => {
     const tsx = expressResolver.extract!('server.tsx', `app.get('/x', (req, res) => {\n  res.send(render(<p>Don't</p>));\n  res.send(render(<p>won't</p>));\n  load();\n});\n`).references.map((r) => `${r.referenceKind}:${r.referenceName}`);
     expect(tsx).toContain('calls:load');
-    expect(refsOf(`router.get('/o', (req, res) => { svc.list(); res.json(1) }, { cache: true });\n`)).toContain('calls:list');
+    expect(refsOf(`router.get('/o', (req, res) => { svc.list(); res.json(1) }, { cache: true });\n`)).toContain('calls:svc.list');
     expect(refsOf(`router.get('/w', withErrors(function onErr(e) { report(e); }, ctrl.list));\n`)).not.toContain('calls:report');
     // An array of handlers: its last element is the handler.
     expect(refsOf(`router.post('/x', auth, [validate, ctrl.create]);\n`)).toEqual(['references:create']);
@@ -402,18 +402,18 @@ describe('expressResolver.extract', () => {
 
   it('a backtick in an earlier regex does not cost later routes', () => {
     const refs = refsOf("const esc = (s) => s.replace(/`/g, 'x');\nrouter.get('/d', async (req, res) => { await svc.doThing(); res.end(); });\nrouter.get('/e', ctrl.list);\n");
-    expect(refs).toEqual(expect.arrayContaining(['calls:doThing', 'references:list']));
+    expect(refs).toEqual(expect.arrayContaining(['calls:svc.doThing', 'references:list']));
   });
 
   it('a division after a non-null `!` is not a regex, even with a path string later on the line', () => {
-    expect(refsOf(`app.get('/x', (req, res) => {\n const r = done! / total!; res.redirect(r ? '/:id' : '/');\n svc.run(r);\n});\n`)).toContain('calls:run');
-    expect(refsOf(`app.get('/y', (req, res) => {\n const r = sum! / count!; const parts = csv.split(/,/);\n svc.run(parts);\n});\n`)).toContain('calls:run');
+    expect(refsOf(`app.get('/x', (req, res) => {\n const r = done! / total!; res.redirect(r ? '/:id' : '/');\n svc.run(r);\n});\n`)).toContain('calls:svc.run');
+    expect(refsOf(`app.get('/y', (req, res) => {\n const r = sum! / count!; const parts = csv.split(/,/);\n svc.run(parts);\n});\n`)).toContain('calls:svc.run');
   });
 
   it('a method named like a keyword is still a call', () => {
     const refs = refsOf(`router.delete('/users/:id', async (req, res) => { await userService.delete(req.params.id); cache .with(k); });\n`);
-    expect(refs).toContain('calls:delete');
-    expect(refs).toContain('calls:with');
+    expect(refs).toContain('calls:userService.delete');
+    expect(refs).toContain('calls:cache.with');
     expect(refsOf(`router.get('/x', (req, res) => { return of(load()); });\n`)).toContain('calls:of');
   });
 
