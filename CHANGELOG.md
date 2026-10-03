@@ -18,6 +18,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A TypeScript type re-exported through a barrel (`export type { Foo } from`, `export { type Foo } from`, `export type * from`) now links to its real declaration instead of a same-named type elsewhere in the project, and import lists with comments, string names, or a JSDoc `@import` are read correctly. Re-index to update an existing project.
 - Git sync hooks now refresh the project they were installed for, so a project inside a larger repository stays current after commit, pull and checkout; installing them no longer breaks an existing hook written in another language, and runs even when your own hook ends with `exit`.
 - A call like `Logger.log()` now links to `Logger`'s own method instead of the same-named method of a class whose name merely contains it, such as `FileLogger`.
+- `codegraph sync` now refuses outdated extraction indexes instead of reporting them as up to date, and directs users to a full rebuild; with `--quiet` the reason is still printed as one line on stderr so a git hook failure is explainable. (#1798)
 
 ## [1.6.2] - 2026-10-03
 
@@ -231,11 +232,6 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - PHP calls on `$this`, `self`, `static` and `parent` now reach the method of the class they're written in, a class it extends, or a trait any of them uses, with parent classes and traits found through the file's `namespace` and `use` imports. On Drupal core, `$this->assertEquals()` (PHPUnit's) used to link to an unrelated comparator class 8,832 times, `$this->assertSession()` to a JavaScript-test base class, and `$this->t()` to `Views::t`. They now reach `UiHelperTrait` and `StringTranslationTrait`, or nothing when the method lives in a package outside the repository. A call inside a trait, and a base class calling a method its subclass defines, keep their links. Re-index PHP projects after upgrading.
 - A PHP function call written after `=>` in an array, like `'count' => count($items)`, `'by' => user()->id` or `'label' => trans('…')`, is now read as a plain function call. It used to be taken for a method call and linked to whichever class had a method of that name. On BookStack, that meant 166 wrong links.
 - A PHP call written without a receiver, such as `redirect($url)`, `view('books.show')`, `auth()` or `basename($path)`, is a function call, and no longer links to a same-named method, field or class elsewhere in the project. These wrong links showed up in callers, impact and `codegraph_explore` answers wherever a Laravel helper or PHP built-in shared its name with a project member. Re-index PHP projects after upgrading.
-- A call like `Logger.log()` now links to `Logger`'s own method instead of the same-named method of a class whose name merely contains it, such as `FileLogger`.
-- A TypeScript type re-exported through a barrel (`export type { Foo } from`, `export { type Foo } from`, `export type * from`) now links to its real declaration instead of a same-named type elsewhere in the project, and import lists with comments, string names, or a JSDoc `@import` are read correctly. Re-index to update an existing project.
-- An Express route keeps its named handler when a middleware before it contains an arrow function. `rateLimit({ keyGenerator: (req) => req.ip })` or `(req, res, next) => next()` no longer hides the handler at the end of the route (re-index to update an existing project).
-- An Express `function (req, res) { … }` handler now links the calls in its body. Such routes used to connect to nothing.
-- Git sync hooks now refresh the project they were installed for, so a project inside a larger repository stays current after commit, pull and checkout; installing them no longer breaks an existing hook written in another language, and runs even when your own hook ends with `exit`.
 
 ## [1.6.1] - 2026-09-29
 
@@ -281,7 +277,6 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Zustand actions keep their callers when read through typed stores, destructured from store state, or selected by a hook.
 - Direct React Native bridge calls retain their native implementations and cross-platform relationships.
 - Dart extension-type getters remain searchable when using the WebAssembly parser.
-- `codegraph sync` now refuses outdated extraction indexes instead of reporting them as up to date, and directs users to a full rebuild; with `--quiet` the reason is still printed as one line on stderr so a git hook failure is explainable. (#1798)
 
 - Calling a built-in method on an awaited value no longer records a call into an unrelated class that happens to declare a method of the same name, and a variable bound to an awaited call now resolves methods on the type that call returns. Thanks @maxmilian. (#1840)
 - Spring mappings now include every declared path combination and resolve constants declared in the same file, while unresolved paths no longer appear as false root routes. (#1461)
