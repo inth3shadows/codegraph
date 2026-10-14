@@ -53,7 +53,7 @@ npm-debug.log*
 docs/business/
 
 # CodeGraph data directories (in test projects)
-.codegraph/
+.codegraph
 
 test_frameworks
 
