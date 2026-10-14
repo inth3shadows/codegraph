@@ -13,15 +13,17 @@
 > - **`Class.method()`** binds to that class's own method, not one on a class whose name
 >   contains it (`Logger.log()` used to reach `FileLogger::log`)
 >   ([#1935](https://github.com/colbymchenry/codegraph/pull/1935)).
+> - **Python attribute calls** resolve from evidence of the attribute's type, never by a bare
+>   method name, including attributes set by a factory or a base class
+>   ([#1704](https://github.com/colbymchenry/codegraph/pull/1704),
+>   [#1926](https://github.com/colbymchenry/codegraph/pull/1926)).
 > - **`codegraph sync`** refuses an index built by an older extractor instead of saying
 >   "Already up to date" (upstream [#1842](https://github.com/colbymchenry/codegraph/pull/1842) by @bompus).
 >
 > Earlier fork fixes (Dart extension types, #1057 path spellings, timer caps, dynamic-import
-> boundaries, the stale-file banner, the schema-less `codegraph.db` fix) are now in upstream. The Python resolution fixes
-> ([#1704](https://github.com/colbymchenry/codegraph/pull/1704),
-> [#1921](https://github.com/colbymchenry/codegraph/pull/1921),
-> [#1926](https://github.com/colbymchenry/codegraph/pull/1926)) are off the fork until they
-> are rebased onto upstream's rewrite of the same resolver code.
+> boundaries, the stale-file banner, the schema-less `codegraph.db` fix) are now in upstream. The Python package-root fix
+> ([#1921](https://github.com/colbymchenry/codegraph/pull/1921)) is off the fork until it is
+> reconciled with #1704 and #1926, which change the same resolver code.
 >
 > Not published to npm; build from source (`npm install && npm run build`). For everything
 > else, use upstream. The rest of this README is upstream's, unchanged.
