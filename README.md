@@ -20,6 +20,8 @@
 > - **`codegraph sync`** refuses an index built by an older extractor instead of saying
 >   "Already up to date" (upstream [#1842](https://github.com/colbymchenry/codegraph/pull/1842) by @bompus).
 >
+> - **`codegraph sync`** no longer fails with "FOREIGN KEY constraint failed" when a component
+>   lazily loads a workspace package ([#2574](https://github.com/colbymchenry/codegraph/pull/2574)).
 > - **Python imports** resolve from the package roots the project actually has, and a name a
 >   package's `__init__.py` binds wins over a same-named submodule
 >   ([#1921](https://github.com/colbymchenry/codegraph/pull/1921)).
