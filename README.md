@@ -24,6 +24,8 @@
 >   lazily loads a workspace package ([#2574](https://github.com/colbymchenry/codegraph/pull/2574)).
 > - **`codegraph_explore`** no longer stalls on large projects whose busiest-file lookup picked a
 >   slow query plan ([#2575](https://github.com/colbymchenry/codegraph/pull/2575)).
+> - **JS/TS calls in a braceless `if`/`while`/`for`/`do` body** no longer link to another file's
+>   same-named property ([#2592](https://github.com/colbymchenry/codegraph/pull/2592)).
 > - **Python imports** resolve from the package roots the project actually has, and a name a
 >   package's `__init__.py` binds wins over a same-named submodule
 >   ([#1921](https://github.com/colbymchenry/codegraph/pull/1921)).
