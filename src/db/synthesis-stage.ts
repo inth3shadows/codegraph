@@ -70,12 +70,11 @@ export class SynthesisStage {
         insert.run(i, i + 2000);
         await yieldToLoop();
       }
-      // An input is a path the passes read, and the resolver can hand them a
-      // path that is no indexed file — a workspace package's directory for
-      // `import('icons')` (#2565). Only indexed files are kept: the column
-      // references files(path), and one stray path rolled back the sync.
+      // Re-checked against files inside the write lock: the inputs were staged
+      // before it, and a file deleted since would fail the FK and roll back
+      // every synthesized edge with it (#2565).
       this.db.exec(`DELETE FROM main.synthesis_inputs;
-        INSERT INTO main.synthesis_inputs SELECT file_path FROM temp.synthesis_inputs
+        INSERT INTO main.synthesis_inputs(file_path) SELECT file_path FROM temp.synthesis_inputs
           WHERE file_path IN (SELECT path FROM main.files)`);
       this.db.exec('COMMIT');
     } catch (error) {
