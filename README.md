@@ -26,6 +26,8 @@
 >   slow query plan ([#2575](https://github.com/colbymchenry/codegraph/pull/2575)).
 > - **JS/TS calls in a braceless `if`/`while`/`for`/`do` body** no longer link to another file's
 >   same-named property ([#2592](https://github.com/colbymchenry/codegraph/pull/2592)).
+> - **TypeScript `await f<T>(…)`** links to `f`, including chained calls like
+>   `await api.get<T>(url).then(…)` ([#2595](https://github.com/colbymchenry/codegraph/pull/2595)).
 > - **Python imports** resolve from the package roots the project actually has, and a name a
 >   package's `__init__.py` binds wins over a same-named submodule
 >   ([#1921](https://github.com/colbymchenry/codegraph/pull/1921)).
