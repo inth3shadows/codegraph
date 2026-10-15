@@ -2843,18 +2843,11 @@ function resolvePythonModuleMember(
   if (dotIdx <= 0) return null;
   const receiver = ref.referenceName.substring(0, dotIdx);
 
-  const moduleFile = (modulePath: string, fromFile: string): string | null => {
-    // resolveImportPath only maps RELATIVE dotted paths (`.mod`, `..pkg.mod`); an
-    // ABSOLUTE package path (`pkg.module` from `from pkg import module`, or a bare
-    // `import pkg.mod`) resolves to null there, so fall back to the dotted-module
-    // file lookup — the same asymmetry resolveModuleImportToFile already handles
-    // for the file→file import edge. Without this, a `module.func()` call after
-    // `from pkg import module` dropped its `calls` edge even though the import
-    // edge resolved (#578).
-    return resolveImportPath(modulePath, fromFile, ref.language, context)
-      ?? findPythonModuleFile(modulePath, context, fromFile)?.filePath
-      ?? null;
-  };
+  // resolveImportPath maps relative AND absolute dotted paths from the
+  // project's package roots, so `pkg.module` resolves the same way the
+  // file→file import edge does (#578, #1704).
+  const moduleFile = (modulePath: string, fromFile: string): string | null =>
+    resolveImportPath(modulePath, fromFile, ref.language, context);
 
   for (const imp of imports) {
     // `import pkg.mod` binds `pkg`, so a call spells the whole path out —
@@ -2919,11 +2912,18 @@ function resolvePythonModuleMember(
       continue;
     }
 
-    // Find the member as a top-level definition in the module file, or one it
-    // re-exports (a package's `__init__.py`). Exclude `method` so `mod.foo`
-    // never lands on a same-named class method.
+    // The member as the module binds it: a module-level def (never a method —
+    // `mod.foo` must not land on a same-named class method, and never a nested
+    // def), or a name the module re-exports from elsewhere (`pkg/__init__.py`
+    // doing `from .impl import foo`).
     const member = rest[0]!;
-    const target = pythonModuleSymbol(resolvedPath, member, context, 0);
+    const target = findExportedSymbol(
+      resolvedPath,
+      { isDefault: false, isNamespace: false, exportedName: member, memberName: null },
+      'python',
+      context,
+      new Set()
+    );
     if (target) {
       return { original: ref, targetNodeId: target.id, confidence: 0.85, resolvedBy: 'import' };
     }
