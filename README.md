@@ -1,3 +1,35 @@
+> [!NOTE]
+> **This is a personal fork of [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph).**
+> It carries fixes for bugs that put wrong edges in the graph, found while using CodeGraph
+> as the ground truth for other tools. Wrong edges are worse than missing ones: a
+> fabricated call makes every tool built on the graph confidently wrong. The fixes:
+>
+> - **TypeScript `type` imports and re-exports** are honoured
+>   ([#1955](https://github.com/colbymchenry/codegraph/pull/1955)).
+> - **Express routes**: only the handler argument decides whether a route is inline
+>   ([#1957](https://github.com/colbymchenry/codegraph/pull/1957)).
+> - **Git sync hooks** refresh the sub-project they were installed for, and leave non-shell
+>   hooks alone ([#1965](https://github.com/colbymchenry/codegraph/pull/1965)).
+> - **`Class.method()`** binds to that class's own method, not one on a class whose name
+>   contains it (`Logger.log()` used to reach `FileLogger::log`)
+>   ([#1935](https://github.com/colbymchenry/codegraph/pull/1935)).
+> - **Python attribute calls** resolve from evidence of the attribute's type, never by a bare
+>   method name, including attributes set by a factory or a base class
+>   ([#1704](https://github.com/colbymchenry/codegraph/pull/1704),
+>   [#1926](https://github.com/colbymchenry/codegraph/pull/1926)).
+> - **`codegraph sync`** refuses an index built by an older extractor instead of saying
+>   "Already up to date" (upstream [#1842](https://github.com/colbymchenry/codegraph/pull/1842) by @bompus).
+>
+> - **Python imports** resolve from the package roots the project actually has, and a name a
+>   package's `__init__.py` binds wins over a same-named submodule
+>   ([#1921](https://github.com/colbymchenry/codegraph/pull/1921)).
+>
+> Earlier fork fixes (Dart extension types, #1057 path spellings, timer caps, dynamic-import
+> boundaries, the stale-file banner, the schema-less `codegraph.db` fix) are now in upstream.
+>
+> Not published to npm; build from source (`npm install && npm run build`). For everything
+> else, use upstream. The rest of this README is upstream's, unchanged.
+
 <div align="center">
 
 # CodeGraph
