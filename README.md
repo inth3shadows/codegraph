@@ -37,6 +37,9 @@
 > - **Python calls through a module-level instance** (`_svc = SceneService()`, then
 >   `_svc.delete(obj)`) link the class's own or inherited method
 >   ([#2608](https://github.com/colbymchenry/codegraph/pull/2608)).
+> - **React components rendered outside a named function** (module scope, a top-level
+>   constant, a test's `it(…)` callback) render from where their calls are attributed
+>   ([#2611](https://github.com/colbymchenry/codegraph/pull/2611)).
 > - **Python imports** resolve from the package roots the project actually has, and a name a
 >   package's `__init__.py` binds wins over a same-named submodule
 >   ([#1921](https://github.com/colbymchenry/codegraph/pull/1921)).
