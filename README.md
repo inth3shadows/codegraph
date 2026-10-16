@@ -32,6 +32,11 @@
 >   package function ([#2597](https://github.com/colbymchenry/codegraph/pull/2597)).
 > - **Python `from app import x`** no longer links to a project variable named `app`
 >   ([#2603](https://github.com/colbymchenry/codegraph/pull/2603)).
+> - **Python calls on an outside module**, like `subprocess.run(…)`, no longer link a
+>   same-named project method ([#2606](https://github.com/colbymchenry/codegraph/pull/2606)).
+> - **Python calls through a module-level instance** (`_svc = SceneService()`, then
+>   `_svc.delete(obj)`) link the class's own or inherited method
+>   ([#2608](https://github.com/colbymchenry/codegraph/pull/2608)).
 > - **Python imports** resolve from the package roots the project actually has, and a name a
 >   package's `__init__.py` binds wins over a same-named submodule
 >   ([#1921](https://github.com/colbymchenry/codegraph/pull/1921)).
