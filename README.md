@@ -30,6 +30,8 @@
 >   `await api.get<T>(url).then(…)` ([#2595](https://github.com/colbymchenry/codegraph/pull/2595)).
 > - **Go calls through a local func value or parameter** no longer link to a same-named
 >   package function ([#2597](https://github.com/colbymchenry/codegraph/pull/2597)).
+> - **Python `from app import x`** no longer links to a project variable named `app`
+>   ([#2603](https://github.com/colbymchenry/codegraph/pull/2603)).
 > - **Python imports** resolve from the package roots the project actually has, and a name a
 >   package's `__init__.py` binds wins over a same-named submodule
 >   ([#1921](https://github.com/colbymchenry/codegraph/pull/1921)).
