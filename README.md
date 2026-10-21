@@ -9,6 +9,9 @@
 > - **Imports spelled with a trailing slash or a `./` segment** (`@/widgets/Chart/`) link to the
 >   indexed file, so lazily loaded components and their synthesis inputs survive a sync
 >   (upstream [#2610](https://github.com/colbymchenry/codegraph/pull/2610) by @JiaMingWang-CN, fixes #2577).
+> - **JavaScript/TypeScript calls in a parameter default** (`function render(note = buildNote())`) link to the
+>   function, including arrow class fields, `memo`/`forwardRef` components and object-literal methods
+>   ([#2753](https://github.com/colbymchenry/codegraph/pull/2753), fixes #2588).
 >
 > Earlier fork fixes are now in upstream: TypeScript `type` imports, Express handler
 > arguments, git sync hooks, `Class.method()` binding, Python attribute calls and package
