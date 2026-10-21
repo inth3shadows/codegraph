@@ -80,20 +80,67 @@ describe('python attribute-chain receivers', () => {
     expect(callsFrom('method', 'run')).toEqual([]);
   });
 
-  it('does not bind a non-self chain to a same-named method', async () => {
-    // The distractor matters: `Other.send` exists too, so a resolution here
-    // could only ever be a guess between them.
-    fs.writeFileSync(
-      path.join(tempDir, 'kinds.py'),
-      'class Client:\n    def send(self, x):\n        return x\n\n\nclass Other:\n    def send(self, x):\n        return x\n'
-    );
+  it('guesses the class the last link spells whole before one that only shares its word', async () => {
+    // Django's test `Client` and the cache's `RedisCacheClient` both have a
+    // `get`; `self.client` is the one it is named after. `self.nodelist` is a
+    // `NodeList` though no single word of it matches.
+    writeTree({
+      'cache.py': 'class RedisCacheClient:\n    def get(self, k):\n        return k\n',
+      'client.py': 'class Client:\n    def get(self, k):\n        return k\n',
+      'nodes.py': 'class NodeList:\n    def render(self, c):\n        return c\n\n\nclass Other:\n    def render(self, c):\n        return c\n',
+      'tests.py': 'class Tests:\n    def setUp(self, client, nodelist):\n        self.client = client\n        self.nodelist = nodelist\n\n'
+        + '    def run(self):\n        self.client.get(1)\n        self.nodelist.render(2)\n',
+    });
+    cg = await CodeGraph.init(tempDir, { index: true });
+    expect(callsFrom('method', 'run').sort()).toEqual(['method:get@client.py', 'method:render@nodes.py']);
+  });
+
+  it('guesses an untyped chain only through its head noun', async () => {
+    // mealie's `database.group_shopping_lists` shares only `group` with the AI
+    // providers' repository; its head noun is `lists`. `group_ai_providers`
+    // names a provider, and `client` the mixin Django's test client gets
+    // `force_login` from. Django's `request.META` is a dict, not a `request`.
+    writeTree({
+      'repos.py': 'class GroupRepositoryAIProvider:\n    def create(self):\n        pass\n\n\nclass Other:\n    def create(self):\n        pass\n',
+      'client.py': 'class ClientMixin:\n    def force_login(self, u):\n        return u\n\n\nclass OtherMixin:\n    def force_login(self, u):\n        return u\n',
+      'factory.py': 'class RequestFactory:\n    def get(self, path):\n        return path\n',
+      'use.py': 'def lists(database):\n    database.group_shopping_lists.create()\n\n\ndef providers(database):\n    database.group_ai_providers.create()\n\n\n'
+        + 'def login(case):\n    case.client.force_login(1)\n\n\ndef meta(request):\n    return request.META.get("HTTP_HOST")\n',
+    });
+    cg = await CodeGraph.init(tempDir, { index: true });
+    expect(callsFrom('function', 'lists')).toEqual([]);
+    expect(callsFrom('function', 'providers')).toEqual(['method:create@repos.py']);
+    expect(callsFrom('function', 'login')).toEqual(['method:force_login@client.py']);
+    expect(callsFrom('function', 'meta')).toEqual([]);
+  });
+
+  it('leaves a chain through a module to the module', async () => {
+    // `os.path.exists()` is the stdlib's, not a project storage's `exists`
+    // whose class shares the word `Path`.
+    writeTree({
+      'storage.py': 'class PathNotImplementedStorage:\n    def exists(self, p):\n        return p\n\n\nclass Storage:\n    def exists(self, p):\n        return p\n',
+      'use.py': 'import os\n\n\ndef has(p):\n    return os.path.exists(p)\n',
+    });
+    cg = await CodeGraph.init(tempDir, { index: true });
+    expect(callsFrom('function', 'has')).toEqual([]);
+  });
+
+  it('guesses an untyped chain only by the name of its last link, as any receiver', async () => {
+    // Nothing types `cfg`, so the type reader has no answer. `cfg.client` is
+    // then guessed as a `Client` by its name — the guess every untyped
+    // receiver gets (`client.send()`), and how Django's `self.client.get()`
+    // reaches its test client — while `cfg.conn` names neither class: no
+    // edge, rather than one of the two `send`s.
+    fs.writeFileSync(path.join(tempDir, 'client.py'), 'class Client:\n    def send(self, x):\n        return x\n');
+    fs.writeFileSync(path.join(tempDir, 'other.py'), 'class Other:\n    def send(self, x):\n        return x\n');
     fs.writeFileSync(
       path.join(tempDir, 'use.py'),
-      'def run(cfg, x):\n    return cfg.client.send(x)\n'
+      'def run(cfg, x):\n    return cfg.client.send(x)\n\n\ndef run_conn(cfg, x):\n    return cfg.conn.send(x)\n'
     );
 
     cg = await CodeGraph.init(tempDir, { index: true });
-    expect(callsFrom('function', 'run')).toEqual([]);
+    expect(callsFrom('function', 'run')).toEqual(['method:send@client.py']);
+    expect(callsFrom('function', 'run_conn')).toEqual([]);
   });
 
   // --- boundaries the gate must NOT cross -----------------------------------
@@ -223,8 +270,9 @@ describe('python attribute-chain receivers', () => {
     });
     cg = await CodeGraph.init(tempDir, { index: true });
     expect(callsFrom('function', 'by_param')).toEqual(['method:rebuild@models.py']);
-    // Two attribute hops is a deeper chain than the class body answers.
-    expect(callsFrom('function', 'by_local')).toEqual([]);
+    // Two attribute hops is a deeper chain than the class body answers: it is
+    // guessed by the name of its last link, `llm`, as an untyped one is.
+    expect(callsFrom('function', 'by_local')).toEqual(['method:rebuild@models.py']);
   });
 
   it('leaves an attribute typed as an external class unresolved', async () => {
@@ -326,7 +374,9 @@ describe('python attribute-chain receivers', () => {
 
     it('a parameter rebound before the assignment no longer carries its annotation', async () => {
       write('box.py', 'class Box:\n    def run(self):\n        return 1\n');
-      write('svc.py', 'from box import Box\n\ndef wrap(b):\n    return b\n\nclass Svc:\n    def __init__(self, box: Box):\n        box = wrap(box)\n        self.box = box\n\n    def go(self):\n        return self.box.run()\n');
+      // `held`, named after no class, so no guess by name stands in for the
+      // annotation this must not carry.
+      write('svc.py', 'from box import Box\n\ndef wrap(b):\n    return b\n\nclass Svc:\n    def __init__(self, box: Box):\n        box = wrap(box)\n        self.held = box\n\n    def go(self):\n        return self.held.run()\n');
       cg = await CodeGraph.init(tempDir, { index: true });
       expect(callsFrom('method', 'go')).not.toContain('method:run@box.py');
     });

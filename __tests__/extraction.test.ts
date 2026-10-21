@@ -786,7 +786,38 @@ function main() {
     expect(byFn('viaNamespace')).toEqual(['api.fetchApi']);
     expect(byFn('viaThis')).toEqual(['load']);
     expect(calls.some((c) => c.referenceName.startsWith('await'))).toBe(false);
+    // The reference sits where the callee starts, as for `await f(x)` — not on
+    // the `await`, which the call node starts at.
+    const lines = code.split('\n');
+    const columnOf = (name: string) => {
+      const fn = result.nodes.find((n) => n.name === name)!;
+      return calls.find((c) => c.fromNodeId === fn.id)!.column;
+    };
+    expect(columnOf('awaited')).toBe(lines[0]!.indexOf('fetchApi'));
+    expect(columnOf('viaNamespace')).toBe(lines[2]!.indexOf('api.fetchApi'));
   });
+
+  it('an awaited generic call to a name a package exports links to nothing in the project (#2586)', async () => {
+    const dir = createTempDir();
+    try {
+      fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'app', dependencies: { 'idb-keyval': '6.2.1' } }));
+      fs.mkdirSync(path.join(dir, 'src'));
+      // excalidraw's `await get<SavedChats>(key, store)` from idb-keyval, beside
+      // a project class whose static `get` the name alone would match.
+      fs.writeFileSync(path.join(dir, 'src', 'storage.ts'),
+        'import { get } from "idb-keyval";\nexport async function load() { return await get<string>("k"); }\n');
+      fs.writeFileSync(path.join(dir, 'src', 'cache.ts'), 'export class Cache {\n  static get = (s: string) => s;\n}\n');
+      const cg = await CodeGraph.init(dir, { index: true });
+      try {
+        const load = cg.getNodesByKind('function').find((n) => n.name === 'load')!;
+        expect(cg.getOutgoingEdges(load.id).filter((e) => e.kind === 'calls')).toEqual([]);
+      } finally {
+        cg.close();
+      }
+    } finally {
+      cleanupTempDir(dir);
+    }
+  }, 60_000);
 
   it.each([['user.ts'], ['user.tsx'], ['user.ets']])('an awaited generic call peels every await and skips comments: %s (#2586)', (file) => {
     const code = [
@@ -6980,13 +7011,15 @@ describe('Cross-language type/import gate (RN name collisions)', () => {
     // TS name-match — so a TS ref to `TestRunner` crossed web→jvm. The ref here
     // is intentionally NOT imported: a clean relative import would mask the bug
     // by resolving via the import map before the framework strategy can win.
+    // So the TS type is a global, declared in a script `.d.ts`: the one kind of
+    // type a module names without importing it.
     fs.writeFileSync(
       path.join(tempDir, 'package.json'),
       JSON.stringify({ dependencies: { 'react-native': '*' } })
     );
     fs.writeFileSync(
-      path.join(tempDir, 'useTests.ts'),
-      `export type TestRunner = { run: () => void };\n`
+      path.join(tempDir, 'useTests.d.ts'),
+      `type TestRunner = { run: () => void };\n`
     );
     fs.writeFileSync(
       path.join(tempDir, 'basic.tsx'),
@@ -13768,6 +13801,10 @@ describe('Unsupported-language projects report what they skipped (#1502)', () =>
 
   beforeEach(() => {
     tempDir = createTempDir();
+  });
+
+  afterEach(() => {
+    cleanupTempDir(tempDir);
   });
 
   it('counts files it could not index, by extension, on the git path', async () => {

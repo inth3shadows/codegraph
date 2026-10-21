@@ -4,48 +4,16 @@
 > as the ground truth for other tools. Wrong edges are worse than missing ones: a
 > fabricated call makes every tool built on the graph confidently wrong. The fixes:
 >
-> - **TypeScript `type` imports and re-exports** are honoured
->   ([#1955](https://github.com/colbymchenry/codegraph/pull/1955)).
-> - **Express routes**: only the handler argument decides whether a route is inline
->   ([#1957](https://github.com/colbymchenry/codegraph/pull/1957)).
-> - **Git sync hooks** refresh the sub-project they were installed for, and leave non-shell
->   hooks alone ([#1965](https://github.com/colbymchenry/codegraph/pull/1965)).
-> - **`Class.method()`** binds to that class's own method, not one on a class whose name
->   contains it (`Logger.log()` used to reach `FileLogger::log`)
->   ([#1935](https://github.com/colbymchenry/codegraph/pull/1935)).
-> - **Python attribute calls** resolve from evidence of the attribute's type, never by a bare
->   method name, including attributes set by a factory or a base class
->   ([#1704](https://github.com/colbymchenry/codegraph/pull/1704),
->   [#1926](https://github.com/colbymchenry/codegraph/pull/1926)).
 > - **`codegraph sync`** refuses an index built by an older extractor instead of saying
 >   "Already up to date" (upstream [#1842](https://github.com/colbymchenry/codegraph/pull/1842) by @bompus).
 >
-> - **`codegraph sync`** no longer fails with "FOREIGN KEY constraint failed" when a component
->   lazily loads a workspace package ([#2574](https://github.com/colbymchenry/codegraph/pull/2574)).
-> - **`codegraph_explore`** no longer stalls on large projects whose busiest-file lookup picked a
->   slow query plan ([#2575](https://github.com/colbymchenry/codegraph/pull/2575)).
-> - **JS/TS calls in a braceless `if`/`while`/`for`/`do` body** no longer link to another file's
->   same-named property ([#2592](https://github.com/colbymchenry/codegraph/pull/2592)).
-> - **TypeScript `await f<T>(…)`** links to `f`, including chained calls like
->   `await api.get<T>(url).then(…)` ([#2595](https://github.com/colbymchenry/codegraph/pull/2595)).
-> - **Go calls through a local func value or parameter** no longer link to a same-named
->   package function ([#2597](https://github.com/colbymchenry/codegraph/pull/2597)).
-> - **Python `from app import x`** no longer links to a project variable named `app`
->   ([#2603](https://github.com/colbymchenry/codegraph/pull/2603)).
-> - **Python calls on an outside module**, like `subprocess.run(…)`, no longer link a
->   same-named project method ([#2606](https://github.com/colbymchenry/codegraph/pull/2606)).
-> - **Python calls through a module-level instance** (`_svc = SceneService()`, then
->   `_svc.delete(obj)`) link the class's own or inherited method
->   ([#2608](https://github.com/colbymchenry/codegraph/pull/2608)).
-> - **React components rendered outside a named function** (module scope, a top-level
->   constant, a test's `it(…)` callback) render from where their calls are attributed
->   ([#2611](https://github.com/colbymchenry/codegraph/pull/2611)).
-> - **Python imports** resolve from the package roots the project actually has, and a name a
->   package's `__init__.py` binds wins over a same-named submodule
->   ([#1921](https://github.com/colbymchenry/codegraph/pull/1921)).
->
-> Earlier fork fixes (Dart extension types, #1057 path spellings, timer caps, dynamic-import
-> boundaries, the stale-file banner, the schema-less `codegraph.db` fix) are now in upstream.
+> Earlier fork fixes are now in upstream: TypeScript `type` imports, Express handler
+> arguments, git sync hooks, `Class.method()` binding, Python attribute calls and package
+> roots (#1704, #1921, #1926), the synthesis-input foreign-key crash, explore's query plan,
+> braceless `if` bodies, `await f<T>()`, Go local func values, several Python import fixes,
+> React components outside a named function, and before those Dart extension types, #1057
+> path spellings, timer caps, dynamic-import boundaries, the stale-file banner and the
+> schema-less `codegraph.db` fix.
 >
 > Not published to npm; build from source (`npm install && npm run build`). For everything
 > else, use upstream. The rest of this README is upstream's, unchanged.
@@ -702,7 +670,10 @@ What it skips out of the box:
 - **Dependency, build, and cache directories** — `node_modules`, `vendor`,
   `dist`, `build`, `target`, `.venv`, `Pods`, `.next`, and the like across every
   [supported stack](#supported-languages) — so the graph is your code, not
-  third-party noise. This holds even with no `.gitignore`.
+  third-party noise. This holds even with no `.gitignore`. A `build` folder
+  inside `src/` is the exception: no build step writes TypeScript, JSX, Vue,
+  Svelte, Astro, Go, C# or Rust files into one, so those are indexed from it,
+  and a Java, Kotlin or Scala package named `build` is indexed whole.
 - **Anything in your `.gitignore`** — honored in git repos via git, and in
   non-git projects by reading `.gitignore` directly (root and nested).
 - **Files larger than 1 MB** — generated bundles, minified JS, vendored blobs.

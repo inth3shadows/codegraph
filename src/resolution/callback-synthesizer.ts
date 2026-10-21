@@ -28,6 +28,7 @@ import { isGeneratedFile } from '../extraction/generated-detection';
 import { stripCommentsForRegex } from './strip-comments';
 import { cFnPointerDispatchEdges } from './c-fnptr-synthesizer';
 import { goframeRouteEdges } from './goframe-synthesizer';
+import { goFuncFieldEdges } from './go-func-field-synthesizer';
 import { expoRouterReturnEdges } from './expo-router-synthesizer';
 import { nextLinkEdges } from './next-router-synthesizer';
 import { reactRouterLinkEdges } from './react-router-synthesizer';
@@ -40,7 +41,7 @@ import { crossTierEdges, hasCrossTierPattern, hasTestRequestPattern, testRequest
 import { enclosingFn, makeLineAt } from './synth-utils';
 import { resolveImportPath } from './import-resolver';
 import { cppSpecializationArguments, crossesCodeBoundary, jsCodeBindsName } from './name-matcher';
-import { declaredComponent, exportedComponent, lazyValueModules } from './frameworks/react';
+import { declaredComponent, exportedComponent, lazyValueModules, wrappedComponentName } from './frameworks/react';
 import { jsxCode } from './jsx-code';
 
 const REGISTRAR_NAME = /^(on[A-Z]\w*|subscribe|addListener|addEventListener|register|watch|listen|addCallback)$/;
@@ -61,6 +62,9 @@ const JSX_FAMILY = ['tsx', 'jsx', 'javascript'];
 // the next match, which `opensTag` reads as a type argument, not a tag.
 const JSX_TAG_RE = /<([A-Z][A-Za-z0-9_]*)(?=[\s/><])/g;
 const MAX_JSX_CHILDREN = 30;
+// A wrapper around a component — `styled(ActionButton)`, `memo(Button)`,
+// `forwardRef(Render)` — renders it without a tag (`wrappedComponentName`).
+const WRAPPER_CALL_RE = /\b(?:styled|memo|forwardRef)\s*\(\s*[A-Z]/;
 // Vue SFC templates: kebab-case child components (<el-button> → ElButton) and
 // event bindings (@click="fn" / v-on:click="fn"). PascalCase children (<VPNav/>)
 // are already caught by JSX_TAG_RE via the SFC component node.
@@ -1890,6 +1894,32 @@ function jsxChild(
 }
 
 /**
+ * The component a wrapper component wraps, by the name its declaration hands
+ * the wrapper (`wrappedComponentName`), bound the way a tag of that name in the
+ * file is (`jsxChild`), but only where the file binds the name itself: a value
+ * or a component it declares, or an import of a project module the index
+ * holds. Anything else names no component of the project, and a namesake
+ * elsewhere is no guess worth an edge: bigbluebutton's `styled(Icon)`, imported through a
+ * Meteor `/imports/…` path no resolver follows, would render whichever of its
+ * dozens of `Icon`s came first, and SigNoz's `styled(Text)` of `const { Text }
+ * = Typography` a `Text` from another page's styles.
+ */
+function wrappedChild(
+  ctx: ResolutionContext,
+  name: string,
+  file: string,
+  importsOf: () => Map<string, string>,
+  ownValueOf: (name: string) => ReturnType<typeof declaredComponent>,
+  exportOf: (module: string, exported: string) => Node | null
+): Node | undefined {
+  const declared = ownValueOf(name) !== undefined ||
+    (ctx.getNodesInFileNamed?.(file, name) ?? ctx.getNodesInFile(file).filter((n) => n.name === name))
+      .some((n) => JSX_CHILD_KINDS.has(n.kind));
+  if (!declared && !projectImport(ctx, name, file)) return undefined;
+  return jsxChild(ctx, name, file, importsOf, ownValueOf, exportOf);
+}
+
+/**
  * Whether the `<Name` at `at` opens a JSX tag. A type argument list follows
  * its type's name directly — `useState<User>()`, `Array<Item>`, the
  * `<Document>` of `<PaginatedList<Document>` — and a tag never does, short of
@@ -1917,9 +1947,6 @@ function writtenBare(src: string, name: string): boolean {
   return false;
 }
 
-/** The tags a parent's span holds (see reactJsxChildEdges); `src` is the owned text of an owning parent. */
-type SpanTags = { tags: Map<string, number>; bare: Set<string>; src: string };
-
 /**
  * Whether the lines a file or top-level value owns (#2587) declare `name`
  * (`const Card = vi.fn()` in a test callback). Only those lines are read, so
@@ -1944,6 +1971,262 @@ function declaredInside(ctx: ResolutionContext, name: string, parent: Node, chil
 }
 
 /**
+ * What a function's span holds: each tag's name and the line of its first tag
+ * (0 while only type argument or parameter lists name it, `opensTag`), the
+ * names it also writes outside a tag (`writtenBare`), its code, and whether
+ * that code destructures a name by a line (`destructuredBy`).
+ */
+type SpanTags = { tags: Map<string, number>; bare: Set<string>; src: string; destructured: Map<string, boolean> };
+
+/** The tags `src`, a function's lines from `startLine`, holds. */
+function spanTags(src: string, startLine: number): SpanTags {
+  const names: SpanTags = { tags: new Map<string, number>(), bare: new Set<string>(), src, destructured: new Map<string, boolean>() };
+  if (src.includes('</') || src.includes('/>')) {
+    let line = startLine;
+    let counted = 0;
+    JSX_TAG_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = JSX_TAG_RE.exec(src))) {
+      for (let nl = src.indexOf('\n', counted); nl !== -1 && nl < m.index; nl = src.indexOf('\n', nl + 1)) line++;
+      counted = m.index;
+      if (!names.tags.get(m[1]!)) names.tags.set(m[1]!, opensTag(src, m.index, m[1]!) ? line : 0);
+    }
+    for (const [name, first] of names.tags) if (first && writtenBare(src, name)) names.bare.add(name);
+  }
+  return names;
+}
+
+/**
+ * Whether `fn`'s code (`names`, its span) binds `name` by `line`: a `const`,
+ * a parameter (`jsCodeBindsName`) or a destructured name (`destructures`).
+ * Only a name it also writes outside a tag can be bound there.
+ */
+function scopeBinds(names: SpanTags, fn: Node, name: string, line: number, file: string, ctx: ResolutionContext): boolean {
+  return names.bare.has(name) &&
+    (jsCodeBindsName(name, fn, file, line, ctx) || destructuredBy(names, name, line - fn.startLine));
+}
+
+/** The functions among `parents` whose lines hold `fn`'s, innermost first. */
+function functionsAround(parents: Node[], fn: Node): Node[] {
+  const around: Node[] = [];
+  for (const n of parents) {
+    if (n.startLine <= fn.startLine && n.endLine >= fn.endLine &&
+        (n.startLine !== fn.startLine || n.endLine !== fn.endLine)) around.push(n);
+  }
+  return around.sort((a, b) => b.startLine - a.startLine || a.endLine - b.endLine);
+}
+
+/** Whether a span's code destructures `name` through its `index`th line (`destructures`), once per span, line and name. */
+function destructuredBy(names: SpanTags, name: string, index: number): boolean {
+  const key = `${index}\0${name}`;
+  let binds = names.destructured.get(key);
+  if (binds === undefined) names.destructured.set(key, (binds = destructures(names.src, name, lineEnd(names.src, index))));
+  return binds;
+}
+
+/** Where the `index`th line of `src`, counted from 0, ends. */
+function lineEnd(src: string, index: number): number {
+  let at = -1;
+  for (let i = 0; i <= index; i++) {
+    at = src.indexOf('\n', at + 1);
+    if (at === -1) return src.length;
+  }
+  return at;
+}
+
+const ID_CHAR = /[\w$]/;
+const SPACE = /\s/;
+/** How far a bracket walk reads: no pattern or parameter list runs longer. */
+const PATTERN_REACH = 10_000;
+const CONTROL_HEADS = new Set(['if', 'while', 'for', 'switch', 'with']);
+/** After a parameter list: a return type on its line, then `=>` or a body. */
+const PARAMETERS_END = /\s*(?::[^=;{}()\n]*)?(?:=>|\{)/y;
+/** After a declaration's pattern: its type, then a `require(…)` or `import(…)` value. */
+const IMPORTED_VALUE = /\s*(?::[^=;]*)?=\s*(?:await\s+)?(?:require|import)\s*\(/y;
+
+/**
+ * Whether `src`, before `end`, binds `name` in a destructuring pattern: a
+ * declaration's (excalidraw's example app: `const { Sidebar, Footer,
+ * WelcomeScreen } = excalidrawLib`; `const [Panel] = useState(…)`) or a
+ * parameter's (refine's `({ children, Header, Footer, Sider }) =>`, `({ icon:
+ * Icon }) =>`), nested patterns included. A key a pattern renames binds
+ * nothing (`{ footer: Footer }` binds `Footer`), nor does a default value
+ * (`{ Icon = DefaultIcon }`) or a type literal after the pattern (`}: {
+ * footer: Footer }`), and a declaration of `require(…)` or `import(…)` binds
+ * the module's own export, which links as an import does. `src` is code
+ * (`jsxCode`), so a bracket in a string is blank.
+ */
+function destructures(src: string, name: string, end: number): boolean {
+  for (let at = src.indexOf(name); at !== -1 && at < end; at = src.indexOf(name, at + name.length)) {
+    if (bindingElementAt(src, at, name.length)) return true;
+  }
+  return false;
+}
+
+/** Where a destructuring declaration's pattern opens: `const {`, `let [`. */
+const DESTRUCTURING_DECLARATION = /\b(?:const|let|var)\s*[{[]/g;
+
+/**
+ * The patterns `code` destructures at its top, as [opener, closer] pairs: a
+ * declaration's outside every brace, so in no function, class or block, and
+ * never a top-level callback's parameter. Braces alone are counted: JSX text
+ * may hold a stray `(` or `[`, never a `{` that opens no expression, and
+ * `code` (`jsxCode`) balances them.
+ */
+function topLevelPatterns(code: string): Array<[number, number]> {
+  const patterns: Array<[number, number]> = [];
+  let depth = 0;
+  let at = 0;
+  DESTRUCTURING_DECLARATION.lastIndex = 0;
+  for (let m = DESTRUCTURING_DECLARATION.exec(code); m; m = DESTRUCTURING_DECLARATION.exec(code)) {
+    for (; at < m.index; at++) {
+      if (code[at] === '{') depth++;
+      else if (code[at] === '}') depth--;
+    }
+    if (depth !== 0) continue;
+    const open = m.index + m[0].length - 1;
+    const close = matchingCloser(code, open);
+    if (close > open) patterns.push([open, close]);
+  }
+  return patterns;
+}
+
+/**
+ * Whether one of `patterns` in `code` binds `name` (`bindingElementAt`), so
+ * not in a declaration of `require(…)` or `import(…)`.
+ */
+function patternsBind(code: string, patterns: Array<[number, number]>, name: string): boolean {
+  for (const [open, close] of patterns) {
+    for (let at = code.indexOf(name, open); at !== -1 && at < close; at = code.indexOf(name, at + name.length)) {
+      if (bindingElementAt(code, at, name.length)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Whether the name at `at` is an element of a pattern that binds it — `{
+ * Name }`, `{ ...Name }`, `{ key: Name }`, `[Name]` — followed by the next
+ * element, the pattern's end or a default.
+ */
+function bindingElementAt(code: string, at: number, length: number): boolean {
+  if (ID_CHAR.test(code[at - 1] ?? '') || ID_CHAR.test(code[at + length] ?? '')) return false;
+  const next = skipSpace(code, at + length, 1);
+  const after = code[next];
+  if (after !== ',' && after !== '}' && after !== ']' &&
+      (after !== '=' || code[next + 1] === '=' || code[next + 1] === '>')) return false;
+  let prev = skipSpace(code, at - 1, -1);
+  // A rest element; any other `.` reads a member.
+  if (code[prev] === '.') {
+    if (code[prev - 1] !== '.' || code[prev - 2] !== '.') return false;
+    prev = skipSpace(code, prev - 3, -1);
+  }
+  let opener = prev;
+  if (code[prev] === ',') {
+    opener = enclosingOpener(code, prev - 1);
+  } else if (code[prev] === ':') {
+    // A rename's target: its key opens an element of an object pattern.
+    if (!keyOpensElement(code, prev)) return false;
+    opener = enclosingOpener(code, prev - 1);
+    if (code[opener] !== '{') return false;
+  }
+  return (code[opener] === '{' || code[opener] === '[') && bindsPattern(code, opener, 0);
+}
+
+/**
+ * Whether the `{` or `[` at `opener` opens a pattern that binds its names: a
+ * declaration's, unless it declares an import, or a parameter's — itself or
+ * through the patterns it nests in.
+ */
+function bindsPattern(code: string, opener: number, depth: number): boolean {
+  if (depth > 8) return false;
+  const p = skipSpace(code, opener - 1, -1);
+  const c = code[p];
+  if (c === '(') return opensParameters(code, p);
+  if (c === '[') return bindsPattern(code, p, depth + 1);
+  if (c === ',') {
+    const q = enclosingOpener(code, p - 1);
+    if (code[q] === '(') return opensParameters(code, q);
+    return code[q] === '[' && bindsPattern(code, q, depth + 1);
+  }
+  if (c === ':') {
+    // `{ key: { … } }` nests a pattern; `props: {` and `}: {` annotate a type.
+    if (!keyOpensElement(code, p)) return false;
+    const q = enclosingOpener(code, p - 1);
+    return code[q] === '{' && bindsPattern(code, q, depth + 1);
+  }
+  if (!ID_CHAR.test(c ?? '')) return false;
+  const word = wordEndingAt(code, p);
+  if (word !== 'const' && word !== 'let' && word !== 'var') return false;
+  const close = matchingCloser(code, opener);
+  if (close < 0) return false;
+  IMPORTED_VALUE.lastIndex = close + 1;
+  return !IMPORTED_VALUE.test(code);
+}
+
+/**
+ * Whether the `(` at `paren` opens a parameter list: an arrow or a body
+ * follows it, and no control-flow keyword precedes it (`if ([a, B].includes(x)) {`).
+ */
+function opensParameters(code: string, paren: number): boolean {
+  const p = skipSpace(code, paren - 1, -1);
+  if (ID_CHAR.test(code[p] ?? '') && CONTROL_HEADS.has(wordEndingAt(code, p))) return false;
+  const close = matchingCloser(code, paren);
+  if (close < 0) return false;
+  PARAMETERS_END.lastIndex = close + 1;
+  return PARAMETERS_END.test(code);
+}
+
+/** Whether a property key ends at the `:` at `colon` and opens its element: `{ key:`, `, 'key':`, `, [key]:`. */
+function keyOpensElement(code: string, colon: number): boolean {
+  let k = skipSpace(code, colon - 1, -1);
+  const c = code[k];
+  if (c === ']') k = enclosingOpener(code, k - 1) - 1;
+  else if (c === '"' || c === "'") k = code.lastIndexOf(c, k - 1) - 1;
+  else if (ID_CHAR.test(c ?? '')) while (k >= 0 && ID_CHAR.test(code[k]!)) k--;
+  else return false;
+  const b = code[skipSpace(code, k, -1)];
+  return b === '{' || b === ',';
+}
+
+/** The `(`, `[` or `{` around `from`, past balanced brackets; -1 when none is near. */
+function enclosingOpener(code: string, from: number): number {
+  let depth = 0;
+  for (let i = from, stop = Math.max(0, from - PATTERN_REACH); i >= stop; i--) {
+    const c = code[i];
+    if (c === ')' || c === ']' || c === '}') depth++;
+    else if (c === '(' || c === '[' || c === '{') {
+      if (depth === 0) return i;
+      depth--;
+    }
+  }
+  return -1;
+}
+
+/** The bracket that closes the one at `open`; -1 when none is near. */
+function matchingCloser(code: string, open: number): number {
+  let depth = 0;
+  for (let i = open, stop = Math.min(code.length, open + PATTERN_REACH); i < stop; i++) {
+    const c = code[i];
+    if (c === '(' || c === '[' || c === '{') depth++;
+    else if ((c === ')' || c === ']' || c === '}') && --depth === 0) return i;
+  }
+  return -1;
+}
+
+/** The identifier that ends at `end`. */
+function wordEndingAt(code: string, end: number): string {
+  let start = end;
+  while (start > 0 && ID_CHAR.test(code[start - 1]!)) start--;
+  return code.slice(start, end + 1);
+}
+
+function skipSpace(code: string, at: number, step: 1 | -1): number {
+  while (at >= 0 && at < code.length && SPACE.test(code[at]!)) at += step;
+  return at;
+}
+
+/**
  * Phase 5: React JSX child rendering. A component that returns `<Child .../>`
  * mounts Child — React calls it — but JSX instantiation isn't a static call edge,
  * so a render tree (App.render → StaticCanvas → renderStaticScene) breaks at the
@@ -1958,12 +2241,19 @@ function declaredInside(ctx: ResolutionContext, name: string, parent: Node, chil
  * `<Entry extends BaseEntity>(…) =>`; outline's `<PaginatedList<Document>`
  * read its `Document` model class as a child), and the name must resolve to a
  * component/function/class node, or to a value the file declares itself (see
- * `jsxChild`). A name the parent binds itself by its first
- * tag — a parameter, or a `const` like outline's `const Content = variant ===
- * "dropdown" ? DropdownMenu.SubContent : ContextMenu.SubContent` — is that
- * local, and renders only a component declared inside the parent
- * (`declaredInside`). A destructured name still links by name, as a
- * destructured function call does.
+ * `jsxChild`). A name the parent, or a function around it, binds by the
+ * parent's first tag — a parameter, or a `const` like outline's `const Content
+ * = variant === "dropdown" ? DropdownMenu.SubContent : ContextMenu.SubContent`
+ * — is that local, and renders only a component declared inside that function
+ * (`declaredInside`). So is a name it destructures (`destructures`): refine's
+ * `Layout({ children, Header, Footer, Sider })` rendered another example's
+ * `Footer`, and excalidraw's example app rendered the `Sidebar` of its own
+ * `ExampleSidebar.tsx` for the library's, out of `const { Sidebar, Footer } =
+ * excalidrawLib`. A name the file destructures at its top, like refine's
+ * `const { Title, Text } = Typography`, is a local of every function in it
+ * (`topLevelPatterns`). A destructured name keeps linking for a bare call —
+ * `const { t } = useI18n()` is that function more often than not — but a
+ * tag's is a component the props or a library hand in, which is no node here.
  */
 async function reactJsxChildEdges(ctx: ResolutionContext, onYield: MaybeYield): Promise<Edge[]> {
   let scannedFiles = 0;
@@ -1989,12 +2279,47 @@ async function reactJsxChildEdges(ctx: ResolutionContext, onYield: MaybeYield): 
     if ((++scannedFiles & 15) === 0) await onYield();
     if ((++scanned & 255) === 0) await onYield(); // #1091: yield mid-scan on huge graphs
     const content = ctx.readFile(file);
-    if (!content || (!content.includes('</') && !content.includes('/>'))) continue; // JSX-file gate
+    if (!content) continue;
+    const hasTags = content.includes('</') || content.includes('/>');
+    const wraps = WRAPPER_CALL_RE.test(content);
+    if (!hasTags && !wraps) continue; // JSX-file gate
     // File-level language gate, not merely a project-level one: mixed C/JS
     // monorepos must not interpret `"<Foo/>"` inside C as JSX (#1560). A
     // TypeScript `.ts` file holds no JSX either: a `<Name>` there is a type
     // assertion or text, like outline's OpenSearch XML template.
     const inFile = ctx.getNodesInFile(file);
+    // Once per file and name: the value the file declares under it, if any.
+    const ownValues = new Map<string, ReturnType<typeof declaredComponent>>();
+    const ownValueOf = (name: string) => {
+      if (!ownValues.has(name)) ownValues.set(name, declaredComponent(name, file, ctx));
+      return ownValues.get(name);
+    };
+    // A wrapper component renders the component it wraps, with no tag to read:
+    // outline's `const NudeButton = styled(ActionButton)…`, a `memo(Button)`.
+    // Without the link a render flow through it ends at the wrapper. The name
+    // binds as a tag of that name in this file would, where the file binds it
+    // (`wrappedChild`), so a package's `styled(Link)` renders nothing here. Any
+    // JS-family file: a styles `.ts` file declares wrappers too.
+    if (wraps) {
+      let wrapperImports: Map<string, string> | null = null;
+      for (const wrapper of inFile) {
+        if (wrapper.kind !== 'component' || !JS_FAMILY.includes(wrapper.language)) continue;
+        const name = wrappedComponentName(wrapper, ctx);
+        if (!name) continue;
+        const importsOf = () => (wrapperImports ??= importedFrom(ctx, file, wrapper.language));
+        const child = wrappedChild(ctx, name, file, importsOf, ownValueOf, exportOf);
+        if (!child || child.id === wrapper.id || crossesCodeBoundary(wrapper.language, child.language)) continue;
+        const key = `${wrapper.id}>${child.id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        edges.push({
+          source: wrapper.id, target: child.id, kind: 'calls', line: wrapper.startLine,
+          provenance: 'heuristic',
+          metadata: { synthesizedBy: 'jsx-render', via: name, wrapped: true },
+        });
+      }
+    }
+    if (!hasTags) continue;
     const fns = inFile.filter((n) => PARENT_KINDS.has(n.kind) && JSX_FAMILY.includes(n.language));
     // JSX outside every function renders from where a plain call there is
     // attributed (#2587): a top-level `const ICONS = { a: <Icon /> }` from the
@@ -2005,6 +2330,8 @@ async function reactJsxChildEdges(ctx: ResolutionContext, onYield: MaybeYield): 
     // an export or a framework's route holds. So no tag counts twice.
     // The file's lines read as code, split once: a tag in a comment or a
     // string is text (`jsxCode`).
+    let code: string | null | undefined;
+    const codeOf = () => (code === undefined ? (code = jsxCode(content)) : code);
     let lines: string[] | null = null;
     const holds = (n: Node) => PARENT_KINDS.has(n.kind) || n.kind === 'class';
     let fileNode = inFile.find((n) => n.kind === 'file' && JSX_FAMILY.includes(n.language));
@@ -2028,7 +2355,7 @@ async function reactJsxChildEdges(ctx: ResolutionContext, onYield: MaybeYield): 
       // and not the file's, which owns only lines no node holds: ownership is
       // by line, so its tags get no edge rather than a wrong one. Read as
       // code, so a comment there is no statement.
-      const raw = (lines ??= (jsxCode(content) ?? content).split('\n'));
+      const raw = (lines ??= (codeOf() ?? content).split('\n'));
       for (const v of values) {
         for (let l = v.startLine; l <= v.endLine && l < valuesOn.length; l++) if (valuesOn[l]! < 2) valuesOn[l]!++;
         const before = (raw[v.startLine - 1] ?? '').slice(0, v.startColumn ?? 0);
@@ -2046,57 +2373,85 @@ async function reactJsxChildEdges(ctx: ResolutionContext, onYield: MaybeYield): 
     let imports: Map<string, string> | null = null;
     const importsOf = () =>
       (imports ??= importedFrom(ctx, file, parents[0]!.language));
-    // Once per file and name: the value the file declares under it, if any.
-    const ownValues = new Map<string, ReturnType<typeof declaredComponent>>();
-    const ownValueOf = (name: string) => {
-      if (!ownValues.has(name)) ownValues.set(name, declaredComponent(name, file, ctx));
-      return ownValues.get(name);
-    };
     // A function renders the tags its own lines hold, so functions that span
     // the same lines share them: every function of a minified bundle spans
     // its one line, and reading that line again per function took 9 to 25 s
     // over go-ethereum's graphiql.min.js (2,234 functions on 980 KB). The
     // file is split once, not once per function, and read as code once: a
     // tag in a comment or a string is text (`jsxCode`).
-    // Each name a span holds, and the line of its first tag: 0 while only type
-    // argument or parameter lists name it (`opensTag`). `bare` holds the
-    // names it also writes outside a tag (`writtenBare`).
+    // Each name a span holds (`spanTags`), read when a function among the
+    // parents is, or a function around one. A parent that owns its lines
+    // (#2587) reads only those, the rest left blank, under its own key.
     const tagsBySpan = new Map<string, SpanTags>();
-    for (const parent of parents) {
-      if (!parent.startLine || !parent.endLine) continue;
-      const own = owns.get(parent.id);
-      const span = own ? parent.id : `${parent.startLine}:${parent.endLine}`;
+    const spanOf = (fn: Node): SpanTags => {
+      const own = owns.get(fn.id);
+      const span = own ? fn.id : `${fn.startLine}:${fn.endLine}`;
       let names = tagsBySpan.get(span);
       if (!names) {
-        names = { tags: new Map<string, number>(), bare: new Set<string>(), src: '' };
-        lines ??= (jsxCode(content) ?? content).split('\n');
-        // An owning parent reads only its own lines; the rest stay as blank lines.
-        const spanLines = lines.slice(parent.startLine - 1, parent.endLine);
-        const src = (own ? spanLines.map((text, i) => (own(parent.startLine + i) ? text : '')) : spanLines).join('\n');
-        if (own) names.src = src;
-        if (src.includes('</') || src.includes('/>')) {
-          let line = parent.startLine;
-          let counted = 0;
-          JSX_TAG_RE.lastIndex = 0;
-          let m: RegExpExecArray | null;
-          while ((m = JSX_TAG_RE.exec(src))) {
-            for (let nl = src.indexOf('\n', counted); nl !== -1 && nl < m.index; nl = src.indexOf('\n', nl + 1)) line++;
-            counted = m.index;
-            if (!names.tags.get(m[1]!)) names.tags.set(m[1]!, opensTag(src, m.index, m[1]!) ? line : 0);
-          }
-          for (const [name, first] of names.tags) if (first && writtenBare(src, name)) names.bare.add(name);
-        }
+        lines ??= (codeOf() ?? content).split('\n');
+        const spanLines = lines.slice(fn.startLine - 1, fn.endLine);
+        names = spanTags((own ? spanLines.map((text, i) => (own(fn.startLine + i) ? text : '')) : spanLines).join('\n'), fn.startLine);
         tagsBySpan.set(span, names);
       }
+      return names;
+    };
+    // Whether the file destructures a name at its top (`topLevelPatterns`),
+    // once per name. Read only off code: a file `jsxCode` can't read binds
+    // nothing here.
+    let topPatterns: Array<[number, number]> | null = null;
+    const topBinds = new Map<string, boolean>();
+    const destructuredAtTop = (name: string): boolean => {
+      let binds = topBinds.get(name);
+      if (binds === undefined) {
+        const src = codeOf();
+        topPatterns ??= src === null ? [] : topLevelPatterns(src);
+        binds = src !== null && topPatterns.length > 0 && patternsBind(src, topPatterns, name);
+        topBinds.set(name, binds);
+      }
+      return binds;
+    };
+    for (const parent of parents) {
+      if (!parent.startLine || !parent.endLine) continue;
+      const names = spanOf(parent);
+      // The functions around the parent, innermost first, once a tag needs them.
+      let around: Node[] | null = null;
       let added = 0;
       for (const [name, line] of names.tags) {
         if (added >= MAX_JSX_CHILDREN) break;
         if (!line) continue;
         let child = jsxChild(ctx, name, file, importsOf, ownValueOf, exportOf);
-        // A name the parent binds itself by its first tag is that local.
-        if (child && names.bare.has(name) &&
-            (own ? ownLinesBind(name, names.src) : jsCodeBindsName(name, parent, file, line, ctx))) {
-          child = declaredInside(ctx, name, parent, child);
+        if (child) {
+          const own = owns.get(parent.id);
+          if (own) {
+            // A tag the file or a top-level value holds (#2587): a name its own
+            // lines declare (`const Card = vi.fn()` in a test's callback), or one
+            // the file destructures at its top, is that local.
+            if ((names.bare.has(name) && ownLinesBind(name, names.src)) || destructuredAtTop(name)) {
+              child = declaredInside(ctx, name, parent, child);
+            }
+          } else {
+            // A name the parent, or a function around it, binds by the parent's
+            // first tag is that local: excalidraw's example app destructures
+            // `Sidebar` and `Footer` once and renders them in nested `render…`
+            // functions too. It renders a component that function declares, if
+            // any (`declaredInside`).
+            let binder = scopeBinds(names, parent, name, line, file, ctx) ? parent : undefined;
+            if (!binder) {
+              around ??= functionsAround(fns, parent);
+              for (const fn of around) {
+                if (scopeBinds(spanOf(fn), fn, name, line, file, ctx)) {
+                  binder = fn;
+                  break;
+                }
+              }
+            }
+            if (binder) child = declaredInside(ctx, name, binder, child);
+            // A name the file destructures at its top is every function's local:
+            // refine's pages take `const { Title, Text } = Typography` from antd
+            // and rendered two other examples' `Title` and `Text`. A function
+            // that declares the name inside itself still renders its own.
+            else if (destructuredAtTop(name)) child = declaredInside(ctx, name, around?.[around.length - 1] ?? parent, child);
+          }
         }
         if (!child || child.id === parent.id || crossesCodeBoundary(parent.language, child.language)) continue;
         const key = `${parent.id}>${child.id}`;
@@ -4556,9 +4911,13 @@ export function hasSynthesisPattern(filePath: string, content: string): boolean 
   if (/\.(?:c|h|cc|cpp|cxx|hpp|hh|hxx|cppm|ipp|inl|tcc|def|inc|tbl)$/i.test(filePath) &&
     /\b(?:struct|union|typedef|virtual|override)\b|#\s*(?:include|define|if)|=|->|\[/.test(content)) return true;
   if (/\b(?:class|interface|protocol|trait|impl|extends|implements|expect|actual)\b/.test(content)) return true;
-  if (/\.go$/.test(filePath) && /\b(?:struct|interface)\b|\bfunc\s*\(/.test(content)) return true;
+  // Every Go file: besides the declarations the interface passes read, a call
+  // through a func field, or a function put in one, can sit in any of them.
+  if (/\.go$/.test(filePath)) return true;
   if (hasCrossTierPattern(content) || hasTestRequestPattern(filePath, content)) return true;
   if (/\b(?:render|build|setState|defineStore|createStore|createApi|Store|href|sendEvent|sendEventWithName)\b|<\/|\/>/.test(content)) return true;
+  // A wrapper renders the component it wraps (jsxEdges), in a file with no markup of its own too.
+  if (WRAPPER_CALL_RE.test(content)) return true;
   if (/\.(?:forEach|append|add|push|insert|fire|dispatchEvent|addListener|Use|GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD|Any|Handle)\s*\(/.test(content)) return true;
   if (/[\w$]\s*\[\s*[A-Za-z_$]/.test(content) || /\b(?:dispatch|commit)\s*\(/.test(content)) return true;
   const patterns = [THUNK_DECL_RE, CELERY_TASK_DECORATOR_RE, CELERY_DISPATCH_RE,
@@ -4653,6 +5012,9 @@ export const SYNTH_PASSES: SynthPassDef[] = [
     run: (q, c, y, sub) => cFnPointerDispatchEdges(q, c, y, sub),
   },
   { name: 'goframeEdges', gate: (has) => has('go'), run: (_q, c, y) => goframeRouteEdges(c, y) },
+  // `d.refreshf(ctx)` onto the functions put in that func field (`RefreshF: d.refresh`).
+  // After the Go framework passes: a pair one of them bridges keeps its more specific edge.
+  { name: 'goFuncFieldEdges', gate: (has) => has('go'), run: (q, c, y) => goFuncFieldEdges(q, c, y, MAX_CALLBACKS_PER_CHANNEL) },
   // `router.push(await helper())` — the helper's return literals are the screens.
   { name: 'expoRouterReturnEdges', gate: (has) => has(...JS_FAMILY), run: (_q, c, y) => expoRouterReturnEdges(c, y) },
   // `<Link href="/x">` / an internal `<a href>` — markup, not a call; the component navigates.
@@ -4674,7 +5036,7 @@ export const SYNTH_PASSES: SynthPassDef[] = [
  * order after these. A wrong hint costs wall time, never edges.
  */
 const SYNTH_PASS_COST_HINT: Readonly<Record<string, number>> = {
-  cFnPtrEdges: 100, registryEdges: 60, tierEdges: 55, jsxEdges: 25, rnEventEdgesList: 24,
+  cFnPtrEdges: 100, registryEdges: 60, tierEdges: 55, goFuncFieldEdges: 30, jsxEdges: 25, rnEventEdgesList: 24,
   ifaceEdges: 18, flutterEdges: 16, cppEdges: 15, emitterEdges: 12, fieldEdges: 11,
   mybatisEdges: 10, vuexEdges: 8, closureCollEdges: 6, piniaEdges: 5, renderEdges: 4,
 };
