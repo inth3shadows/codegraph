@@ -6,6 +6,9 @@
 >
 > - **`codegraph sync`** refuses an index built by an older extractor instead of saying
 >   "Already up to date" (upstream [#1842](https://github.com/colbymchenry/codegraph/pull/1842) by @bompus).
+> - **Imports spelled with a trailing slash or a `./` segment** (`@/widgets/Chart/`) link to the
+>   indexed file, so lazily loaded components and their synthesis inputs survive a sync
+>   (upstream [#2610](https://github.com/colbymchenry/codegraph/pull/2610) by @JiaMingWang-CN, fixes #2577).
 >
 > Earlier fork fixes are now in upstream: TypeScript `type` imports, Express handler
 > arguments, git sync hooks, `Class.method()` binding, Python attribute calls and package
