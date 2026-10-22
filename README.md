@@ -12,6 +12,9 @@
 > - **JavaScript/TypeScript calls in a parameter default** (`function render(note = buildNote())`) link to the
 >   function, including arrow class fields, `memo`/`forwardRef` components and object-literal methods
 >   ([#2753](https://github.com/colbymchenry/codegraph/pull/2753), fixes #2588).
+> - **TypeScript calls on an element of a class field** (`this.handlers[type].handle()`) link to the
+>   method of the type the field holds (`Item[]`, `Record<string, Handler>`), not to any same-named
+>   method of another class ([#2766](https://github.com/colbymchenry/codegraph/pull/2766)).
 >
 > Earlier fork fixes are now in upstream: TypeScript `type` imports, Express handler
 > arguments, git sync hooks, `Class.method()` binding, Python attribute calls and package
