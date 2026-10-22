@@ -18712,7 +18712,7 @@ function outerReceiverUseIsRead(line: string, at: number, name: string, previous
 function outerReceiverLines(receiver: string, file: OuterScanFile, stripped: string[], lines: string[]): OuterReceiverLines {
   const hit = file.receivers.get(receiver);
   if (hit) return hit;
-  const r = escapeRegExp(receiver);
+  const r = receiver.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const use = new RegExp(`(?<![\\w$])${r}(?![\\w$])`, 'g');
   const typedDecl = new RegExp(`(?<![\\w$.])(?:const|let|var)\\s+${r}\\s*:`);
   const found: OuterReceiverLines = { typed: [], unread: [] };
@@ -18779,7 +18779,7 @@ function isOuterDeclaredOutsideReceiver(receiver: string, ref: UnresolvedRef, co
     break;
   }
   if (declIdx < 0 || unread.some((i) => i > declIdx && i <= callIdx)) return false;
-  for (const re of localReceiverTypePatterns(ref.language, escapeRegExp(receiver))) {
+  for (const re of localReceiverTypePatterns(ref.language, receiver.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))) {
     const raw = lines[declIdx]!.match(re)?.[1];
     if (!raw) continue;
     const type = normalizeInferredTypeName(raw);
