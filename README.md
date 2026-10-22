@@ -15,6 +15,9 @@
 > - **TypeScript calls on an element of a class field** (`this.handlers[type].handle()`) link to the
 >   method of the type the field holds (`Item[]`, `Record<string, Handler>`), not to any same-named
 >   method of another class ([#2766](https://github.com/colbymchenry/codegraph/pull/2766)).
+> - **JS/TS calls on a variable declared outside the calling function with a package's type** (react-dom's
+>   `root.render(<App />)` on a module-level `let root: Root | null`) no longer link to a same-named
+>   project method, such as an error boundary's `render()` ([#2807](https://github.com/colbymchenry/codegraph/pull/2807)).
 >
 > Earlier fork fixes are now in upstream: TypeScript `type` imports, Express handler
 > arguments, git sync hooks, `Class.method()` binding, Python attribute calls and package
