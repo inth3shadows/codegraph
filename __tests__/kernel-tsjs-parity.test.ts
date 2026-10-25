@@ -300,6 +300,11 @@ async function exprReceivers(x, y) {
   ${typed ? 'this.items![0].save(); (this.items[1] as X).save();' : ''}
   super.stop();
   new Runner().go();
+  (new ns.Widget(1)).draw();
+  new (pick())().go();
+  new Runner().a.run();
+  new this.constructor().copy(x);
+  new this().init();
   window.Api.start();
 }
 `, language);
@@ -310,7 +315,7 @@ async function exprReceivers(x, y) {
         ...(typed ? ['x.run', 'y.run', 'x.stop', 'getTarget().install', 'getTarget', 'has'] : []),
         'f', 'run', 'this.listeners[].push', 'this.svc.start',
         ...(typed ? ['this.items[].save', 'this.items[].save'] : []),
-        'stop', 'go', 'start',
+        'stop', 'new Runner().go', 'new ns.Widget().draw', 'pick', 'copy', 'init', 'start',
       ]);
   });
 
@@ -402,6 +407,11 @@ export const Box = () => <div data-size={THEME_TOKENS.size} />;
   it('torture fixture (java): Lombok, anonymous classes, method refs, chains', () => {
     const file = path.join(FIXTURE_DIR, 'Torture.java');
     assertParity('fixtures/Torture.java', fs.readFileSync(file, 'utf8'), 'java');
+  });
+
+  it('torture fixture (java records): components, compact ctors, nested/local/generic records', () => {
+    const file = path.join(FIXTURE_DIR, 'TortureRecord.java');
+    assertParity('fixtures/TortureRecord.java', fs.readFileSync(file, 'utf8'), 'java');
   });
 
   it('torture fixture (python): decorators, self fn-refs, imports, shadowing', () => {
@@ -498,6 +508,7 @@ func wire(s *Store) {
     ['torture.tsx', 'tsx'],
     ['torture.js', 'javascript'],
     ['Torture.java', 'java'],
+    ['TortureRecord.java', 'java'],
     ['torture.py', 'python'],
     ['torture.go', 'go'],
   ] as const)('torture fixture CRLF parity: %s', (name, lang) => {

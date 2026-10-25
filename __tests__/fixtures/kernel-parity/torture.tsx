@@ -281,12 +281,17 @@ export function NestedHandlers({ items, onPick }: { items: string[]; onPick: (a:
   return items.map((i) => <button onClick={handleClear} onDoubleClick={() => describe(i)}>{later(i)}{count}{a()}{b()}</button>);
 }
 
-// #2588: a call in a parameter default belongs to the function.
-export function paramDefault(note = buildParamNote(), { n = buildParamNote().id } = {}, made = new ParamNote()) { return [note, n, made]; }
-export const paramDefaultArrow = (note: { id: number } = buildParamNote()) => note.id;
-export class ParamDefaultHost { m(note = buildParamNote(), cb = () => buildParamNote()) { return [note, cb]; } }
-export class ParamDefaultFields { handle = (e = buildParamNote()) => e; wrapped = throttle((n = buildParamNote()) => n); }
-export const ParamDefaultFwd = forwardRef(({ title = buildParamNote() }: any, ref: any) => <div ref={ref}>{title}</div>);
-setTimeout((n = buildParamNote()) => n, 0);
-export const ParamDefaultNested = memo(forwardRef(({ title = buildParamNote() }: any, ref: any) => <div ref={ref}>{title}</div>));
-registerParamDefaults({ go(a = buildParamNote()) { return a; } });
+// --- parameter defaults are the function's code (#2588) ----------------------
+export function defaultsOf(note = formatLabel('x'), { a = parseLabel('a'), b: { c = new FieldDelegator({}, []) } = {} as any }: any = {}, [first = formatLabel('f')]: string[] = [], { [parseLabel('k')]: keyed }: any = {}) { return [note, a, c, first, keyed]; }
+export const defaultArrow = (cb = (e: unknown) => formatLabel(String(e)), typed: ReturnType<typeof parseLabel> = parseLabel('t')) => cb(typed);
+export class DefaultsHolder {
+  constructor(private readonly delegate = new FieldDelegator({ send: (m: string) => m }, [])) {}
+  pick(item = formatLabel('i')) { return item; }
+  onPick = (item = parseLabel('p')) => item;
+  wrappedPick = withBatchedUpdates((item = formatLabel('w')) => item);
+}
+export const DefaultsApi = { load(note = formatLabel('l')) { return note; }, save: (note = parseLabel('s')) => note };
+export const DefaultsRef = forwardRef(function DefaultsRef({ size = parseLabel('z') }: any, ref: any) { return <b ref={ref}>{size}</b>; });
+export const DefaultsBox = styled.div.attrs((p = formatLabel('b')) => ({ p }))`color: red;`;
+export function overloadedDefault(x: string): string;
+export function overloadedDefault(x: string = formatLabel('o')): string { return x; }

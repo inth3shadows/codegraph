@@ -6,30 +6,19 @@
 >
 > - **`codegraph sync`** refuses an index built by an older extractor instead of saying
 >   "Already up to date" (upstream [#1842](https://github.com/colbymchenry/codegraph/pull/1842) by @bompus).
-> - **Imports spelled with a trailing slash or a `./` segment** (`@/widgets/Chart/`) link to the
->   indexed file, so lazily loaded components and their synthesis inputs survive a sync
->   (upstream [#2610](https://github.com/colbymchenry/codegraph/pull/2610) by @JiaMingWang-CN, fixes #2577).
-> - **JavaScript/TypeScript calls in a parameter default** (`function render(note = buildNote())`) link to the
->   function, including arrow class fields, `memo`/`forwardRef` components and object-literal methods
->   ([#2753](https://github.com/colbymchenry/codegraph/pull/2753), fixes #2588).
-> - **TypeScript calls on an element of a class field** (`this.handlers[type].handle()`) link to the
->   method of the type the field holds (`Item[]`, `Record<string, Handler>`), not to any same-named
->   method of another class ([#2766](https://github.com/colbymchenry/codegraph/pull/2766)).
-> - **JS/TS calls on a variable declared outside the calling function with a package's type** (react-dom's
->   `root.render(<App />)` on a module-level `let root: Root | null`) no longer link to a same-named
->   project method, such as an error boundary's `render()` ([#2807](https://github.com/colbymchenry/codegraph/pull/2807)).
 >
 > Earlier fork fixes are now in upstream: TypeScript `type` imports, Express handler
 > arguments, git sync hooks, `Class.method()` binding, Python attribute calls and package
 > roots (#1704, #1921, #1926), the synthesis-input foreign-key crash, explore's query plan,
 > braceless `if` bodies, `await f<T>()`, Go local func values, several Python import fixes,
-> React components outside a named function, and before those Dart extension types, #1057
-> path spellings, timer caps, dynamic-import boundaries, the stale-file banner and the
-> schema-less `codegraph.db` fix.
+> React components outside a named function, parameter-default calls (#2588), import path
+> spellings (#2610), subscript element types (#2766), and React DOM root.render edge
+> fixes (#2807), and before those Dart extension types, #1057 path spellings, timer caps,
+> dynamic-import boundaries, the stale-file banner and the schema-less `codegraph.db` fix.
 >
 > Not published to npm; build from source (`npm install && npm run build`). For everything
 > else, use upstream. The rest of this README is upstream's, unchanged.
-
+>
 <div align="center">
 
 # CodeGraph

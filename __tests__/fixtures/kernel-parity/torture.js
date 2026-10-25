@@ -103,6 +103,10 @@ async function exprReceivers(x) {
   (() => 1).call(null);
   this.a.b.run();
   new Runner().go();
+  new RegExp(p).exec(s);
+  (new ns.Widget(1)).draw();
+  new (pick())().go();
+  new this.constructor().copy(x);
 }
 // --- component wrappers walked under the component ------------------------------
 const PANEL_GAP = 8;
@@ -125,8 +129,14 @@ function calleeShapes(handlers, type, fn, ns) {
   (fn)();
   (ns.fn)();
 }
-
-// #2588: a call in a parameter default belongs to the function.
-export function jsParamDefault(note = buildParamNote(), [first = makeFirst()] = [], ...rest) { return [note, first, rest]; }
-export const jsParamDefaultArrow = ({ n = buildParamNote() }) => n;
-registerParamDefaultsJs({ methods: { go(a = buildParamNote()) { return a; } } });
+// --- parameter defaults are the function's code (#2588) -----------------------
+function defaultsOf(note = legacyHelper(1), { a = arrow(2), b: { c = new Widget() } = {} } = {}, [x = legacyHelper(3), , y = arrow(4)] = [], { [legacyHelper(5)]: keyed } = {}) {
+  return [note, a, c, x, y, keyed];
+}
+class DefaultsHolder {
+  constructor(o = new Widget()) { this.o = o; }
+  pick(item = legacyHelper(6)) { return item; }
+  onPick = (item = arrow(7)) => item;
+}
+const defaultsApi = { load(note = legacyHelper(8)) { return note; } };
+export default function (note = arrow(9)) { return note; }

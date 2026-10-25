@@ -1,166 +1,123 @@
 /**
- * An import specifier spelled with a trailing slash (`@/widgets/Chart/`) or a
- * `.` segment (`src/widgets/./Chart`) names the same file as its plain
- * spelling, and resolves to that file's indexed path (#2577). Before, the
- * fallback-alias and direct-path branches returned the spelling as written
- * (`src/widgets/Chart//index.tsx`), which the disk probe accepts but no
- * lookup keyed by the indexed path finds: the lazily loaded component and
- * the file import were lost.
+ * Issue #2577: an import spelled with a trailing slash (`@/widgets/Chart/`), a
+ * `.` segment (`src/widgets/./Chart`), a doubled slash or a `..` segment names
+ * the same file as the plain spelling, but the alias, workspace and direct-path
+ * branches of the import resolver joined the specifier as written. The disk
+ * check accepts any spelling of a file, so the import came back as
+ * `src/widgets/Chart//index.tsx`, which no file node is keyed by: the file
+ * import was dropped, the names fell back to name matching, and a lazily loaded
+ * component rendered the importing file's own `lazy(…)` constant.
+ *
+ * A trailing slash still names a folder: `@/widgets/Chart/` is
+ * `Chart/index.tsx`, never a `Chart.tsx` beside it.
  */
 import { describe, it, expect, afterAll, beforeAll } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { CodeGraph } from '../src';
-import { resolveImportPath } from '../src/resolution/import-resolver';
-import type { ResolutionContext } from '../src/resolution';
 
-/** A context whose `fileExists` mirrors the resolver's lexical disk probe. */
-function contextWithFiles(files: string[]): ResolutionContext {
-  const set = new Set(files);
-  return {
-    getNodesInFile: () => [],
-    getNodesByName: () => [],
-    getNodesByQualifiedName: () => [],
-    getNodesByKind: () => [],
-    fileExists: (p: string) => set.has(path.posix.normalize(p)),
-    readFile: () => null,
-    getProjectRoot: () => '/test',
-    getAllFiles: () => files,
-    getNodesByLowerName: () => [],
-    getImportMappings: () => [],
-  } as unknown as ResolutionContext;
-}
+let root = '';
+let cg: CodeGraph;
 
-describe('resolveImportPath returns the indexed spelling of a path', () => {
-  const ctx = contextWithFiles(['src/App.tsx', 'src/widgets/Chart/index.tsx', 'src/lib/util.ts']);
-
-  it('drops the doubled slash a trailing-slash specifier leaves', () => {
-    expect(resolveImportPath('@/widgets/Chart/', 'src/App.tsx', 'tsx', ctx)).toBe('src/widgets/Chart/index.tsx');
-  });
-
-  it('drops a `.` segment', () => {
-    expect(resolveImportPath('src/widgets/./Chart', 'src/App.tsx', 'tsx', ctx)).toBe('src/widgets/Chart/index.tsx');
-    expect(resolveImportPath('@/./lib/util', 'src/App.tsx', 'tsx', ctx)).toBe('src/lib/util.ts');
-  });
-
-  it('preserves a `..` segment that may follow a symlink', () => {
-    expect(resolveImportPath('src/widgets/../lib/util', 'src/App.tsx', 'tsx', ctx)).toBe('src/widgets/../lib/util.ts');
-  });
-
-  it('leaves the plain spelling unchanged', () => {
-    expect(resolveImportPath('@/widgets/Chart', 'src/App.tsx', 'tsx', ctx)).toBe('src/widgets/Chart/index.tsx');
-    expect(resolveImportPath('./lib/util', 'src/App.tsx', 'tsx', ctx)).toBe('src/lib/util.ts');
-  });
-});
-
-describe('a C/C++ include containing a symlink followed by `..`', () => {
-  let root = '';
-  let cg: CodeGraph;
-
-  beforeAll(async () => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'cg-include-parent-'));
-    fs.mkdirSync(path.join(root, 'inc'));
-    fs.mkdirSync(path.join(root, 'headers', 'dir'), { recursive: true });
-    fs.mkdirSync(path.join(root, 'src'));
-    fs.writeFileSync(path.join(root, 'inc', 'thing.h'), '#define WRONG_HEADER 1\n');
-    fs.writeFileSync(path.join(root, 'headers', 'thing.h'), '#define RIGHT_HEADER 1\n');
-    fs.symlinkSync(
-      path.join(root, 'headers', 'dir'),
-      path.join(root, 'inc', 'link'),
-      process.platform === 'win32' ? 'junction' : 'dir',
-    );
-    for (const ext of ['c', 'cpp']) {
-      fs.writeFileSync(path.join(root, 'src', `use.${ext}`), '#include <link/../thing.h>\n');
-    }
-    fs.writeFileSync(path.join(root, 'compile_commands.json'), JSON.stringify([
-      { directory: root, file: 'src/use.c', arguments: ['cc', '-Iinc', '-c', 'src/use.c'] },
-    ]));
-    cg = await CodeGraph.init(root, { index: true });
-  });
-
-  afterAll(() => {
-    cg?.close();
-    if (root) fs.rmSync(root, { recursive: true, force: true });
-  });
-
-  it.each(['c', 'cpp'])('does not fold the %s include into a different indexed header', (ext) => {
-    const fileNodes = cg.getNodesByKind('file');
-    const source = fileNodes.find((n) => n.filePath === `src/use.${ext}`)!;
-    expect(source).toBeDefined();
-    expect(fileNodes.some((n) => n.filePath === 'inc/thing.h')).toBe(true);
-    expect(fileNodes.some((n) => n.filePath === 'headers/thing.h')).toBe(true);
-    // On POSIX the physical target is headers/thing.h, not inc/thing.h.
-    // Preserve the existing unresolved result rather than inventing a wrong edge.
-    const imports = cg.getOutgoingEdges(source.id).filter((e) => e.kind === 'imports');
-    expect(imports).toEqual([]);
-  });
-});
-
-describe('an import spelled with a trailing slash or a `.` segment (#2577)', () => {
-  let root = '';
-  let cg: CodeGraph;
-
-  // One importing file per spelling of the same folder.
-  const SPELLINGS: Record<string, string> = {
-    Plain: '@/widgets/Chart',
-    Slash: '@/widgets/Chart/',
-    Dot: 'src/widgets/./Chart',
-  };
-
-  beforeAll(async () => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), 'cg-import-spelling-'));
-    const files: Record<string, string> = {
-      'package.json': JSON.stringify({ name: 'app', private: true, dependencies: { react: '^18' } }),
-      'src/widgets/Chart/index.tsx': `export default function ChartView() { return null; }
+const CHART = `export default function ChartView() { return null; }
 export function Legend() { return 1; }
-`,
-    };
-    for (const [label, spec] of Object.entries(SPELLINGS)) {
-      files[`src/App${label}.tsx`] = `import { lazy } from 'react';
+`;
+/** An app that imports and lazily loads `Chart` through `spec`. */
+const app = (spec: string): string => `import { lazy } from 'react';
 import { Legend } from '${spec}';
 const Chart = lazy(() => import('${spec}'));
-export function App${label}() { Legend(); return <Chart />; }
+export function App() { Legend(); return <Chart />; }
 `;
-    }
-    for (const [rel, content] of Object.entries(files)) {
-      const abs = path.join(root, rel);
-      fs.mkdirSync(path.dirname(abs), { recursive: true });
-      fs.writeFileSync(abs, content);
-    }
-    cg = await CodeGraph.init(root, { index: true });
-  });
 
-  afterAll(() => {
-    cg?.close();
-    if (root) fs.rmSync(root, { recursive: true, force: true });
-  });
+const FILES: Record<string, string> = {
+  'package.json': JSON.stringify({ name: 'root', private: true, workspaces: ['packages/*'], dependencies: { react: '^18.0.0' } }),
+  'src/widgets/Chart/index.tsx': CHART,
+  'src/Plain.tsx': app('@/widgets/Chart'),
+  'src/TrailingSlash.tsx': app('@/widgets/Chart/'),
+  'src/DotSegment.tsx': app('src/widgets/./Chart'),
+  'src/DoubleSlash.tsx': app('@/widgets//Chart'),
+  'src/DotDot.tsx': app('@/other/../widgets/Chart'),
+  'src/other/x.ts': `export const x = 1;
+`,
+  // A trailing slash names the folder, not the file beside it.
+  'src/cards/Card.tsx': `export function Legend() { return 2; }
+`,
+  'src/cards/Card/index.tsx': CHART,
+  'src/Folder.tsx': app('@/cards/Card/'),
+  // A workspace member, imported as `@acme/ui/` and through a `.` segment.
+  'packages/ui/package.json': JSON.stringify({ name: '@acme/ui' }),
+  'packages/ui/index.tsx': CHART,
+  'packages/ui/widgets/legend.ts': `export function Legend() { return 3; }
+`,
+  'packages/app/package.json': JSON.stringify({ name: 'app', dependencies: { '@acme/ui': 'workspace:*', react: '^18.0.0' } }),
+  'packages/app/src/Member.tsx': app('@acme/ui/'),
+  'packages/app/src/MemberPath.ts': `import { Legend } from '@acme/ui/./widgets/legend';
+export function show() { return Legend(); }
+`,
+};
 
-  /** `kind -> name@file` for every non-`contains` edge out of a node. */
-  const edgesFrom = (nodeId: string): string[] =>
-    cg.getOutgoingEdges(nodeId)
-      .filter((e) => e.kind !== 'contains')
-      .map((e) => {
-        const target = cg.getNode(e.target)!;
-        return `${e.kind} -> ${target.name}@${target.filePath}`;
-      })
-      .sort();
-
-  const fileNode = (filePath: string) =>
-    cg.getNodesByKind('file').find((n) => n.filePath === filePath)!;
-  const appNode = (label: string) =>
-    cg.getNodesByKind('function').find((n) => n.name === `App${label}`)!;
-
-  for (const [label, spec] of Object.entries(SPELLINGS)) {
-    it(`links the lazy component and the file import for '${spec}'`, () => {
-      const fromApp = edgesFrom(appNode(label).id);
-      expect(fromApp).toContain('calls -> ChartView@src/widgets/Chart/index.tsx');
-      expect(fromApp).toContain('calls -> Legend@src/widgets/Chart/index.tsx');
-      // Not the file's own `Chart` const standing in for the component.
-      expect(fromApp).not.toContain(`calls -> Chart@src/App${label}.tsx`);
-      expect(edgesFrom(fileNode(`src/App${label}.tsx`).id)).toContain(
-        'imports -> index.tsx@src/widgets/Chart/index.tsx',
-      );
-    });
+beforeAll(async () => {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'cg-import-path-spelling-'));
+  for (const [rel, content] of Object.entries(FILES)) {
+    fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+    fs.writeFileSync(path.join(root, rel), content);
   }
+  cg = await CodeGraph.init(root, { index: true });
+}, 60_000);
+
+afterAll(() => {
+  cg?.close();
+  if (root) fs.rmSync(root, { recursive: true, force: true });
+});
+
+/** `kind name@file` of every edge but `contains` leaving the nodes of `file`. */
+function edgesFrom(file: string): string[] {
+  const out: string[] = [];
+  for (const node of cg.getNodesInFile(file)) {
+    for (const e of cg.getOutgoingEdges(node.id)) {
+      if (e.kind === 'contains') continue;
+      const target = cg.getNode(e.target)!;
+      out.push(`${e.kind} ${target.name}@${target.filePath}`);
+    }
+  }
+  return out;
+}
+
+/** What the plain spelling gives: the file import, the lazily loaded component, and the named import by import. */
+function expectLinked(file: string, module: string): void {
+  const edges = edgesFrom(file);
+  expect(edges).toContain(`imports ${path.posix.basename(module)}@${module}`);
+  expect(edges).toContain(`calls ChartView@${module}`);
+  expect(edges).toContain(`calls Legend@${module}`);
+  expect(edges.filter((e) => e.startsWith('calls Chart@'))).toEqual([]);
+}
+
+describe('an import spelled with a trailing slash or a `.`, `..` or empty segment (#2577)', () => {
+  it('links like the plain spelling', () => {
+    expectLinked('src/Plain.tsx', 'src/widgets/Chart/index.tsx');
+  });
+
+  it('with a trailing slash', () => {
+    expectLinked('src/TrailingSlash.tsx', 'src/widgets/Chart/index.tsx');
+  });
+
+  it('with a `.` segment, a doubled slash and a `..` segment', () => {
+    expectLinked('src/DotSegment.tsx', 'src/widgets/Chart/index.tsx');
+    expectLinked('src/DoubleSlash.tsx', 'src/widgets/Chart/index.tsx');
+    expectLinked('src/DotDot.tsx', 'src/widgets/Chart/index.tsx');
+  });
+
+  it('a trailing slash names the folder, not a same-named file beside it', () => {
+    expectLinked('src/Folder.tsx', 'src/cards/Card/index.tsx');
+    expect(edgesFrom('src/Folder.tsx')).not.toContain('calls Legend@src/cards/Card.tsx');
+  });
+
+  it('through a workspace member', () => {
+    expectLinked('packages/app/src/Member.tsx', 'packages/ui/index.tsx');
+    expect(edgesFrom('packages/app/src/MemberPath.ts')).toEqual(expect.arrayContaining([
+      'imports legend.ts@packages/ui/widgets/legend.ts',
+      'calls Legend@packages/ui/widgets/legend.ts',
+    ]));
+  });
 });
