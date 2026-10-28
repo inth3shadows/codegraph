@@ -8,6 +8,9 @@
 >   "Already up to date" (upstream [#1842](https://github.com/colbymchenry/codegraph/pull/1842) by @bompus).
 > - Bare JS/TS calls check a local binding of the name once per call instead of once per
 >   candidate; same edges, less repeated work (upstream [#2871](https://github.com/colbymchenry/codegraph/pull/2871) by @luojiyin1987).
+> - A JS/TS import no longer lands on a same-named method of an exported object
+>   (`export const d = { f() {} }`) when the module exports its own `f`
+>   (upstream [#2990](https://github.com/colbymchenry/codegraph/pull/2990)).
 >
 > Earlier fork fixes are now in upstream: TypeScript `type` imports, Express handler
 > arguments, git sync hooks, `Class.method()` binding, Python attribute calls and package
