@@ -11,6 +11,10 @@
 > - A JS/TS import no longer lands on a same-named method of an exported object
 >   (`export const d = { f() {} }`) when the module exports its own `f`
 >   (upstream [#2990](https://github.com/colbymchenry/codegraph/pull/2990)).
+> - A sync that deletes a file, or renames a definition away, links the calls that were
+>   ambiguous only because of it (upstream [#3004](https://github.com/colbymchenry/codegraph/pull/3004)).
+> - `codegraph status` recommends a re-index when `package.json` alone adds or drops a
+>   framework (upstream [#3005](https://github.com/colbymchenry/codegraph/pull/3005)).
 >
 > Earlier fork fixes are now in upstream: TypeScript `type` imports, Express handler
 > arguments, git sync hooks, `Class.method()` binding, Python attribute calls and package
