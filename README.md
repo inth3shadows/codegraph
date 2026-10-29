@@ -15,6 +15,8 @@
 >   ambiguous only because of it (upstream [#3004](https://github.com/colbymchenry/codegraph/pull/3004)).
 > - `codegraph status` recommends a re-index when `package.json` alone adds or drops a
 >   framework (upstream [#3005](https://github.com/colbymchenry/codegraph/pull/3005)).
+> - A file skipped for its size or a parse failure re-links its importers once a sync indexes it
+>   (upstream [#3022](https://github.com/colbymchenry/codegraph/pull/3022)).
 >
 > Earlier fork fixes are now in upstream: TypeScript `type` imports, Express handler
 > arguments, git sync hooks, `Class.method()` binding, Python attribute calls and package
