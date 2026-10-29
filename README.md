@@ -6,8 +6,6 @@
 >
 > - **`codegraph sync`** refuses an index built by an older extractor instead of saying
 >   "Already up to date" (upstream [#1842](https://github.com/colbymchenry/codegraph/pull/1842) by @bompus).
-> - Bare JS/TS calls check a local binding of the name once per call instead of once per
->   candidate; same edges, less repeated work (upstream [#2871](https://github.com/colbymchenry/codegraph/pull/2871) by @luojiyin1987).
 > - A JS/TS import no longer lands on a same-named method of an exported object
 >   (`export const d = { f() {} }`) when the module exports its own `f`
 >   (upstream [#2990](https://github.com/colbymchenry/codegraph/pull/2990)).
@@ -23,7 +21,7 @@
 > roots (#1704, #1921, #1926), the synthesis-input foreign-key crash, explore's query plan,
 > braceless `if` bodies, `await f<T>()`, Go local func values, several Python import fixes,
 > React components outside a named function, parameter-default calls (#2588), import path
-> spellings (#2610), subscript element types (#2766), and React DOM root.render edge
+> spellings (#2610), a bare JS/TS call's local-binding check (#2934, in place of #2871), subscript element types (#2766), and React DOM root.render edge
 > fixes (#2807), and before those Dart extension types, #1057 path spellings, timer caps,
 > dynamic-import boundaries, the stale-file banner and the schema-less `codegraph.db` fix.
 >
