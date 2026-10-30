@@ -112,3 +112,37 @@ describe('sync links the importers of a file that shrinks under the size limit',
     await matchesFullIndex();
   }, 60_000);
 });
+
+describe('sync links what a barrel passes on from a file that shrinks under the size limit', () => {
+  // `user.ts` imports through `lib/index.ts`, which re-exports `lib/big.ts`:
+  // while big.ts was over the limit, the barrel's `export *` of it failed and
+  // so did the names user.ts reads through the barrel.
+  let dir: string;
+  let cg: CodeGraph;
+  const write = (rel: string, content: string) => {
+    fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), content);
+  };
+
+  afterEach(() => {
+    cg?.destroy();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('the barrel and the files importing through it', async () => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cg-sizecap-barrel-'));
+    write('lib/index.ts', "export * from './big';\nexport * from './small';\n");
+    write('lib/big.ts', BIG(MAX_SOURCE_FILE_SIZE_BYTES + 1000));
+    write('lib/small.ts', 'export function s1(): number { return 2; }\n');
+    write('user.ts', "import { f1, s1 } from './lib';\nexport const x = f1() + s1();\n");
+    cg = CodeGraph.initSync(dir);
+    await cg.indexAll();
+    write('lib/big.ts', BIG(10));
+    await cg.sync();
+    const synced = graphOf(cg);
+    cg.close();
+    cg = await CodeGraph.recreate(dir);
+    await cg.indexAll();
+    expect(synced).toEqual(graphOf(cg));
+  }, 60_000);
+});
