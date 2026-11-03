@@ -112,4 +112,33 @@ fn main() {
     swift.flag_if_supported("-utf-8"); // msvc
     swift.compile("tree-sitter-swift");
     println!("cargo:rerun-if-changed=grammars/swift");
+
+    // TypeScript + TSX grammars — vendored C (sixth vendored-grammar-C
+    // language): tree-sitter/tree-sitter-typescript v0.23.2 (f975a62) with
+    // docs/grammars/tree-sitter-typescript.patch applied to the grammar source,
+    // then REGENERATED with tree-sitter-cli 0.25.10 (ABI 15) — the patch
+    // touches grammar rules, so the checked-in parser.c can't be reused. The
+    // vendored wasm is built from these same generated sources. Layout mirrors
+    // the upstream repo so scanner.c's `../../common/scanner.h` resolves
+    // unedited. The patch: TS 4.7 variance annotations (`<in T>`, `<out T>`)
+    // and a generic call signature on a new line in an object type (#335).
+    //   common/scanner.h           7c86573b376ddb434b618ddb5ec13ee62ff542d2c647392194398248f55c056e (patched)
+    //   typescript/src/parser.c    9e2b347c5ac6c5d34663de78c25a1f0739e8523736617e0a1f2d7e54662dbe87
+    //   tsx/src/parser.c           7d55868a27f71c5e1a58c09e182e874bfcd1d1fca46da59edede2f449106b6af
+    // Flags crib the crate's bindings/rust/build.rs (c11). Each parser.c is
+    // ~9 MB.
+    for dialect in ["typescript", "tsx"] {
+        let src = format!("grammars/typescript/{dialect}/src");
+        let mut ts = cc::Build::new();
+        ts.std("c11");
+        ts.include(&src);
+        ts.file(format!("{src}/parser.c"));
+        ts.file(format!("{src}/scanner.c"));
+        ts.flag_if_supported("-Wno-unused-parameter");
+        ts.flag_if_supported("-Wno-unused-but-set-variable");
+        ts.flag_if_supported("-Wno-trigraphs");
+        ts.flag_if_supported("-utf-8"); // msvc
+        ts.compile(&format!("tree-sitter-{dialect}"));
+    }
+    println!("cargo:rerun-if-changed=grammars/typescript");
 }

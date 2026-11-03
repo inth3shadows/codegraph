@@ -1,0 +1,41 @@
+diff --git a/common/define-grammar.js b/common/define-grammar.js
+index efb0b76..cb563be 100644
+--- a/common/define-grammar.js
++++ b/common/define-grammar.js
+@@ -1004,7 +1004,11 @@ module.exports = function defineGrammar(dialect) {
+ 
+       type_parameter: $ => seq(
+         optional('const'),
+-        field('name', $._type_identifier),
++        // TS 4.7 variance annotations: `in T`, `out T`, `in out T`
++        // (tree-sitter-typescript#364). `out` stays usable as a parameter
++        // name (`<out>`, `<in out>`), as tsc accepts it (brajevicm@9fcaa13).
++        optional(choice('in', seq(optional('in'), 'out'))),
++        field('name', choice($._type_identifier, alias('out', $.type_identifier))),
+         field('constraint', optional($.constraint)),
+         field('value', optional($.default_type)),
+       ),
+diff --git a/common/scanner.h b/common/scanner.h
+index 23b78b5..4a42edf 100644
+--- a/common/scanner.h
++++ b/common/scanner.h
+@@ -123,7 +123,6 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
+         case '*':
+         case '%':
+         case '>':
+-        case '<':
+         case '=':
+         case '?':
+         case '^':
+@@ -144,6 +143,11 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
+             // the validity of a binary operator token.
+         case '(':
+         case '[':
++            // Same for '<': after a type, a '<' on a new line cannot continue it
++            // (tsc reads type arguments only without a preceding line break), so
++            // it starts the next member, e.g. a generic call signature
++            // `<T>(x: T): T` in an object type (tree-sitter-typescript#335).
++        case '<':
+             if (valid_symbols[LOGICAL_OR]) {
+                 return false;
+             }
