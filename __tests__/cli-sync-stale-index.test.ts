@@ -5,21 +5,18 @@ import * as os from 'os';
 import * as path from 'path';
 import { CodeGraph } from '../src';
 import { EXTRACTION_VERSION } from '../src/extraction/extraction-version';
-import { NODE_RUNTIME_FLAGS } from '../src/extraction/wasm-runtime-flags';
 
 const BIN = path.resolve(__dirname, '../dist/bin/codegraph.js');
 const { DatabaseSync } = require('node:sqlite');
+const WARNING = 'Run "codegraph index" for a full rebuild';
 let root: string;
 
 function run(...args: string[]) {
-  // CODEGRAPH_WASM_RELAUNCHED skips the relaunch that normally adds
-  // NODE_RUNTIME_FLAGS, so pass them here: without them node:sqlite's
-  // ExperimentalWarning lands on stderr and breaks the one-line assertion.
-  return spawnSync(process.execPath, [...NODE_RUNTIME_FLAGS, BIN, ...args], {
+  return spawnSync(process.execPath, [BIN, ...args], {
     cwd: root,
     encoding: 'utf8',
     timeout: 30_000,
-    env: { ...process.env, CODEGRAPH_NO_DAEMON: '1', CODEGRAPH_WASM_RELAUNCHED: '1', NO_COLOR: '1' },
+    env: { ...process.env, CODEGRAPH_NO_DAEMON: '1', CODEGRAPH_WASM_RELAUNCHED: '1', NODE_NO_WARNINGS: '1', NO_COLOR: '1' },
   });
 }
 
@@ -37,6 +34,13 @@ function setStamp(stamp: number | null) {
   }
 }
 
+function indexState() {
+  const cg = CodeGraph.openSync(root);
+  try {
+    return { stale: cg.isIndexStale(), files: cg.getStats().fileCount };
+  } finally { cg.close(); }
+}
+
 beforeEach(async () => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'codegraph-sync-stale-'));
   fs.writeFileSync(path.join(root, 'original.ts'), 'export function original() { return 1; }\n');
@@ -48,47 +52,56 @@ afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
 describe('explicit CLI sync with stale extraction', () => {
   for (const stamp of [EXTRACTION_VERSION - 1, null]) {
-    for (const quiet of [false, true]) {
-      it(`rejects stamp ${stamp} before syncing, quiet=${quiet}`, () => {
-        setStamp(stamp);
-        const args = quiet ? ['sync', '--quiet'] : ['sync'];
-        for (const changed of [false, true]) {
-          if (changed) fs.writeFileSync(path.join(root, 'added.ts'), 'export const added = 2;\n');
-          const result = run(...args);
-          expect(result.status).toBe(1);
-          const output = result.stdout + result.stderr;
-          expect(output).toContain('Run "codegraph index"');
-          expect(output).not.toContain('Already up to date');
-          if (quiet) {
-            // One explanatory line on stderr, nothing on stdout, so a hook that
-            // fails the commit on exit 1 still shows the user why. (#1798)
-            expect(result.stdout).toBe('');
-            expect(result.stderr.trim().split('\n')).toHaveLength(1);
-          }
-          const cg = CodeGraph.openSync(root);
-          try {
-            expect(cg.isIndexStale()).toBe(true);
-            expect(cg.getStats().fileCount).toBe(1);
-          } finally { cg.close(); }
-        }
-      });
-    }
+    it(`warns for stamp ${stamp} and still syncs`, () => {
+      setStamp(stamp);
+
+      const unchanged = run('sync');
+      expect(unchanged.status).toBe(0);
+      expect(unchanged.stdout).toContain(WARNING);
+      expect(unchanged.stdout).toContain('No files changed');
+      expect(unchanged.stdout).not.toContain('Already up to date');
+      expect(unchanged.stdout).not.toContain('codegraph sync');
+
+      // The git hooks depend on this half: the changed file goes in.
+      fs.writeFileSync(path.join(root, 'added.ts'), 'export const added = 2;\n');
+      const changed = run('sync');
+      expect(changed.status).toBe(0);
+      expect(changed.stdout).toContain('Synced 1 changed files');
+      expect(changed.stdout).toContain(WARNING);
+      // A sync can't stand in for the rebuild, so the warning keeps coming.
+      expect(indexState()).toEqual({ stale: true, files: 2 });
+    }, 60_000);
+
+    it(`stays silent and still syncs for stamp ${stamp} under --quiet`, () => {
+      setStamp(stamp);
+      fs.writeFileSync(path.join(root, 'added.ts'), 'export const added = 2;\n');
+      const result = run('sync', '--quiet');
+      expect(result.status).toBe(0);
+      expect(result.stdout + result.stderr).toBe('');
+      expect(indexState()).toEqual({ stale: true, files: 2 });
+    }, 60_000);
   }
 
-  it.each([false, true])('still syncs a current index, quiet=%s', (quiet) => {
+  it('does not warn about a current index', () => {
     fs.writeFileSync(path.join(root, 'added.ts'), 'export const added = 2;\n');
-    expect(run('sync', ...(quiet ? ['--quiet'] : [])).status).toBe(0);
-    const cg = CodeGraph.openSync(root);
-    try {
-      expect(cg.isIndexStale()).toBe(false);
-      expect(cg.getStats().fileCount).toBe(2);
-    } finally { cg.close(); }
-  });
+    const changed = run('sync');
+    expect(changed.status).toBe(0);
+    expect(changed.stdout).not.toContain(WARNING);
+    expect(indexState()).toEqual({ stale: false, files: 2 });
 
-  it('accepts sync after the prescribed full rebuild', () => {
+    const unchanged = run('sync');
+    expect(unchanged.status).toBe(0);
+    expect(unchanged.stdout).toContain('Already up to date');
+    expect(unchanged.stdout).not.toContain(WARNING);
+  }, 60_000);
+
+  it('stops warning after the full rebuild it names', () => {
     setStamp(EXTRACTION_VERSION - 1);
-    expect(run('sync').status).toBe(1);
+    expect(run('sync').stdout).toContain(WARNING);
     expect(run('index').status).toBe(0);
-    expect(run('sync').status).toBe(0);
-  });
+    const after = run('sync');
+    expect(after.status).toBe(0);
+    expect(after.stdout).toContain('Already up to date');
+    expect(after.stdout).not.toContain(WARNING);
+  }, 60_000);
 });

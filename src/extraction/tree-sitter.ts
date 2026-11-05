@@ -21,7 +21,7 @@ import { FN_REF_SPECS, captureFnRefCandidates, goScopedFnRefScopes, type FnRefSp
 import { isGeneratedFile, isMinifiedContent } from './generated-detection';
 import type { LanguageExtractor, ExtractorContext } from './tree-sitter-types';
 import { EXTRACTORS } from './languages';
-import { stripCppTemplateArgs, isCppConstructorDeclaration, cDeclaratorIdentifier, isClassLikeDefinition } from './languages/c-cpp';
+import { stripCppTemplateArgs, isCppConstructorDeclaration, cAliasTypeNames, cDeclaratorIdentifier, cMemberTypeNames, isClassLikeDefinition, isUnnamedMemberType, type CTypeName } from './languages/c-cpp';
 import { NestedIntervals, scanCppBraceScopes, type CppBraceScopes } from './languages/cpp-brace-scopes';
 import { appendCppMacroMethods } from './languages/cpp-macro-methods';
 import { rustImplItemOwner, rustImplTypeName } from './languages/rust';
@@ -39,10 +39,7 @@ import { MyBatisExtractor } from './mybatis-extractor';
 import { CfmlExtractor } from './cfml-extractor';
 import { tryKernelExtract, takeDeferredPreParse } from './kernel';
 import { commonJsRequireRefs } from './commonjs-requires';
-import {
-  getAllFrameworkResolvers,
-  getApplicableFrameworks,
-} from '../resolution/frameworks';
+import { frameworks } from './lazy-frameworks';
 
 // Re-export for backward compatibility
 export { generateNodeId } from './tree-sitter-helpers';
@@ -1495,7 +1492,7 @@ export class TreeSitterExtractor {
           // Skip self and same-name targets: a symbol referencing a file-scope
           // sibling of its own name (the two halves of a conditional `try: X=…;
           // except: X=…`) is never a meaningful value read.
-          if (targetId && targetId !== scope.id && refName !== scope.name && !seen.has(targetId)) {
+          if (targetId && targetId !== scope.id && refName !== scope.name && !seen.has(targetId) && !this.isForeignJavaField(n, targetId)) {
             seen.add(targetId);
             this.edges.push({
               source: scope.id,
@@ -1511,6 +1508,23 @@ export class TreeSitterExtractor {
         }
       }
     }
+  }
+
+  /**
+   * Whether a Java field read is another type's: `InferenceString.PARSER` reads
+   * that class's constant, not the `PARSER` of the file reading it. This file's
+   * own is read bare, through `this`, or through the class that declares it.
+   */
+  private isForeignJavaField(n: SyntaxNode, targetId: string): boolean {
+    if (this.language !== 'java' || n.parent?.type !== 'field_access') return false;
+    const access = n.parent;
+    const object = getChildByField(access, 'object');
+    if (!object || getChildByField(access, 'field')?.startIndex !== n.startIndex) return false;
+    const written = getNodeText(object, this.source);
+    const qualifier = written.slice(written.lastIndexOf('.') + 1).trim();
+    if (qualifier === 'this') return false;
+    const segments = this.nodes.find((d) => d.id === targetId)?.qualifiedName.split('::') ?? [];
+    return segments[segments.length - 2] !== qualifier;
   }
 
   /**
@@ -2752,6 +2766,7 @@ export class TreeSitterExtractor {
 
     // Extract extends/implements
     this.extractInheritance(node, classNode.id);
+    this.extractCMemberTypeRefs(node, classNode);
 
     // C# primary-constructor parameter dependencies (`class Svc(IRepo r, …)`).
     this.extractCsharpPrimaryCtorParamRefs(node, classNode.id);
@@ -2983,6 +2998,7 @@ export class TreeSitterExtractor {
 
     // Extract inheritance (e.g. Swift: struct HTTPMethod: RawRepresentable)
     this.extractInheritance(node, aggregateNode.id);
+    this.extractCMemberTypeRefs(node, aggregateNode);
 
     // C# primary-constructor parameter dependencies (`struct P(int x)`, and
     // `record struct M(decimal Amount)` which the grammar nests here).
@@ -2999,6 +3015,29 @@ export class TreeSitterExtractor {
         }
       }
       this.nodeStack.pop();
+    }
+  }
+
+  /**
+   * A C or C++ class, struct or union references the types its members are
+   * declared with, as the class: members mint no nodes, and impact never climbs
+   * from a member to its container (Go's and Dart's fields are the same, #2655,
+   * #2327). Mirrored in the kernel (ccpp/mod.rs).
+   */
+  private extractCMemberTypeRefs(specifier: SyntaxNode, owner: Node): void {
+    if ((this.language !== 'c' && this.language !== 'cpp' && this.language !== 'objc') || isUnnamedMemberType(specifier)) return;
+    this.pushCTypeRefs(cMemberTypeNames(specifier, owner.name, this.source), owner);
+  }
+
+  private pushCTypeRefs(types: readonly CTypeName[], owner: Node): void {
+    for (const { name, node } of types) {
+      this.unresolvedReferences.push({
+        fromNodeId: owner.id,
+        referenceName: name,
+        referenceKind: 'references',
+        line: node.startPosition.row + 1,
+        column: node.startPosition.column,
+      });
     }
   }
 
@@ -4471,6 +4510,7 @@ export class TreeSitterExtractor {
       if (typeChild) {
         // Extract struct embedding (e.g. Go: `type DB struct { *Head; Queryable }`)
         this.extractInheritance(typeChild, aggregateNode.id);
+        this.extractCMemberTypeRefs(typeChild, aggregateNode);
         // A Go struct references the types its fields are declared with, as
         // the struct: Go fields mint no nodes, and impact never climbs from a
         // member to its container (Dart's fields are the same, #2327).
@@ -4550,6 +4590,12 @@ export class TreeSitterExtractor {
       // through a path, never bare (isRustAssociatedItem).
       ...(owner !== undefined ? { qualifiedName: `${owner}::${name}` } : {}),
     });
+
+    // A C or C++ alias references what it names, so a change to a struct
+    // reaches the members declared through `typedef struct redisObject robj;`.
+    if (typeAliasNode && (this.language === 'c' || this.language === 'cpp' || this.language === 'objc')) {
+      this.pushCTypeRefs(cAliasTypeNames(node, name, this.source), typeAliasNode);
+    }
 
     // Extract type references from the alias value (e.g., `type X = ITextModel | null`)
     if (typeAliasNode && this.TYPE_ANNOTATION_LANGUAGES.has(this.language)) {
@@ -8058,10 +8104,13 @@ export class TreeSitterExtractor {
       }
 
       // Python superclass list: `class Flask(Scaffold, Mixin):`
-      // argument_list contains identifier children for each parent class
+      // argument_list contains identifier children for each parent class.
+      // A parameterized base, `class Leaf(Base[str])`, is a `subscript` whose
+      // value names the class; its full text (`Base[str]`) matched nothing.
       if (child.type === 'argument_list' && node.type === 'class_definition') {
-        for (const arg of child.namedChildren) {
-          if (arg.type === 'identifier' || arg.type === 'attribute') {
+        for (const base of child.namedChildren) {
+          const arg = base.type === 'subscript' ? base.childForFieldName('value') : base;
+          if (arg && (arg.type === 'identifier' || arg.type === 'attribute')) {
             const name = getNodeText(arg, this.source);
             this.unresolvedReferences.push({
               fromNodeId: classId,
@@ -10013,6 +10062,7 @@ export function extractFromSource(
 
   // Framework-specific extraction (routes, middleware, etc.)
   if (frameworkNames && frameworkNames.length > 0) {
+    const { getAllFrameworkResolvers, getApplicableFrameworks } = frameworks();
     const allResolvers = getAllFrameworkResolvers();
     const applicable = getApplicableFrameworks(
       allResolvers.filter((r) => frameworkNames.includes(r.name)),

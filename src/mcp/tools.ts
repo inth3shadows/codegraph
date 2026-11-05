@@ -35,8 +35,8 @@ import {
   type WorktreeIndexMismatch,
 } from '../sync/worktree';
 import type { PendingFile } from '../sync';
-import type { Node, Edge, SearchResult, Subgraph, NodeKind } from '../types';
-import { isTestFile, normalizeNameToken, splitAtCjkSwitches, isQueryNameToken } from '../search/query-utils';
+import type { Node, Edge, SearchResult, Subgraph, NodeKind, Language } from '../types';
+import { isTestFile, isTestPath, normalizeNameToken, splitAtCjkSwitches, isQueryNameToken } from '../search/query-utils';
 import { groupDefinitions, isQualifiedSymbol, lastQualifierPart, matchesSymbol, qualifiedSymbolMatches } from '../graph/symbol-lookup';
 import { goPackageReaderFor } from '../graph/go-package';
 import {
@@ -58,7 +58,7 @@ import { findDynamicBoundaries, type BoundarySite } from '../graph/dynamic-bound
 import { countImplementers } from '../graph/type-hierarchy';
 import { describeSynthesizedHop } from '../graph/synthesized-hop';
 import { callSiteLines, formatCallSiteLines } from '../graph/call-sites';
-import type { CallSiteRow } from '../graph/traversal';
+import { DEFAULT_IMPACT_MAX_EDGES, DEFAULT_IMPACT_MAX_NODES, type CallSiteRow } from '../graph/traversal';
 import { isCopybookInclude, MAX_COPYBOOK_INCLUDES, type NamedCopybook } from '../graph/cobol-copybooks';
 import { groupFilesByPackage, packageGroupTitle, packageListingTitle } from '../graph/owning-package';
 import {
@@ -70,6 +70,12 @@ import { getUpdateNotice } from '../upgrade/update-check';
 import { measurePendingChanges } from './index-freshness';
 import { validateAnswerFiles, type AnswerFile } from './answer-freshness';
 import { ExploreDiagnostics } from './explore-diagnostics';
+import {
+  IndexVersionWarningState,
+  formatIndexBuildVersion,
+  formatIndexVersionWarning,
+  formatRunningVersion,
+} from './index-version-warning';
 import {
   EXPLORE_EMISSION_KEY,
   EXPLORE_SESSION_VIEW_ARG,
@@ -2617,13 +2623,13 @@ export class ToolHandler {
    * Evicts over the LRU bound, on close, and once idle past the timeout
    * (#2087). The cache is in last-use order, so idle entries lead it.
    */
-  private trimProjects(): void {
+  private trimProjects(maxOpen = MAX_CACHED_PROJECTS): void {
     if (this.activeCalls > 0) return;
     const idleMs = resolveProjectIdleTimeoutMs();
     const now = Date.now();
     for (const [root, cg] of this.projectCache) {
       const idle = idleMs > 0 && now - (this.projectUsedAt.get(root) ?? now) >= idleMs;
-      if (!this.closing && this.projectCache.size <= MAX_CACHED_PROJECTS && !idle) break;
+      if (!this.closing && this.projectCache.size <= maxOpen && !idle) break;
       if (this.projectGates.has(cg)) continue;
       this.projectCache.delete(root);
       this.projectUsedAt.delete(root);
@@ -2688,6 +2694,22 @@ export class ToolHandler {
       // the (still stale) handle keeps serving and the next call retries.
     }
     return cg;
+  }
+
+  /**
+   * A query worker kept through a quiet spell gives back what it can without
+   * going cold: every project but the last one used closes, and what stays
+   * open lets go of the memory it holds only to read faster. The heap needs
+   * nothing from here: V8 shrinks an idle thread's by itself, well before the
+   * pool's idle delay is up.
+   */
+  releaseIdleMemory(): void {
+    this.trimProjects(1);
+    for (const cg of [this.cg, ...this.projectCache.values()]) {
+      try {
+        cg?.releaseMemory();
+      } catch { /* one that can't let go still answers, and the others still can */ }
+    }
   }
 
   /**
@@ -2986,6 +3008,40 @@ export class ToolHandler {
   }
 
   /**
+   * Warn this MCP client once for each selected project whose persisted
+   * extraction version predates the running engine. The state belongs to the
+   * client session, never this shared handler: one daemon serves many clients.
+   */
+  private withIndexVersionNotice(
+    result: ToolResult,
+    projectPath: string | undefined,
+    state: IndexVersionWarningState | undefined,
+  ): ToolResult {
+    if (!state || result.isError) return result;
+    const [first, ...rest] = result.content;
+    if (!first || first.type !== 'text') return result;
+
+    let cg: CodeGraph;
+    let root: string;
+    try {
+      cg = this.getCodeGraph(projectPath);
+      if (!cg.isIndexStale()) return result;
+      root = cg.getProjectRoot();
+    } catch {
+      // No initialized project (or a project that cannot be opened) has no
+      // trustworthy build metadata to report and must not consume a warning.
+      return result;
+    }
+    if (!state.claim(root)) return result;
+
+    const warning = formatIndexVersionWarning(cg.getIndexBuildInfo());
+    return {
+      ...result,
+      content: [{ type: 'text', text: `${warning}\n\n${first.text}` }, ...rest],
+    };
+  }
+
+  /**
    * Execute a tool by name.
    *
    * `sessionState` is the CALLER's per-session explore history (CG-17). The
@@ -2998,6 +3054,7 @@ export class ToolHandler {
     toolName: string,
     args: Record<string, unknown>,
     sessionState?: ExploreSessionState,
+    indexVersionWarnings?: IndexVersionWarningState,
   ): Promise<ToolResult> {
     if (this.closing) return this.textResult('This MCP session is closing; retry with a connected session.');
     this.activeCalls++;
@@ -3069,7 +3126,12 @@ export class ToolHandler {
       // a worker (whose read connection has no watcher). It also skips the
       // auto-banner wrapper to avoid duplicating its own pending-files section.
       if (toolName === 'codegraph_status') {
-        return await this.handleStatus(args);
+        const result = await this.handleStatus(args);
+        return this.withIndexVersionNotice(
+          result,
+          args.projectPath as string | undefined,
+          indexVersionWarnings,
+        );
       }
 
       // Read tools: off-load the CPU-heavy dispatch to the worker pool when one
@@ -3130,7 +3192,15 @@ export class ToolHandler {
       // caller passed session state.
       const result = this.takeExploreEmission(raw, sessionState);
       const withWorktree = this.withWorktreeNotice(result, args.projectPath as string | undefined);
-      return this.withStalenessNotice(withWorktree, args.projectPath as string | undefined);
+      const withStaleness = this.withStalenessNotice(
+        withWorktree,
+        args.projectPath as string | undefined,
+      );
+      return this.withIndexVersionNotice(
+        withStaleness,
+        args.projectPath as string | undefined,
+        indexVersionWarnings,
+      );
     } catch (err) {
       // Expected condition, not a malfunction: answer as a SUCCESS so the
       // agent keeps trusting the toolset for projects that ARE indexed.
@@ -3528,21 +3598,35 @@ export class ToolHandler {
       const mergedNodes = new Map<string, Node>();
       const mergedEdges: Edge[] = [];
       const seenEdges = new Set<string>();
+      let truncated = false;
       for (const node of defNodes) {
         const impact = cg.getImpactRadius(node.id, depth);
+        truncated ||= impact.truncated === true;
         for (const [id, n] of impact.nodes) {
+          if (!mergedNodes.has(id) && mergedNodes.size >= DEFAULT_IMPACT_MAX_NODES) {
+            truncated = true;
+            continue;
+          }
           mergedNodes.set(id, n);
           answerPaths.add(n.filePath);
         }
         for (const e of impact.edges) {
+          if (!mergedNodes.has(e.source) || !mergedNodes.has(e.target)) {
+            truncated = true;
+            continue;
+          }
           const key = `${e.source}->${e.target}:${e.kind}`;
           if (!seenEdges.has(key)) {
+            if (mergedEdges.length >= DEFAULT_IMPACT_MAX_EDGES) {
+              truncated = true;
+              continue;
+            }
             seenEdges.add(key);
             mergedEdges.push(e);
           }
         }
       }
-      return { nodes: mergedNodes, edges: mergedEdges, roots: defNodes.map((n) => n.id) };
+      return { nodes: mergedNodes, edges: mergedEdges, roots: defNodes.map((n) => n.id), truncated };
     };
 
     // Single definition (or same-file overloads): the familiar merged report.
@@ -4097,6 +4181,7 @@ export class ToolHandler {
   ): string {
     const ROOT_CAP = 5; // only the symbols the query actually targeted
     const FILE_CAP = 4; // caller files listed per symbol before "+N more"
+    const TEMPLATE_VIEW_FILE = /\.(?:cshtml|razor|vue|svelte|astro)$/i;
     const MEANINGFUL = new Set<string>([
       'function', 'method', 'class', 'interface', 'struct', 'union', 'trait', 'protocol',
       'enum', 'type_alias', 'component', 'constant', 'variable', 'property', 'field',
@@ -4125,9 +4210,17 @@ export class ToolHandler {
       const testFiles = callerFiles.filter((f) => isTestFile(f));
       const nonTest = callerFiles.filter((f) => !isTestFile(f));
 
-      const shown = nonTest.slice(0, FILE_CAP).map((f) => `\`${f}\``).join(', ');
-      const more = nonTest.length > FILE_CAP ? ` +${nonTest.length - FILE_CAP} more` : '';
-      const where = nonTest.length > 0 ? ` in ${shown}${more}` : '';
+      // A view depends on a helper across a layer, and is easily outnumbered by
+      // same-language callers: one flat cap showed none of a helper's 22 views
+      // behind four `.js` files. "Which views use this?" gets its own slot.
+      const viewFiles = nonTest.filter((f) => TEMPLATE_VIEW_FILE.test(f));
+      const codeFiles = nonTest.filter((f) => !TEMPLATE_VIEW_FILE.test(f));
+      const shown = codeFiles.slice(0, FILE_CAP).map((f) => `\`${f}\``).join(', ');
+      const more = codeFiles.length > FILE_CAP ? ` +${codeFiles.length - FILE_CAP} more` : '';
+      const views = viewFiles.length > 0
+        ? `${codeFiles.length > 0 ? ';' : ' in'} ${viewFiles.length} view${viewFiles.length === 1 ? '' : 's'}: ${viewFiles.slice(0, FILE_CAP).map((f) => `\`${f}\``).join(', ')}${viewFiles.length > FILE_CAP ? ` +${viewFiles.length - FILE_CAP}` : ''}`
+        : '';
+      const where = (codeFiles.length > 0 ? ` in ${shown}${more}` : '') + views;
       const tests = testFiles.length > 0
         ? `; tests: ${testFiles.slice(0, FILE_CAP).map((f) => `\`${f}\``).join(', ')}${testFiles.length > FILE_CAP ? ` +${testFiles.length - FILE_CAP}` : ''}`
         : this.indirectTestNote(cg, uniq, rel);
@@ -4845,6 +4938,13 @@ export class ToolHandler {
     // place in the file's budget.
     const TYPE_KINDS = new Set(['class', 'struct', 'union', 'interface', 'trait', 'protocol', 'enum', 'type_alias']);
     const isTypeDeclaration = (id: string): boolean => TYPE_KINDS.has(subgraph.nodes.get(id)?.kind ?? '');
+    // A C or C++ class's edge to the type of a member, or an alias's to what it
+    // names, says who holds what, not where the code goes: rocksdb's classes
+    // reach everything through them, and they would pull a flow's rank and its
+    // file budget away from the code on the flow.
+    const isCFamily = (node: Node | undefined): boolean => node?.language === 'c' || node?.language === 'cpp' || node?.language === 'objc';
+    const isCMemberTypeEdge = (edge: Edge): boolean =>
+      edge.kind === 'references' && isTypeDeclaration(edge.source) && isCFamily(subgraph.nodes.get(edge.source));
     const connectedToEntry = new Set<string>();
     for (const edge of subgraph.edges) {
       if (edge.kind === 'references' && isTypeDeclaration(edge.source) && isTypeDeclaration(edge.target)) continue;
@@ -5136,7 +5236,7 @@ export class ToolHandler {
     const nodeRwr = this.computeGraphRelevance(
       // Fall back to the unfiltered seeds when EVERY seed is damped: the walk
       // must not lose its restart vector and return all-uniform.
-      [...subgraph.nodes.keys()], subgraph.edges,
+      [...subgraph.nodes.keys()], subgraph.edges.filter((e) => !isCMemberTypeEdge(e)),
       rwrSeedIds.size > 0 ? rwrSeedIds : entryNodeIds,
     );
     //
@@ -6752,6 +6852,9 @@ export class ToolHandler {
         const outgoing = cg.getOutgoingEdges(node.id);
         for (const edge of outgoing) {
           if (!edge.line || edge.line <= 0 || edge.kind === 'contains') continue;
+          // (See isCMemberTypeEdge: a window per member would take the budget
+          // of the code around them.)
+          if (edge.kind === 'references' && isCFamily(node) && TYPE_KINDS.has(node.kind)) continue;
           const key = `${edge.line}:${edge.target}`;
           if (edgeLines.has(key)) continue;
           edgeLines.add(key);
@@ -8223,6 +8326,7 @@ export class ToolHandler {
     }
 
     const filePath = resolved.path;
+    const testLabel = isTestPath(filePath) ? ' · test file' : '';
     const nodes = cg.getNodesInFile(filePath)
       .filter((n) => n.kind !== 'file' && n.kind !== 'import' && n.kind !== 'export')
       .sort((a, b) => a.startLine - b.startLine);
@@ -8246,7 +8350,7 @@ export class ToolHandler {
 
     // symbolsOnly → the cheap structural overview, no source.
     if (opts.symbolsOnly) {
-      const out = [`**${filePath}** — ${nodes.length} symbol${nodes.length === 1 ? '' : 's'}, ${depSummary}`, ''];
+      const out = [`**${filePath}**${testLabel} — ${nodes.length} symbol${nodes.length === 1 ? '' : 's'}, ${depSummary}`, ''];
       if (nodes.length) out.push(...symbolMap('**Symbols**'));
       else out.push('_No indexed symbols in this file._');
       out.push('', '> Drop `symbolsOnly` (or pass `offset`/`limit`) to read the source, like Read.');
@@ -8256,7 +8360,7 @@ export class ToolHandler {
     // SECURITY (#383): never dump a raw config/data file — a yaml/properties
     // line is `key: <secret>`. Summarize by key and point to a real Read.
     if (CONFIG_LEAF_LANGUAGES.has(resolved.language)) {
-      const out = [`**${filePath}** — configuration/data file, ${depSummary}`, ''];
+      const out = [`**${filePath}**${testLabel} — configuration/data file, ${depSummary}`, ''];
       if (nodes.length) out.push(...symbolMap('**Keys (values withheld for safety)**'));
       out.push('', '> Values may be secrets, so codegraph indexes keys only. Read the file directly if you need a value.');
       return this.textResult(this.truncateOutput(out.join('\n')));
@@ -8270,7 +8374,7 @@ export class ToolHandler {
       try { content = readFileSync(abs, 'utf-8'); } catch { content = null; }
     }
     if (content === null) {
-      const out = [`**${filePath}** — could not read from disk (it may have moved since indexing). ${depSummary}`, ''];
+      const out = [`**${filePath}**${testLabel} — could not read from disk (it may have moved since indexing). ${depSummary}`, ''];
       if (nodes.length) out.push(...symbolMap('**Symbols**'));
       out.push('', `> Read \`${filePath}\` directly for its current content.`);
       return this.textResult(this.truncateOutput(out.join('\n')));
@@ -8290,11 +8394,11 @@ export class ToolHandler {
     const DEFAULT_LIMIT = 2000;
     const offset = Math.max(1, opts.offset ?? 1);
     if (offset > total) {
-      return this.textResult(`**${filePath}** has ${total} line${total === 1 ? '' : 's'} — offset ${offset} is past the end. ${depSummary}`);
+      return this.textResult(`**${filePath}**${testLabel} has ${total} line${total === 1 ? '' : 's'} — offset ${offset} is past the end. ${depSummary}`);
     }
     const maxLines = Math.max(1, opts.limit ?? DEFAULT_LIMIT);
     const start = offset - 1; // 0-based
-    const header = `**${filePath}** — ${total} lines, ${nodes.length} symbol${nodes.length === 1 ? '' : 's'} · ${depSummary}`;
+    const header = `**${filePath}**${testLabel} — ${total} lines, ${nodes.length} symbol${nodes.length === 1 ? '' : 's'} · ${depSummary}`;
 
     // Numbered lines, byte-for-byte Read's shape: `<n>\t<line>`, no left-pad.
     const numbered: string[] = [];
@@ -8465,6 +8569,11 @@ export class ToolHandler {
       } catch { /* closed instance — leave as is */ }
     }
     const stats = cg.getStats();
+    const buildInfo = cg.getIndexBuildInfo();
+    const reindexRecommended = cg.isIndexStale();
+    const indexBuildLabel = cg.getLastIndexedAt() == null
+      ? 'not indexed yet'
+      : formatIndexBuildVersion(buildInfo);
 
     // Warn when this index actually belongs to a different git working tree
     // (e.g. the server resolved up from a nested worktree to the main checkout).
@@ -8504,6 +8613,11 @@ export class ToolHandler {
     // Surface the active SQLite backend (node:sqlite, Node's built-in real
     // SQLite — full WAL + FTS5, no native build).
     lines.push(`**Backend:** node:sqlite (Node built-in) — full WAL + FTS5`);
+    lines.push(
+      `**Index built with:** ${indexBuildLabel}`,
+      `**Running CodeGraph:** ${formatRunningVersion()}`,
+      `**Re-index recommended:** ${reindexRecommended ? 'yes — the user can run `codegraph index`' : 'no'}`,
+    );
 
     // Effective journal mode. 'wal' ⇒ concurrent reads never block on a writer;
     // anything else ⇒ they can ("database is locked"). node:sqlite supports WAL
@@ -8548,11 +8662,22 @@ export class ToolHandler {
       }
     }
 
+    // Beside the file count, how many yielded symbols: it is what tells a
+    // language that parsed from one that is only listed.
+    const coverage = cg.getLanguageCoverage();
     lines.push('', '**Languages:**');
     for (const [lang, count] of Object.entries(stats.filesByLanguage)) {
       if ((count as number) > 0) {
-        lines.push(`- ${lang}: ${count}`);
+        const parsed = coverage.parsedFilesByLanguage[lang as Language];
+        lines.push(parsed === undefined || parsed === count ? `- ${lang}: ${count}` : `- ${lang}: ${count} (${parsed} with symbols)`);
       }
+    }
+    if (coverage.unparsedLanguages.length > 0) {
+      lines.push(
+        '',
+        `**No symbols from:** ⚠ ${coverage.unparsedLanguages.join(', ')} ` +
+        `— those files are indexed, but nothing in them can be searched or traced; Read them directly.`
+      );
     }
 
     // Whole-index degradation (#876): when live watching has permanently
@@ -8967,9 +9092,12 @@ export class ToolHandler {
 
     // Compact format: just list affected symbols grouped by file
     const lines: string[] = [
-      `**Impact: "${symbol}" affects ${nodeCount} symbols**`,
+      `**Impact: "${symbol}" affects ${nodeCount} symbols${impact.truncated ? ' (truncated at safety limit)' : ''}**`,
       '',
     ];
+    if (impact.truncated) {
+      lines.push('> Result truncated to protect the MCP process on a high-fanout graph. Narrow with `file` or reduce `depth`.', '');
+    }
 
     // Group by file
     const byFile = new Map<string, Node[]>();

@@ -12,10 +12,10 @@ import { UnresolvedRef, ResolvedRef, ResolutionContext, ImportMapping, ReExport 
 import { applyAliases, aliasAndBaseUrlCandidates } from './path-aliases';
 import { extractLocalExportAliases } from './alias-binding';
 import { resolveWorkspaceImport, workspaceImportTargets, type WorkspaceImportTargets } from './workspace-packages';
-import { stripCommentsForRegex, templateLiteralTextAt } from './strip-comments';
+import { blankStringContents, stripCommentsForRegex, templateLiteralTextAt } from './strip-comments';
 import { makeLineAt } from './synth-utils';
 import { dartDirectiveFile } from './dart-libraries';
-import { ambientModuleDeclares, findAmbientModuleExport, findAmbientModuleFile, inBlock, isInModuleBlock, namespaceBlocks, type NamespaceBlock } from './ambient-modules';
+import { ambientModuleDeclares, declaringFileAnswers, findAmbientModuleExport, findAmbientModuleFile, inBlock, isDeclarationFile, isInModuleBlock, namespaceBlocks, type NamespaceBlock } from './ambient-modules';
 import { isTestFile } from '../search/query-utils';
 import { moduleReferenceKeys, moduleTail } from '../db/reference-tail';
 import {
@@ -33,6 +33,7 @@ import {
   pythonReceiverBinding,
   pythonModuleImportKeys,
   isPythonFromImportModule,
+  isPythonNameFromOutside,
   tsGlobalScope,
   rustPathTarget,
   isRustNameFromStd,
@@ -126,6 +127,8 @@ interface FileExportIndex {
    * until first read through {@link statedDefaultExport}.
    */
   statedDefault?: StatedDefault;
+  /** What `module.exports =` says, once read (see commonJsDefaultExport). */
+  commonJsDefault?: { source?: string; name?: string } | null;
   /**
    * Names a local export clause (`export { impl as alias }`) binds to a
    * declaration the extractor never flagged isExported, for names not in
@@ -272,11 +275,12 @@ const COMMONJS_DEFAULT_EXPORT =
 function commonJsDefaultExport(filePath: string, context: ResolutionContext): { source?: string; name?: string } | null {
   if (!JS_FAMILY_FILE.test(filePath)) return null;
   if (context.fileContains && !context.fileContains(filePath, 'module.exports')) return null;
+  const idx = getFileExportIndex(filePath, context);
+  if (idx.commonJsDefault !== undefined) return idx.commonJsDefault;
   const source = context.readFile(filePath);
-  if (!source || !source.includes('module.exports')) return null;
-  const m = COMMONJS_DEFAULT_EXPORT.exec(source);
-  if (!m) return null;
-  return m[1] ? { source: m[1] } : { name: m[2] ?? m[3] ?? m[4] };
+  const m = source && source.includes('module.exports') ? COMMONJS_DEFAULT_EXPORT.exec(source) : null;
+  idx.commonJsDefault = !m ? null : m[1] ? { source: m[1] } : { name: m[2] ?? m[3] ?? m[4] };
+  return idx.commonJsDefault;
 }
 
 function getFileExportIndex(filePath: string, context: ResolutionContext): FileExportIndex {
@@ -355,6 +359,20 @@ function hasEsmDefaultExport(filePath: string, idx: FileExportIndex, context: Re
   return !!source && source.includes('default') && ESM_DEFAULT_EXPORT_RE.test(source);
 }
 
+/**
+ * Whether `node` is what its own file says it default-exports: what an `export
+ * default` statement declares or names, a single-file component, the name
+ * `module.exports` is set to, or a declaration file's answer, which an `export
+ * =` gives too. Anything else a default import lands on is the guess at the
+ * module's first export ({@link esmDefaultExport}).
+ */
+export function isStatedDefaultExport(node: Node, context: ResolutionContext): boolean {
+  if (!JS_FAMILY_FILE.test(node.filePath)) return node.kind === 'component';
+  if (isDeclarationFile(node.filePath)) return true;
+  const stated = statedDefaultExport(node.filePath, getFileExportIndex(node.filePath, context), context);
+  return typeof stated === 'object' ? stated.id === node.id : commonJsDefaultExport(node.filePath, context)?.name === node.name;
+}
+
 /** What this file exports as `name`: an exported declaration, else a local export clause's binding. */
 function exportedByName(filePath: string, idx: FileExportIndex, name: string, context: ResolutionContext): Node | undefined {
   const direct = idx.byName.get(name);
@@ -378,9 +396,13 @@ function exportedByName(filePath: string, idx: FileExportIndex, name: string, co
   return idx.clauseAliases.get(name);
 }
 
+/** Per context: an include path, by language → where the project's include directories find it. */
+const cppIncludeSearches = new WeakMap<ResolutionContext, Map<string, string | null>>();
+
 /** Drop the per-context memo tables (see ReferenceResolver.clearCaches). */
 export function clearImportResolverMemos(context: ResolutionContext): void {
   importPathMemos.delete(context);
+  cppIncludeSearches.delete(context);
   exportedSymbolMemos.delete(context);
   fileExportIndexes.delete(context);
   luaFileBasenameIndexes.delete(context);
@@ -601,6 +623,37 @@ const PYTHON_MODULE_LEVEL_KINDS = new Set<string>(['function', 'class', 'variabl
  */
 const PYTHON_NON_PROJECT_DIRS = new Set([
   'tests', 'test', 'testing', 'fixtures', 'testdata', 'examples', 'example', 'samples', 'vendor', 'third_party',
+]);
+
+/**
+ * `sys.stdlib_module_names`, less the private `_x` modules. A folder only a
+ * script has on its path never takes one of these: `from html import escape` in
+ * `django/utils/text.py` is the stdlib's, though `django/utils/html.py` beside it
+ * defines `escape`. CPython's own `test` package isn't one, as Python leaves it
+ * out too, so `from test import TestCase` stays open to a project's runner.
+ */
+const PYTHON_STDLIB_MODULES = new Set([
+  '__future__', 'abc', 'annotationlib', 'antigravity', 'argparse', 'array', 'ast', 'asyncio', 'atexit',
+  'base64', 'bdb', 'binascii', 'bisect', 'builtins', 'bz2', 'cProfile', 'calendar', 'cmath', 'cmd', 'code',
+  'codecs', 'codeop', 'collections', 'colorsys', 'compileall', 'compression', 'concurrent', 'configparser',
+  'contextlib', 'contextvars', 'copy', 'copyreg', 'csv', 'ctypes', 'curses', 'dataclasses', 'datetime',
+  'dbm', 'decimal', 'difflib', 'dis', 'doctest', 'email', 'encodings', 'ensurepip', 'enum', 'errno',
+  'faulthandler', 'fcntl', 'filecmp', 'fileinput', 'fnmatch', 'fractions', 'ftplib', 'functools', 'gc',
+  'genericpath', 'getopt', 'getpass', 'gettext', 'glob', 'graphlib', 'grp', 'gzip', 'hashlib', 'heapq',
+  'hmac', 'html', 'http', 'idlelib', 'imaplib', 'importlib', 'inspect', 'io', 'ipaddress', 'itertools',
+  'json', 'keyword', 'linecache', 'locale', 'logging', 'lzma', 'mailbox', 'marshal', 'math', 'mimetypes',
+  'mmap', 'modulefinder', 'msvcrt', 'multiprocessing', 'netrc', 'nt', 'ntpath', 'nturl2path', 'numbers',
+  'opcode', 'operator', 'optparse', 'os', 'pathlib', 'pdb', 'pickle', 'pickletools', 'pkgutil', 'platform',
+  'plistlib', 'poplib', 'posix', 'posixpath', 'pprint', 'profile', 'profiling', 'pstats', 'pty', 'pwd',
+  'py_compile', 'pyclbr', 'pydoc', 'pydoc_data', 'pyexpat', 'queue', 'quopri', 'random', 're', 'readline',
+  'reprlib', 'resource', 'rlcompleter', 'runpy', 'sched', 'secrets', 'select', 'selectors', 'shelve',
+  'shlex', 'shutil', 'signal', 'site', 'smtplib', 'socket', 'socketserver', 'sqlite3', 'ssl', 'stat',
+  'statistics', 'string', 'stringprep', 'struct', 'subprocess', 'symtable', 'sys', 'sysconfig', 'syslog',
+  'tabnanny', 'tarfile', 'tempfile', 'termios', 'textwrap', 'this', 'threading', 'time', 'timeit',
+  'tkinter', 'token', 'tokenize', 'tomllib', 'trace', 'traceback', 'tracemalloc', 'tty', 'turtle',
+  'turtledemo', 'types', 'typing', 'unicodedata', 'unittest', 'urllib', 'uuid', 'venv', 'warnings', 'wave',
+  'weakref', 'webbrowser', 'winreg', 'winsound', 'wsgiref', 'xml', 'xmlrpc', 'zipapp', 'zipfile',
+  'zipimport', 'zlib', 'zoneinfo',
 ]);
 
 /** A def at module level — what `from mod import name` can bind. */
@@ -890,7 +943,45 @@ function resolvePythonModule(
     if (found !== null && found !== hit) return null;
     found = hit;
   }
-  return found;
+  return found ?? pythonModuleOfScript(specifier, relPath, fromFile, importerDir, index, context);
+}
+
+/**
+ * The module only a script's own `sys.path[0]` provides, which no root does:
+ * `from test import TestCase` in `modules/vs/tests/with_a.py`, with the runner
+ * `modules/vs/test.py` above it, or `from pysim import HashTable` in
+ * `tools/an/pysim_test.py`, beside `tools/an/pysim.py` in a folder that also
+ * holds an `__init__.py`. Nothing in the tree says such a folder is on the path,
+ * and a file of a real package means the top-level module instead, so the folder
+ * has to earn it. A stdlib name never does. A module that imports its own name
+ * wraps the real one, which that name then means, for its neighbours and for
+ * itself. Otherwise what proves the module is what the importer takes from it:
+ * every name must be one the file defines at module level. A plain `import
+ * utils` or a star import takes no name, so it proves nothing and stays
+ * unresolved. Nearest folder first, the importer's own included; a package above
+ * it is no root, so it is passed over.
+ */
+function pythonModuleOfScript(
+  specifier: string,
+  relPath: string,
+  fromFile: string,
+  importerDir: string,
+  index: PythonModuleIndex,
+  context: ResolutionContext
+): string | null {
+  if (PYTHON_STDLIB_MODULES.has(specifier.split('.')[0]!)) return null;
+  const taken = context.getImportMappings(fromFile, 'python')
+    .filter((imp) => imp.source === specifier && !imp.isNamespace)
+    .map((imp) => imp.exportedName);
+  if (taken.length === 0) return null;
+  for (let dir = importerDir; dir; dir = parentDir(dir)) {
+    if (dir !== importerDir && index.packageDirs.has(dir)) continue;
+    const file = pythonModuleUnder(dir, relPath, index);
+    if (!file || context.getImportMappings(file, 'python').some((imp) => imp.source === specifier)) continue;
+    const defined = new Set(context.getNodesInFile(file).filter(isPythonModuleLevelDef).map((n) => n.name));
+    if (taken.every((name) => defined.has(name))) return file;
+  }
+  return null;
 }
 
 /**
@@ -957,6 +1048,46 @@ export function pythonReopenScope(
   }
   const moduleLeaves = [...new Set([...affected].map((m) => m.slice(m.lastIndexOf('.') + 1)))];
   return { targetFiles, sourceDirs: [...sourceDirs], moduleLeaves };
+}
+
+/**
+ * What an edit of these Python files can move through
+ * {@link pythonModuleOfScript}: such a module binds only while it defines the
+ * names its importers take, so an edit links or unlinks them though no file
+ * appeared or vanished. Import nodes are named by their specifier, so each folder
+ * above a module asks for the spelling that reaches it from there: a file in a
+ * package folder, or a file anywhere below a plain folder that isn't a root. An
+ * edit nobody imports that way re-opens nothing, however many other importers
+ * the module has: `from types import ModuleType` beside `mypy/types.py` never does.
+ */
+export function pythonScriptModuleScope(
+  context: ResolutionContext,
+  editedFiles: string[]
+): { targetFiles: string[]; sourceDirs: string[]; moduleLeaves: string[] } {
+  const index = pythonModuleIndex(context);
+  const targetFiles: string[] = [];
+  const moduleLeaves: string[] = [];
+  for (const raw of editedFiles) {
+    const file = raw.replace(/\\/g, '/');
+    if (!PYTHON_MODULE_FILE.test(file)) continue;
+    const mod = file.replace(/(?:^|\/)__init__\.py$/, '').replace(/\.py$/, '');
+    for (let dir = parentDir(mod); dir; dir = parentDir(dir)) {
+      const specifier = mod.slice(dir.length + 1).replace(/\//g, '.');
+      if (PYTHON_STDLIB_MODULES.has(specifier.split('.')[0]!)) continue;
+      const importers = context.getNodesByName(specifier)
+        .filter((n) => n.kind === 'import' && PYTHON_MODULE_FILE.test(n.filePath))
+        .map((n) => parentDir(n.filePath));
+      const reached = index.packageDirs.has(dir)
+        ? importers.includes(dir)
+        : !index.projectRoots.has(dir) && !index.localRoots.has(dir) &&
+          importers.some((d) => d.startsWith(`${dir}/`));
+      if (!reached) continue;
+      targetFiles.push(file);
+      moduleLeaves.push(mod.slice(mod.lastIndexOf('/') + 1));
+      break;
+    }
+  }
+  return { targetFiles, sourceDirs: [], moduleLeaves };
 }
 
 /**
@@ -1348,6 +1479,10 @@ function resolveAliasedImport(
   const workspaces = context.getWorkspacePackages?.();
   const targets = workspaces ? workspaceImportTargets(importPath, workspaces, fromFile) : null;
   if (targets) {
+    const forBrowser = targets.browser.length > 0 && fromFile !== undefined && isBrowserCode(fromFile, context)
+      ? declaredWorkspaceEntry({ ...targets, declared: targets.browser }, language, context)
+      : null;
+    if (forBrowser) return forBrowser;
     const declared = declaredWorkspaceEntry(targets, language, context);
     if (declared) return declared;
     const direct = tryWithExt(targets.directory);
@@ -1428,6 +1563,20 @@ function declaredWorkspaceEntry(targets: WorkspaceImportTargets, language: Langu
     if (hit) return hit;
   }
   return null;
+}
+
+/** A read of the page a browser gives a script: `document.title`, `window.location`. */
+const BROWSER_GLOBAL_READ = /(?<![\w$.])(?:document|window)\s*[.[]/;
+
+/**
+ * Whether a file reads the browser's page, so that the `browser` condition of
+ * an import is the one it runs with: react's `fixtures/flight/src/index.js`,
+ * which a bundler builds for the page, takes `react-server-dom-webpack/client`
+ * as `client.browser.js`, not the `node` variant a server's file gets.
+ */
+function isBrowserCode(file: string, context: ResolutionContext): boolean {
+  const source = context.readFile(file);
+  return !!source && BROWSER_GLOBAL_READ.test(blankStringContents(stripCommentsForRegex(source, 'typescript')));
 }
 
 /** `target`, build output the index lacks, as the indexed source it is built from (see builtSourcesOf); null when there is none. */
@@ -1563,69 +1712,33 @@ function namesOwnConfigModule(importPath: string, fromFile: string, language: La
 }
 
 /**
- * C/C++ include directory cache (keyed by project root).
- * Loaded once per resolver instance, shared across calls.
+ * The Clang compilation databases a project can have, relative to its root,
+ * the first one found being the one read.
  */
-const cppIncludeDirCache = new Map<string, string[]>();
+export const CPP_COMPILE_DB_FILES = [
+  'compile_commands.json',
+  'build/compile_commands.json',
+  'cmake-build-debug/compile_commands.json',
+  'cmake-build-release/compile_commands.json',
+  'out/compile_commands.json',
+] as const;
 
 /**
- * Clear the C/C++ include directory cache (call between indexing runs)
- */
-export function clearCppIncludeDirCache(): void {
-  cppIncludeDirCache.clear();
-}
-
-/**
- * Discover C/C++ include search directories for a project.
- *
- * Strategy:
- * 1. Look for compile_commands.json (Clang compilation database) in the
- *    project root and common build subdirectories. Parse -I and -isystem
- *    flags from compiler commands.
- * 2. If no compilation database is found, probe for common convention
- *    directories (include/, src/, lib/, api/) and top-level directories
- *    containing .h/.hpp files.
- *
- * Returns paths relative to projectRoot.
- */
-export function loadCppIncludeDirs(projectRoot: string): string[] {
-  const cached = cppIncludeDirCache.get(projectRoot);
-  if (cached !== undefined) return cached;
-
-  const dirs = loadCppIncludeDirsFromCompileDB(projectRoot)
-    || loadCppIncludeDirsHeuristic(projectRoot);
-
-  cppIncludeDirCache.set(projectRoot, dirs);
-  return dirs;
-}
-
-/**
- * Try to load include directories from compile_commands.json.
+ * The C/C++ include search directories a project's compile_commands.json
+ * names, by its -I and -isystem flags, relative to projectRoot.
  * Returns null if no compilation database is found (so the heuristic
  * fallback can run). Returns an array (possibly empty) otherwise.
  */
-function loadCppIncludeDirsFromCompileDB(projectRoot: string): string[] | null {
-  const candidates = [
-    path.join(projectRoot, 'compile_commands.json'),
-    path.join(projectRoot, 'build', 'compile_commands.json'),
-    path.join(projectRoot, 'cmake-build-debug', 'compile_commands.json'),
-    path.join(projectRoot, 'cmake-build-release', 'compile_commands.json'),
-    path.join(projectRoot, 'out', 'compile_commands.json'),
-  ];
-
-  let dbPath: string | undefined;
-  for (const c of candidates) {
-    try {
-      if (fs.existsSync(c)) {
-        dbPath = c;
-        break;
-      }
-    } catch {
-      // ignore
-    }
+export function loadCppIncludeDirsFromCompileDB(projectRoot: string): string[] | null {
+  for (const file of CPP_COMPILE_DB_FILES) {
+    const dbPath = path.join(projectRoot, file);
+    if (fs.existsSync(dbPath)) return readCompileDbIncludeDirs(dbPath, projectRoot);
   }
-  if (!dbPath) return null;
+  return null;
+}
 
+/** The include directories the compilation database at `dbPath` names; null when it can't be read. */
+export function readCompileDbIncludeDirs(dbPath: string, projectRoot: string): string[] | null {
   try {
     const content = fs.readFileSync(dbPath, 'utf-8');
     const entries = JSON.parse(content) as Array<{
@@ -1713,7 +1826,7 @@ function shlexSplit(cmd: string): string[] {
  * Heuristic include directory discovery when no compile_commands.json exists.
  * Checks common convention directories and scans top-level dirs for headers.
  */
-function loadCppIncludeDirsHeuristic(projectRoot: string): string[] {
+export function loadCppIncludeDirsHeuristic(projectRoot: string): string[] {
   const dirs: string[] = [];
   const conventionDirs = ['include', 'src', 'lib', 'api', 'inc'];
 
@@ -1749,6 +1862,21 @@ function loadCppIncludeDirsHeuristic(projectRoot: string): string[] {
  * Called as a fallback after relative and aliased resolution fail.
  */
 function resolveCppIncludePath(
+  importPath: string,
+  language: Language,
+  context: ResolutionContext
+): string | null {
+  // (The search doesn't depend on the including file, and a project's files
+  // include one header from hundreds of places.)
+  let memo = cppIncludeSearches.get(context);
+  if (!memo) cppIncludeSearches.set(context, (memo = new Map()));
+  const key = `${language}\0${importPath}`;
+  let found = memo.get(key);
+  if (found === undefined) memo.set(key, (found = searchCppIncludeDirs(importPath, language, context)));
+  return found;
+}
+
+function searchCppIncludeDirs(
   importPath: string,
   language: Language,
   context: ResolutionContext
@@ -2373,17 +2501,6 @@ function extractCppImports(content: string): ImportMapping[] {
   return mappings;
 }
 
-// Cache import mappings per file to avoid re-reading and re-parsing
-const importMappingCache = new Map<string, ImportMapping[]>();
-
-/**
- * Clear the import mapping cache (call between indexing runs)
- */
-export function clearImportMappingCache(): void {
-  importMappingCache.clear();
-  cppIncludeDirCache.clear();
-}
-
 /**
  * Strip JS line + block comments from `content` while preserving
  * string literals (so `"//"` inside a string stays intact). A block
@@ -2568,10 +2685,9 @@ export function resolveJvmImport(
   // FQN across source sets (commonMain / androidMain / appleMain). Taking the
   // first candidate let a single platform `actual` absorb every common-side
   // import, so the `expect` (the canonical API a commonMain file imports)
-  // looked unused. Prefer the candidate CLOSEST to the importing file by
-  // directory proximity — a commonMain import resolves to the commonMain
-  // declaration — with the `expect` side as a tiebreak.
-  const best = candidates.length === 1 ? candidates[0]! : pickClosestJvmCandidate(candidates, ref.filePath);
+  // looked unused. A commonMain import resolves to the commonMain declaration,
+  // a platform's to its `actual` (pickJvmDeclaration).
+  const best = candidates.length === 1 ? candidates[0]! : pickJvmDeclaration(candidates, ref);
   return {
     original: ref,
     targetNodeId: best.id,
@@ -2629,6 +2745,51 @@ function pickClosestJvmCandidate(candidates: Node[], fromPath: string): Node {
     }
   }
   return best;
+}
+
+/** The source set a file is in: `androidMain` of `lib/src/androidMain/kotlin/a/Util.kt`; null outside any `src/<set>/`. */
+function kmpSourceSet(filePath: string): string | null {
+  return /(?:^|\/)src\/([^/]+)\//.exec(filePath)?.[1] ?? null;
+}
+
+/** What a source set builds for: `android` of `androidMain` and `androidUnitTest`, `common` of `commonTest`. */
+function kmpBuildTarget(set: string): string {
+  return set.replace(/(?:Main|(?:Unit|Instrumented|Device|Host)?Test)$/, '');
+}
+
+/** Kotlin Multiplatform targets that build for the JVM. */
+const KMP_JVM_TARGET = /^(?:android|jvm|desktop)/;
+
+/**
+ * Which of a declaration's same-named Kotlin Multiplatform declarations a JVM
+ * reference reaches. A file compiled for common code sees the `expect`, so
+ * commonMain and commonTest keep the nearest declaration, the `expect` on a
+ * tie. Anything built for a platform sees the `actual`: Kotlin of that target's
+ * source sets its own (an androidUnitTest the androidMain one) or that of a
+ * target it builds on (`iosArm64Main` from `iosMain`), and with neither the
+ * `expect`, as an intermediate source set does. Java, and a Kotlin module with
+ * no source sets of its own, run against JVM bytecode, where no `expect` exists:
+ * timber's Java sample calling `Timber.plant(…)` is the `androidMain` `actual`,
+ * never an `iosMain` one. Of the JVM's targets the one its path names, else not
+ * Android's: okhttp's samples are `jvmMain`'s, its `android-test` `androidMain`'s.
+ */
+function pickJvmDeclaration(declarations: Node[], ref: UnresolvedRef): Node {
+  const actuals = declarations.filter((n) => n.decorators?.includes('actual'));
+  if (actuals.length === 0 || actuals.length === declarations.length) return pickClosestJvmCandidate(declarations, ref.filePath);
+  const set = kmpSourceSet(ref.filePath);
+  const target = set === null ? null : kmpBuildTarget(set);
+  const targetOf = (n: Node): string => kmpBuildTarget(kmpSourceSet(n.filePath) ?? '');
+  if (target?.startsWith('common') || (target === null && ref.language !== 'java')) return pickClosestJvmCandidate(declarations, ref.filePath);
+  const own = actuals.filter((n) => targetOf(n) === target);
+  if (own.length > 0) return pickClosestJvmCandidate(own, ref.filePath);
+  if (ref.language === 'java' || target === 'main' || target === 'test') {
+    const jvm = actuals.filter((n) => KMP_JVM_TARGET.test(targetOf(n)));
+    const android = /android/i.test(ref.filePath);
+    const named = jvm.filter((n) => targetOf(n).startsWith('android') === android);
+    return pickClosestJvmCandidate(named.length > 0 ? named : jvm.length > 0 ? jvm : actuals, ref.filePath);
+  }
+  const above = actuals.filter((n) => targetOf(n) !== '' && target!.startsWith(targetOf(n)));
+  return pickClosestJvmCandidate(above.length > 0 ? above : declarations, ref.filePath);
 }
 
 /**
@@ -2717,12 +2878,8 @@ function isJsBareModuleRef(ref: UnresolvedRef, context: ResolutionContext): bool
  */
 export function jsModuleFile(ref: UnresolvedRef, context: ResolutionContext): string | null {
   if (!isJsPathImportRef(ref) && !isJsBareModuleRef(ref, context)) return null;
-  // A package the repository declares itself is the file that declares it,
-  // whatever file its specifier resolves to (see ./ambient-modules).
-  if (isBareModuleSpecifier(ref.referenceName, ref.language)) {
-    const declaring = findAmbientModuleFile(ref.referenceName, ref.filePath, context);
-    if (declaring) return declaring.filePath;
-  }
+  const declaring = declaredModuleFile(ref.referenceName, ref, context);
+  if (declaring) return declaring.filePath;
   const file = resolveImportPath(ref.referenceName, ref.filePath, ref.language, context);
   return file && file !== ref.filePath ? file : null;
 }
@@ -2869,19 +3026,16 @@ function typeQualifier(ref: UnresolvedRef, context: ResolutionContext): string[]
  */
 function importedTypeMember(imp: ImportMapping, path: string[], ref: UnresolvedRef, context: ResolutionContext): Node | null | undefined {
   const file = resolveImportPath(imp.source, ref.filePath, ref.language, context);
-  const bare = isBareModuleSpecifier(imp.source, ref.language);
   let found: Node | undefined;
   let rest: string[];
   if (imp.isNamespace) {
     const want = { isDefault: false, isNamespace: true, exportedName: path[0]!, memberName: path[0]! };
-    found = (bare ? findAmbientModuleExport(imp.source, want, ref, context) : undefined) ??
-      (file ? findExportedSymbol(file, want, ref.language, context, new Set()) : undefined);
+    found = findImportedExport(imp.source, file, want, ref, context);
     if (found && path.length === 1) return found;
     rest = path.slice(1);
   } else {
     const want = { isDefault: imp.isDefault, isNamespace: false, exportedName: imp.isDefault ? 'default' : imp.exportedName, memberName: null };
-    found = (bare ? findAmbientModuleExport(imp.source, want, ref, context) : undefined) ??
-      (file ? findExportedSymbol(file, want, ref.language, context, new Set()) : undefined);
+    found = findImportedExport(imp.source, file, want, ref, context);
     rest = path;
   }
   if (found) {
@@ -3260,20 +3414,28 @@ export function resolveViaImport(
         context
       );
 
-      // A package the repository declares itself, as cord-field's
-      // `typings/mammoth/index.d.ts` declares `declare module 'mammoth'`:
-      // TypeScript takes that declaration before any file the specifier
-      // resolves to (see ./ambient-modules).
-      const bare = isBareModuleSpecifier(imp.source, ref.language);
-      if (resolvedPath || bare) {
+      // A package the repository declares itself may resolve to no file at all.
+      if (resolvedPath || isBareModuleSpecifier(imp.source, ref.language)) {
         const exportedName = imp.isDefault ? 'default' : imp.exportedName;
         const memberName = imp.isNamespace
           ? ref.referenceName.replace(imp.localName + '.', '')
           : null;
         const want = { isDefault: imp.isDefault, isNamespace: imp.isNamespace, exportedName, memberName };
 
-        const targetNode = (bare ? findAmbientModuleExport(imp.source, want, ref, context) : undefined) ??
-          (resolvedPath ? findExportedSymbol(resolvedPath, want, ref.language, context, new Set()) : undefined);
+        const targetNode = findImportedExport(imp.source, resolvedPath, want, ref, context);
+        const memberRead = !imp.isNamespace && ref.referenceName.startsWith(imp.localName + '.');
+
+        // `named.second()` through a default binding: what the module exports
+        // as `second`. `require('./m')` is the whole module, and so is a
+        // default import of a CommonJS one. Where the module states no default
+        // the name it exports comes first, since all that was found is the
+        // guess at its first export, and nothing else can be the answer.
+        const throughDefault = memberRead && imp.isDefault && ESM_IMPORT_LANGUAGES.has(ref.language);
+        const exported = throughDefault
+          ? findImportedExport(imp.source, resolvedPath, { ...want, isDefault: false, isNamespace: true, memberName: ref.referenceName.slice(imp.localName.length + 1) }, ref, context)
+          : undefined;
+        const guessed = throughDefault && !(targetNode && isStatedDefaultExport(targetNode, context));
+        if (guessed && exported) return { original: ref, targetNodeId: exported.id, confidence: 0.9, resolvedBy: 'import' };
 
         if (targetNode) {
           // `Foo.bar()` / `Foo.CONST` — a NAMED (non-namespace) class import
@@ -3283,7 +3445,7 @@ export function resolveViaImport(
           // class and `createEdges` then mis-promotes the call to an
           // `instantiates` edge, so the static method shows zero callers and a
           // hollow impact radius. (#825)
-          if (!imp.isNamespace && ref.referenceName.startsWith(imp.localName + '.')) {
+          if (memberRead) {
             const memberNode = resolveStaticMember(targetNode, ref, imp.localName, context);
             if (memberNode) {
               return {
@@ -3322,12 +3484,19 @@ export function resolveViaImport(
             const instanceMember = resolveImportedInstanceMember(targetNode, ref, imp.localName, context);
             if (instanceMember) return instanceMember;
 
+            // `module.exports = main; module.exports.extra = …`, then `m.extra()`.
+            if (exported) return { original: ref, targetNodeId: exported.id, confidence: 0.9, resolvedBy: 'import' };
+
             // Finding a named Python import proves the receiver exists, not
             // its requested attribute. In particular, task.delay() enqueues
             // work; it does not call the imported task function directly.
             // Keep unknown members unresolved (including callback values)
             // instead of falling back to the receiver as their target.
             if (ref.language === 'python') return null;
+
+            // A member of the guess at a module's first export is no member of
+            // the module: the receiver isn't known, so there is nothing to name.
+            if (guessed) continue;
           }
 
           return {
@@ -3368,6 +3537,55 @@ function isBareModuleSpecifier(source: string, language: Language): boolean {
 }
 
 /**
+ * Whether `specifier`, resolving to `file` from `ref`'s file, names a module of
+ * a package this repository holds: a workspace member or a path dependency.
+ * That module is implemented here, and a `declare module` of its name only
+ * describes it to the type checker: react's ESLint plugin stubs
+ * `shared/ReactFeatureFlags` because tsc can't read that Flow file, and what
+ * runs is the file. A file a `paths` alias names is another matter: the checker
+ * takes the declared module first and never reads it, as copilot's shim of
+ * `vscode` for its test runner.
+ */
+function isRepositoryModule(specifier: string, file: string | null, ref: UnresolvedRef, context: ResolutionContext): boolean {
+  if (file === null || isDeclarationFile(file)) return false;
+  const workspaces = context.getWorkspacePackages?.();
+  return !!workspaces && workspaceImportTargets(specifier, workspaces, ref.filePath) !== null;
+}
+
+/**
+ * What an import of `want` from `source` names, `file` being where `source`
+ * resolves to, if anywhere: the export of a module of the repository's own
+ * packages, then the repository's own `declare module` of the package, as
+ * cord-field's `typings/mammoth/index.d.ts` declares `mammoth`, then the export
+ * of any other file, which TypeScript takes the declaration before (see
+ * ./ambient-modules).
+ */
+function findImportedExport(
+  source: string,
+  file: string | null,
+  want: { isDefault: boolean; isNamespace: boolean; exportedName: string; memberName: string | null },
+  ref: UnresolvedRef,
+  context: ResolutionContext
+): Node | undefined {
+  const inFile = (): Node | undefined => (file ? findExportedSymbol(file, want, ref.language, context, new Set()) : undefined);
+  const declared = isBareModuleSpecifier(source, ref.language) ? findAmbientModuleExport(source, want, ref, context) : undefined;
+  if (!declared) return inFile();
+  return (isRepositoryModule(source, file, ref, context) ? inFile() : undefined) ?? declared;
+}
+
+/**
+ * The file that declares `specifier` as a module, for `ref`'s file (see
+ * ./ambient-modules): the module, whatever file the specifier resolves to,
+ * short of a module of the repository's own packages.
+ */
+function declaredModuleFile(specifier: string, ref: UnresolvedRef, context: ResolutionContext): Node | undefined {
+  if (!isBareModuleSpecifier(specifier, ref.language)) return undefined;
+  const declaring = findAmbientModuleFile(specifier, ref.filePath, context);
+  if (!declaring) return undefined;
+  return isRepositoryModule(specifier, resolveImportPath(specifier, ref.filePath, ref.language, context), ref, context) ? undefined : declaring;
+}
+
+/**
  * Reference kinds the extractor records by a qualified name's last part: a
  * type position (`doc: vscode.TextDocument`) and a construction (`new
  * vscode.EventEmitter<T>()`). A call keeps what it is called through.
@@ -3392,13 +3610,16 @@ const LAST_NAME_KINDS: ReadonlySet<string> = new Set(['references', 'extends', '
  * A name bound to another package (an LSP `TextDocument`), to Node's own
  * modules (`fs`), or to a project file that doesn't import the module, or a
  * bare name a file reaching no such module writes, is not one of the module's.
+ * Neither is one the module's name alone leads to, in a block that doesn't
+ * count for the file (see declaringFileAnswers).
  */
 export function reachesAmbientModule(ref: UnresolvedRef, specifier: string, declaringFile: string, context: ResolutionContext): boolean {
-  if (isInModuleBlock(ref.filePath, ref.line, ref.column ?? 0, specifier, context)) return true;
+  const answers = declaringFileAnswers(declaringFile, ref.filePath, context);
+  if (answers && isInModuleBlock(ref.filePath, ref.line, ref.column ?? 0, specifier, context)) return true;
   const mappings = context.getImportMappings(ref.filePath, ref.language);
   const relative = (source: string): boolean => source.startsWith('.') || source.startsWith('/');
   const leadsTo = (source: string, through: (file: string) => boolean): boolean => {
-    if (source === specifier) return true;
+    if (source === specifier) return answers;
     if (!relative(source)) return false;
     const file = resolveImportPath(source, ref.filePath, ref.language, context);
     return file !== null && (file === declaringFile || through(file));
@@ -3728,12 +3949,8 @@ function resolveModuleImportToFile(
       continue;
     }
 
-    // A package the repository declares itself in a script `.d.ts`: that file
-    // is the module, whatever file the specifier resolves to (see ./ambient-modules).
-    if (isBareModuleSpecifier(modulePath, ref.language)) {
-      const declaring = findAmbientModuleFile(modulePath, ref.filePath, context);
-      if (declaring) return { original: ref, targetNodeId: declaring.id, confidence: 0.9, resolvedBy: 'import' };
-    }
+    const declaring = declaredModuleFile(modulePath, ref, context);
+    if (declaring) return { original: ref, targetNodeId: declaring.id, confidence: 0.9, resolvedBy: 'import' };
 
     const resolvedPath = resolveImportPath(modulePath, ref.filePath, ref.language, context);
     if (resolvedPath && resolvedPath !== ref.filePath) {
@@ -3918,7 +4135,7 @@ function resolveJavaImportedReference(
     const callOfFunction = matchesBare && ref.referenceKind === 'calls' &&
       named.some((n) => n.kind === 'function' || n.kind === 'method');
     if (declarations.length > 0 && !callOfFunction) {
-      const owner = declarations.length === 1 ? declarations[0]! : pickClosestJvmCandidate(declarations, ref.filePath);
+      const owner = declarations.length === 1 ? declarations[0]! : pickJvmDeclaration(declarations, ref);
       const target = jvmImportedMember(owner, memberPath, ref, context);
       // Of a member's overloads, the one the call's argument count fits:
       // `ItemStack.Hash.of(stack, registries)`, not `of(stack)`.
@@ -4094,7 +4311,22 @@ function findExportedSymbolWalk(
   if (want.isDefault) {
     // What the file's own `export default` statement exports beats any
     // guess; an anonymous default is no node at all, and no neighbour is it.
-    if (statedDefaultExport(filePath, exportIndex, context) === 'anonymous') return undefined;
+    const stated = statedDefaultExport(filePath, exportIndex, context);
+    if (stated === 'anonymous') return undefined;
+    // CommonJS: `module.exports = createApplication`, or `= require('./lib/express')`.
+    // Said outright, so it beats the guess below at a neighbour assigned to
+    // `exports.x = function …`, which is flagged exported.
+    const commonJs = typeof stated === 'object' ? null : commonJsDefaultExport(filePath, context);
+    if (commonJs?.source) {
+      const next = resolveImportPath(commonJs.source, filePath, language, context);
+      const forwarded = next ? findExportedSymbol(next, want, language, context, visited, depth + 1) : undefined;
+      if (forwarded) return forwarded;
+    } else if (commonJs?.name) {
+      const bound = moduleBindingsFirst(filePath, nodesInFileNamed(filePath, commonJs.name, context)
+        .filter((n) => DEFAULT_BINDING_KINDS.has(n.kind))
+        .sort((a, b) => a.startLine - b.startLine || a.startColumn - b.startColumn))[0];
+      if (bound) return bound;
+    }
     // Svelte/Vue single-file components ARE the module's default export,
     // but are extracted as kind 'component' (not function/class), so the
     // fallback prefers the component node. Without it, an `export { default
@@ -4102,20 +4334,14 @@ function findExportedSymbolWalk(
     // a false 0 callers (#629).
     const direct = esmDefaultExport(filePath, exportIndex, context);
     if (direct) return direct;
-    // CommonJS: `module.exports = createApplication`, or `= require('./lib/express')`.
-    const commonJs = commonJsDefaultExport(filePath, context);
-    if (commonJs?.source) {
-      const next = resolveImportPath(commonJs.source, filePath, language, context);
-      if (next) return findExportedSymbol(next, want, language, context, visited, depth + 1);
-    } else if (commonJs?.name) {
-      const bound = moduleBindingsFirst(filePath, nodesInFileNamed(filePath, commonJs.name, context)
-        .filter((n) => DEFAULT_BINDING_KINDS.has(n.kind))
-        .sort((a, b) => a.startLine - b.startLine || a.startColumn - b.startColumn))[0];
-      if (bound) return bound;
-    }
   } else if (want.isNamespace && want.memberName) {
     const direct = exportedByName(filePath, exportIndex, want.memberName, context);
     if (direct) return direct;
+    // `module.exports = require('./lib/m')` forwards the whole module.
+    const source = commonJsDefaultExport(filePath, context)?.source;
+    const next = source ? resolveImportPath(source, filePath, language, context) : null;
+    const forwarded = next ? findExportedSymbol(next, want, language, context, visited, depth + 1) : undefined;
+    if (forwarded) return forwarded;
   } else {
     const direct = exportedByName(filePath, exportIndex, want.exportedName, context);
     if (direct) return direct;
@@ -4282,13 +4508,21 @@ function resolveStaticMember(
 ): Node | undefined {
   if (!STATIC_MEMBER_CONTAINERS.has(container.kind)) return undefined;
   // First segment after the receiver: `Foo.bar.baz` → `bar`.
-  const member = ref.referenceName.slice(localName.length + 1).split('.')[0];
+  const [member, ...rest] = ref.referenceName.slice(localName.length + 1).split('.');
   if (!member) return undefined;
 
   const candidates = context
     .getNodesByQualifiedName(`${container.qualifiedName}::${member}`)
     .filter((n) => n.filePath === container.filePath);
   if (candidates.length === 0) return undefined;
+
+  // A Python reference keeps its whole chain, and it reads the chain's last
+  // link: `Foo.bar.fset()` is no call of `bar`, nor `Foo.Inner.objects.create()`
+  // a new `Inner`, but `Foo.Inner.run()` is `Inner`'s `run`.
+  if (ref.language === 'python' && rest.length > 0) {
+    const next = candidates.find((n) => STATIC_MEMBER_CONTAINERS.has(n.kind));
+    return next && resolveStaticMember(next, { ...ref, referenceName: `${member}.${rest.join('.')}` }, member, context);
+  }
 
   // When the reference is a call, prefer a callable member if several nodes
   // share the qualifiedName (e.g. a static property and a method).
@@ -4312,7 +4546,7 @@ function resolveStaticMember(
  * instead of removing it, so locality has to be checked too.
  *
  * Answers only when it can be CERTAIN, because a false "yes" deletes a real
- * edge. Two languages qualify, each with an oracle that cannot be wrong:
+ * edge. Three languages qualify, each with an oracle of its own:
  *
  *  - **Rust** — the `use` path is rooted at a standard-library crate
  *    (`std`/`core`/`alloc`/`proc_macro`), which by definition ships outside
@@ -4325,14 +4559,19 @@ function resolveStaticMember(
  *    path aliases and monorepo workspace packages, unless the specifier still
  *    names a project file through the importing app's `baseUrl` or catch-all
  *    `paths` (`import Base from 'components/Base'`).
+ *  - **Python** — `resolveImportPath`, which searches for a module the way
+ *    Python does (see {@link isPythonNameFromOutside}).
  *
- * Everything else returns false and resolves exactly as before. JVM and Python
- * imports notably do NOT go through `resolveImportPath` (they have dedicated
- * FQN/module matchers), so there is no trustworthy oracle to consult here.
+ * Everything else returns false and resolves exactly as before. JVM imports
+ * notably do NOT go through `resolveImportPath` (they have dedicated FQN
+ * matchers), so there is no trustworthy oracle to consult here.
+ *
+ * `target` is what a strategy found, when the caller has it.
  */
 export function isBoundToOutOfRepoImport(
   ref: UnresolvedRef,
-  context: ResolutionContext
+  context: ResolutionContext,
+  target?: Node | null
 ): boolean {
   const name = ref.referenceName;
   if (name.includes('::') || name.includes('.')) return false; // qualified refs resolve by path
@@ -4340,6 +4579,7 @@ export function isBoundToOutOfRepoImport(
   // (A 2015-edition crate-relative path can shadow a stdlib root with a local
   // module of the same name: a `use core::…` with a `mod core;` is the crate's.)
   if (ref.language === 'rust') return isRustNameFromStd(ref, context);
+  if (ref.language === 'python') return isPythonNameFromOutside(name, ref.filePath, target, context);
 
   if (!ESM_IMPORT_LANGUAGES.has(ref.language)) return false;
   for (const imp of context.getImportMappings(ref.filePath, ref.language)) {

@@ -23,6 +23,7 @@ import { parseQuery, boundedEditDistance, type ParsedQuery } from '../search/que
 import { isGeneratedFile } from '../extraction/generated-detection';
 import { splitIdentifierSegments } from '../search/identifier-segments';
 import { isModuleKey, referenceNameTail, MEMBER_TAIL_SQL, MODULE_PARKED_SQL } from './reference-tail';
+import { ParameterFlowQueries } from './parameter-flow-queries';
 import { NAME_SUBSTRING_KINDS, buildNameSubstringIndex, searchNameSubstring, type NameSubstringIndex, type ScanOrder } from './name-substring-index';
 
 /**
@@ -221,6 +222,82 @@ function rowToNode(row: NodeRow): Node {
 }
 
 /**
+ * rowToNode for rows that arrive as arrays, whose columns are in `columns` order.
+ * Name and id lookups are most of what resolving a reference spends in SQLite,
+ * and a row as an array costs about a third less to read than one as an object.
+ */
+function arrayToNode(columns: string[]): (row: unknown[]) => Node {
+  const at = (column: keyof NodeRow): number => columns.indexOf(column);
+  const id = at('id');
+  const kind = at('kind');
+  const name = at('name');
+  const qualifiedName = at('qualified_name');
+  const filePath = at('file_path');
+  const language = at('language');
+  const startLine = at('start_line');
+  const endLine = at('end_line');
+  const startColumn = at('start_column');
+  const endColumn = at('end_column');
+  const docstring = at('docstring');
+  const signature = at('signature');
+  const visibility = at('visibility');
+  const isExported = at('is_exported');
+  const isAsync = at('is_async');
+  const isStatic = at('is_static');
+  const isAbstract = at('is_abstract');
+  const decorators = at('decorators');
+  const typeParameters = at('type_parameters');
+  const returnType = at('return_type');
+  const updatedAt = at('updated_at');
+  return (row) => ({
+    id: row[id] as string,
+    kind: row[kind] as NodeKind,
+    name: row[name] as string,
+    qualifiedName: row[qualifiedName] as string,
+    filePath: row[filePath] as string,
+    language: row[language] as Language,
+    startLine: row[startLine] as number,
+    endLine: row[endLine] as number,
+    startColumn: row[startColumn] as number,
+    endColumn: row[endColumn] as number,
+    docstring: (row[docstring] ?? undefined) as string | undefined,
+    signature: (row[signature] ?? undefined) as string | undefined,
+    visibility: row[visibility] as Node['visibility'],
+    isExported: row[isExported] === 1,
+    isAsync: row[isAsync] === 1,
+    isStatic: row[isStatic] === 1,
+    isAbstract: row[isAbstract] === 1,
+    decorators: row[decorators] ? safeJsonParse(row[decorators] as string, undefined) : undefined,
+    typeParameters: row[typeParameters] ? safeJsonParse(row[typeParameters] as string, undefined) : undefined,
+    returnType: (row[returnType] ?? undefined) as string | undefined,
+    updatedAt: row[updatedAt] as number,
+  });
+}
+
+/** A prepared `SELECT * FROM nodes …`, whose rows come back as nodes. */
+interface NodeStatement {
+  all(...params: unknown[]): Node[];
+  get(...params: unknown[]): Node | undefined;
+  iterate(...params: unknown[]): IterableIterator<Node>;
+}
+
+function prepareNodeStatement(db: SqliteDatabase, sql: string): NodeStatement {
+  const stmt = db.prepare(sql);
+  const columns = stmt.rowsAsArrays();
+  const toNode = (columns ? arrayToNode(columns) : rowToNode) as (row: unknown) => Node;
+  return {
+    all: (...params) => (stmt.all(...params) as unknown[]).map(toNode),
+    get: (...params) => {
+      const row = stmt.get(...params);
+      return row === undefined ? undefined : toNode(row);
+    },
+    *iterate(...params) {
+      for (const row of stmt.iterate(...params)) yield toNode(row);
+    },
+  };
+}
+
+/**
  * A search's `path:` and `name:` filters, lowercased once. The values of one
  * family are OR'd and the two families AND'd, and each value is a literal,
  * case-insensitive substring of the file path or the symbol's name, as the
@@ -388,15 +465,18 @@ export class QueryBuilder {
   // (#2620). See memoizedRead().
   private readMemos = new Map<string, { stamp: string; value: unknown }>();
 
+  // The parameter-flow pass's reads, asked once per method a flow gets to.
+  private flowQueries?: ParameterFlowQueries;
+
   // Prepared statements (lazily initialized)
   private stmts: {
     insertNode?: SqliteStatement;
     updateNode?: SqliteStatement;
     deleteNode?: SqliteStatement;
     deleteNodesByFile?: SqliteStatement;
-    getNodeById?: SqliteStatement;
-    getNodesByFile?: SqliteStatement;
-    getNodesByKind?: SqliteStatement;
+    getNodeById?: NodeStatement;
+    getNodesByFile?: NodeStatement;
+    getNodesByKind?: NodeStatement;
     insertEdge?: SqliteStatement;
     upsertFile?: SqliteStatement;
     deleteEdgesBySource?: SqliteStatement;
@@ -414,16 +494,16 @@ export class QueryBuilder {
     insertUnresolved?: SqliteStatement;
     deleteUnresolvedByNode?: SqliteStatement;
     getUnresolvedByName?: SqliteStatement;
-    getNodesByName?: SqliteStatement;
+    getNodesByName?: NodeStatement;
     getNodesByNamePrefix?: SqliteStatement;
     fileHasExportedNode?: SqliteStatement;
     existingNodeIdsFull?: SqliteStatement;
     getExportedNodesByFile?: SqliteStatement;
-    getNodesByFileAndName?: SqliteStatement;
+    getNodesByFileAndName?: NodeStatement;
     getNodeIdentitiesByFile?: SqliteStatement;
     getFileNodesByNamePrefix?: SqliteStatement;
-    getNodesByQualifiedNameExact?: SqliteStatement;
-    getNodesByLowerName?: SqliteStatement;
+    getNodesByQualifiedNameExact?: NodeStatement;
+    getNodesByLowerName?: NodeStatement;
     hasFilesOfLanguage?: SqliteStatement;
     getCobolIncludesByMember?: SqliteStatement;
     getCobolFilesByStem?: SqliteStatement;
@@ -525,6 +605,7 @@ export class QueryBuilder {
     this.stmts = {};
     this.batchStmts.clear();
     this.edgeKindStmts.clear();
+    this.flowQueries = undefined;
     // The change stamp is per connection, and fresh connections to two
     // different databases report the same one — the memo goes with the old
     // connection, or a worker following a rebuilt index keeps its answer (#1864).
@@ -1100,14 +1181,13 @@ export class QueryBuilder {
     }
 
     if (!this.stmts.getNodeById) {
-      this.stmts.getNodeById = this.db.prepare('SELECT * FROM nodes WHERE id = ?');
+      this.stmts.getNodeById = prepareNodeStatement(this.db, 'SELECT * FROM nodes WHERE id = ?');
     }
-    const row = this.stmts.getNodeById.get(id) as NodeRow | undefined;
-    if (!row) {
+    const node = this.stmts.getNodeById.get(id);
+    if (!node) {
       return null;
     }
 
-    const node = rowToNode(row);
     this.cacheNode(node);
     return node;
   }
@@ -1237,11 +1317,12 @@ export class QueryBuilder {
   /** The nodes of a file with one name, in {@link getNodesByFile} order, decoding only those rows. */
   getNodesByFileAndName(filePath: string, name: string): Node[] {
     if (!this.stmts.getNodesByFileAndName) {
-      this.stmts.getNodesByFileAndName = this.db.prepare(
+      this.stmts.getNodesByFileAndName = prepareNodeStatement(
+        this.db,
         'SELECT * FROM nodes WHERE file_path = ? AND name = ? ORDER BY start_line, id'
       );
     }
-    return (this.stmts.getNodesByFileAndName.all(filePath, name) as NodeRow[]).map(rowToNode);
+    return this.stmts.getNodesByFileAndName.all(filePath, name);
   }
 
   /**
@@ -1249,12 +1330,12 @@ export class QueryBuilder {
    */
   getNodesByFile(filePath: string): Node[] {
     if (!this.stmts.getNodesByFile) {
-      this.stmts.getNodesByFile = this.db.prepare(
+      this.stmts.getNodesByFile = prepareNodeStatement(
+        this.db,
         'SELECT * FROM nodes WHERE file_path = ? ORDER BY start_line, id'
       );
     }
-    const rows = this.stmts.getNodesByFile.all(filePath) as NodeRow[];
-    return rows.map(rowToNode);
+    return this.stmts.getNodesByFile.all(filePath);
   }
 
   /**
@@ -1542,10 +1623,9 @@ export class QueryBuilder {
    */
   getNodesByKind(kind: NodeKind): Node[] {
     if (!this.stmts.getNodesByKind) {
-      this.stmts.getNodesByKind = this.db.prepare('SELECT * FROM nodes WHERE kind = ? ORDER BY file_path, start_line, id');
+      this.stmts.getNodesByKind = prepareNodeStatement(this.db, 'SELECT * FROM nodes WHERE kind = ? ORDER BY file_path, start_line, id');
     }
-    const rows = this.stmts.getNodesByKind.all(kind) as NodeRow[];
-    return rows.map(rowToNode);
+    return this.stmts.getNodesByKind.all(kind);
   }
 
   /**
@@ -1561,10 +1641,7 @@ export class QueryBuilder {
     // Synthesis uses first/last-match precedence and caps: insertion order
     // changes on sync. idx_nodes_kind streams this canonical order without
     // materializing/sorting all of a large project's methods in memory.
-    const stmt = this.db.prepare('SELECT * FROM nodes WHERE kind = ? ORDER BY file_path, start_line, id');
-    for (const row of stmt.iterate(kind)) {
-      yield rowToNode(row as NodeRow);
-    }
+    yield* prepareNodeStatement(this.db, 'SELECT * FROM nodes WHERE kind = ? ORDER BY file_path, start_line, id').iterate(kind);
   }
 
   /**
@@ -1586,6 +1663,20 @@ export class QueryBuilder {
     for (const row of stmt.iterate(...kinds, ...languages)) {
       yield rowToNode(row as NodeRow);
     }
+  }
+
+  /**
+   * The `signature` of each top-level node of these kinds and languages whose
+   * text holds one of `names`. A sync asks this about the definitions it changed,
+   * so no node is built and nothing is sorted; `names` is the caller's to keep short.
+   */
+  getTopLevelSignaturesMentioning(kinds: readonly NodeKind[], languages: readonly string[], names: readonly string[]): string[] {
+    const marks = (n: number): string => new Array(n).fill('?').join(', ');
+    const rows = this.db.prepare(
+      `SELECT signature FROM nodes WHERE kind IN (${marks(kinds.length)}) AND language IN (${marks(languages.length)})
+       AND qualified_name = name AND (${names.map(() => 'instr(signature, ?) > 0').join(' OR ')})`
+    ).all(...kinds, ...languages, ...names) as Array<{ signature: string }>;
+    return rows.map((row) => row.signature);
   }
 
   /**
@@ -1627,6 +1718,13 @@ export class QueryBuilder {
     return new Set(rows.map((r) => r.language));
   }
 
+  /** Whether any function of `language` carries `decorator`: a project's marker for a framework it uses. */
+  hasDecoratedFunction(language: Language, decorator: string): boolean {
+    return !!this.db.prepare(
+      `SELECT 1 FROM nodes WHERE kind = 'function' AND language = ? AND decorators LIKE ? LIMIT 1`
+    ).get(language, `%"${decorator}"%`);
+  }
+
   /**
    * Get nodes by exact name match (uses idx_nodes_name index).
    *
@@ -1647,12 +1745,12 @@ export class QueryBuilder {
    */
   getNodesByName(name: string): Node[] {
     if (!this.stmts.getNodesByName) {
-      this.stmts.getNodesByName = this.db.prepare(
+      this.stmts.getNodesByName = prepareNodeStatement(
+        this.db,
         'SELECT * FROM nodes WHERE name = ? ORDER BY file_path, start_line, id'
       );
     }
-    const rows = this.stmts.getNodesByName.all(name) as NodeRow[];
-    return rows.map(rowToNode);
+    return this.stmts.getNodesByName.all(name);
   }
 
   /**
@@ -1688,12 +1786,12 @@ export class QueryBuilder {
    */
   getNodesByQualifiedNameExact(qualifiedName: string): Node[] {
     if (!this.stmts.getNodesByQualifiedNameExact) {
-      this.stmts.getNodesByQualifiedNameExact = this.db.prepare(
+      this.stmts.getNodesByQualifiedNameExact = prepareNodeStatement(
+        this.db,
         'SELECT * FROM nodes WHERE qualified_name = ? ORDER BY file_path, start_line, id'
       );
     }
-    const rows = this.stmts.getNodesByQualifiedNameExact.all(qualifiedName) as NodeRow[];
-    return rows.map(rowToNode);
+    return this.stmts.getNodesByQualifiedNameExact.all(qualifiedName);
   }
 
   /**
@@ -1712,12 +1810,12 @@ export class QueryBuilder {
    */
   getNodesByLowerName(name: string): Node[] {
     if (!this.stmts.getNodesByLowerName) {
-      this.stmts.getNodesByLowerName = this.db.prepare(
+      this.stmts.getNodesByLowerName = prepareNodeStatement(
+        this.db,
         'SELECT * FROM nodes WHERE lower(name) = lower(?)'
       );
     }
-    const rows = this.stmts.getNodesByLowerName.all(name) as NodeRow[];
-    return rows.map(rowToNode);
+    return this.stmts.getNodesByLowerName.all(name);
   }
 
   /** Does the index hold any file of this language? One seek on idx_files_language. */
@@ -2639,8 +2737,8 @@ export class QueryBuilder {
    * Get outgoing edges from a node. Preserve the source/kind index order
    * (calls before imports/references), then break ties deterministically.
    */
-  getOutgoingEdges(sourceId: string, kinds?: EdgeKind[], provenance?: string): Edge[] {
-    if ((kinds && kinds.length > 0) || provenance) {
+  getOutgoingEdges(sourceId: string, kinds?: EdgeKind[], provenance?: string, limit?: number): Edge[] {
+    if ((kinds && kinds.length > 0) || provenance || limit !== undefined) {
       let sql = 'SELECT * FROM edges WHERE source = ?';
       const params: (string | number)[] = [sourceId];
 
@@ -2655,6 +2753,10 @@ export class QueryBuilder {
       }
 
       sql += ' ORDER BY kind, target, line, col';
+      if (limit !== undefined) {
+        sql += ' LIMIT ?';
+        params.push(Math.max(0, Math.floor(limit)));
+      }
       const rows = this.edgeKindStmt(sql).all(...params) as EdgeRow[];
       return rows.map(rowToEdge);
     }
@@ -2672,10 +2774,20 @@ export class QueryBuilder {
    * displace actual calls in capped caller lists. Keep deterministic ties
    * without changing the target/kind index's established kind precedence.
    */
-  getIncomingEdges(targetId: string, kinds?: EdgeKind[]): Edge[] {
-    if (kinds && kinds.length > 0) {
-      const sql = `SELECT * FROM edges WHERE target = ? AND kind IN (${kinds.map(() => '?').join(',')}) ORDER BY kind, source, line, col`;
-      const rows = this.edgeKindStmt(sql).all(targetId, ...kinds) as EdgeRow[];
+  getIncomingEdges(targetId: string, kinds?: EdgeKind[], limit?: number): Edge[] {
+    if ((kinds && kinds.length > 0) || limit !== undefined) {
+      let sql = 'SELECT * FROM edges WHERE target = ?';
+      const params: (string | number)[] = [targetId];
+      if (kinds && kinds.length > 0) {
+        sql += ` AND kind IN (${kinds.map(() => '?').join(',')})`;
+        params.push(...kinds);
+      }
+      sql += ' ORDER BY kind, source, line, col';
+      if (limit !== undefined) {
+        sql += ' LIMIT ?';
+        params.push(Math.max(0, Math.floor(limit)));
+      }
+      const rows = this.edgeKindStmt(sql).all(...params) as EdgeRow[];
       return rows.map(rowToEdge);
     }
 
@@ -3360,16 +3472,8 @@ export class QueryBuilder {
   /**
    * Every ordered pair of files where one reaches into the other, once each.
    *
-   * The input a cycle finder wants: file-level circular dependencies are the
-   * strongly connected components of this graph. One query instead of the
-   * dependency lookup per file that {@link GraphQueryManager.findCircularDependencies}
-   * does — which matters because a cycle report is only interesting on a large
-   * repo, and that is exactly where a query per file stops being affordable.
-   *
    * `contains` is excluded (a file "contains" its own symbols, which is not a
-   * dependency), and so are same-file edges and low-confidence name matches:
-   * a cycle conjured by a common method name is a false alarm a reader cannot
-   * check.
+   * dependency), and so are same-file edges and low-confidence name matches.
    */
   getCrossFileDependencyPairs(minConfidence: number): Array<{ source: string; target: string }> {
     return this.db
@@ -3383,6 +3487,29 @@ export class QueryBuilder {
             AND COALESCE(json_extract(e.metadata, '$.confidence'), 1) >= ?`
       )
       .all(minConfidence) as Array<{ source: string; target: string }>;
+  }
+
+  /**
+   * Every ordered pair of files where one imports the other, once each: the
+   * graph circular imports are read from. See `src/graph/file-cycles.ts`.
+   *
+   * Only `imports` edges, which the import resolver made from a statement in
+   * the file. Every other cross-file edge says something ran or was mentioned
+   * there, and a loop of those is not a circular import: an interface's call
+   * fans out to a test's fake that implements it, two pages link to each other,
+   * and the files of one Go package call each other freely.
+   */
+  getFileImportPairs(): Array<{ source: string; target: string }> {
+    return this.db
+      .prepare(
+        `SELECT DISTINCT sn.file_path AS source, tn.file_path AS target
+           FROM edges e
+           JOIN nodes sn ON sn.id = e.source
+           JOIN nodes tn ON tn.id = e.target
+          WHERE e.kind = 'imports'
+            AND sn.file_path <> tn.file_path`
+      )
+      .all() as Array<{ source: string; target: string }>;
   }
 
   /**
@@ -3779,6 +3906,31 @@ export class QueryBuilder {
       .all(`${dir}/`, `${dir}0`) as Array<
         EdgeRow & { target_file_path: string; source_file_path: string; source_language: Language }
       >;
+    return rows.map((row) => ({
+      ...rowToEdge(row),
+      edgeId: row.id,
+      targetFilePath: row.target_file_path,
+      sourceFilePath: row.source_file_path,
+      sourceLanguage: row.source_language,
+    }));
+  }
+
+  /**
+   * The module edges (`imports` edges into a file node) into declaration
+   * files, with the source file and language a resurrection needs: where an
+   * import of a package lands while a `declare module` of it is all there is.
+   */
+  getModuleImportsIntoDeclarationFiles(): Array<Edge & { edgeId: number; targetFilePath: string; sourceFilePath: string; sourceLanguage: Language }> {
+    const rows = this.db
+      .prepare(
+        `SELECT e.*, tgt.file_path AS target_file_path, src.file_path AS source_file_path, src.language AS source_language
+           FROM nodes tgt
+           JOIN edges e ON e.target = tgt.id AND e.kind = 'imports'
+           JOIN nodes src ON src.id = e.source
+          WHERE tgt.kind = 'file'
+            AND (tgt.file_path LIKE '%.d.ts' OR tgt.file_path LIKE '%.d.mts' OR tgt.file_path LIKE '%.d.cts')`
+      )
+      .all() as Array<EdgeRow & { target_file_path: string; source_file_path: string; source_language: Language }>;
     return rows.map((row) => ({
       ...rowToEdge(row),
       edgeId: row.id,
@@ -5396,6 +5548,11 @@ export class QueryBuilder {
     }));
   }
 
+  /** What the parameter-flow pass reads and writes. */
+  get parameterFlows(): ParameterFlowQueries {
+    return (this.flowQueries ??= new ParameterFlowQueries(this.db, this));
+  }
+
   /**
    * The python files whose failed attribute-chain refs (`self.client.send`,
    * `make().send`) an edit to `filePaths` can affect. Such an answer is read
@@ -5591,6 +5748,30 @@ export class QueryBuilder {
     return this.db
       .prepare('SELECT (SELECT COUNT(*) FROM nodes) AS nodes, (SELECT COUNT(*) FROM edges) AS edges')
       .get() as { nodes: number; edges: number };
+  }
+
+  /**
+   * For each language, how many files it has and how many yielded a symbol: a
+   * node other than the file's own. More than one stored node settles a row, so
+   * `nodes` is only probed for the few it can't, such as a file whose one symbol
+   * came from a framework pass. Probing every row costs as much as the whole of
+   * getStats() on a 14,000-file index; this costs a tenth of that. Not part of
+   * getStats() either way, because every explore runs that.
+   */
+  getParsedFileCounts(): Array<{ language: Language; files: number; parsed: number }> {
+    return this.db
+      .prepare(`
+        SELECT f.language AS language, COUNT(*) AS files,
+          SUM(CASE
+            WHEN f.node_count > 1 THEN 1
+            WHEN EXISTS (SELECT 1 FROM nodes n WHERE n.file_path = f.path AND n.kind <> 'file') THEN 1
+            ELSE 0
+          END) AS parsed
+        FROM files f
+        GROUP BY f.language
+        ORDER BY f.language
+      `)
+      .all() as Array<{ language: Language; files: number; parsed: number }>;
   }
 
   /**

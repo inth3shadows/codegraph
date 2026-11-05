@@ -26,10 +26,13 @@ import {
   FindRelevantContextOptions,
   UnresolvedReference,
   IndexHealth,
+  LanguageCoverage,
+  ImpactOptions,
   Language,
 } from './types';
 import { DatabaseConnection, getDatabasePath, removeDatabaseFiles } from './db';
 import { WalCheckpointValve, resolveWalValveMb } from './db/wal-valve';
+import { logWarn } from './errors';
 import { QueryBuilder, type DeprioritizedPathMatcher } from './db/queries';
 import { importPathKeys, moduleReferenceKeys } from './db/reference-tail';
 import {
@@ -38,29 +41,17 @@ import {
   removeDirectory,
   validateDirectory,
 } from './directory';
-import {
-  ExtractionOrchestrator,
-  IndexProgress,
-  IndexResult,
-  SyncResult,
-  extractFromSource,
-  initGrammars,
-} from './extraction';
-import { detectLanguage, hasGrammarLoadFailure, isFileLevelOnlyLanguage } from './extraction/grammars';
-import {
-  ReferenceResolver,
-  changedRoutes,
-  createResolver,
-  ResolutionResult,
-} from './resolution';
-import { hasSynthesisPattern, isJsxChildCandidate } from './resolution/callback-synthesizer';
-import { createImportReader, reopenNameMatchedImports, reopenReferencesThroughAddedFiles, reopenReferencesThroughBarrels, reopenReferencesThroughChangedDefaults, reopenReferencesThroughDeclaredPackages, reopenReferencesThroughRetargetedModules } from './resolution/module-importers';
+import type { ExtractionOrchestrator, IndexProgress, IndexResult, SyncResult } from './extraction';
+import { detectLanguage, hasGrammarLoadFailure, initGrammars, isFileLevelOnlyLanguage, yieldsSymbols } from './extraction/grammars';
+import type { ReferenceResolver, ResolutionResult } from './resolution';
+import { engine } from './lazy-engine';
 import { GraphTraverser, GraphQueryManager } from './graph';
 import type { CallSiteRow } from './graph';
 import { findNamedCopybooks, type NamedCopybook } from './graph/cobol-copybooks';
 import { ContextBuilder, createContextBuilder } from './context';
 import { Mutex, FileLock, escapesRoot } from './utils';
-import { FileWatcher, WatchOptions, PendingFile, LockUnavailableError } from './sync';
+import type { FileWatcher, WatchOptions, PendingFile } from './sync';
+import { LockUnavailableError } from './errors';
 import { EXTRACTION_VERSION } from './extraction/extraction-version';
 import { getCodeGraphDir } from './directory';
 import { deriveProjectNameTokens } from './search/query-utils';
@@ -69,8 +60,6 @@ import { loadDeprioritizePatterns } from './project-config';
 import { CodeGraphPackageVersion } from './mcp/version';
 import { extractSegmentSearchWords, segmentLookupVariants, splitIdentifierSegments } from './search/identifier-segments';
 import { createYielder } from './resolution/cooperative-yield';
-import { ESM_IMPORT_LANGUAGES } from './resolution/import-resolver';
-import { moduleConfigLanguages, parseModuleConfigSnapshot } from './resolution';
 import { minRefsForPool } from './resolution/resolver-pool';
 
 // Re-export types for consumers
@@ -87,9 +76,9 @@ export {
   findNearestCodeGraphRoot,
   CODEGRAPH_DIR,
 } from './directory';
-export { IndexProgress, IndexResult, SyncResult } from './extraction';
-export { detectLanguage, isLanguageSupported, isGrammarLoaded, getSupportedLanguages, initGrammars, loadGrammarsForLanguages, loadAllGrammars } from './extraction';
-export { ResolutionResult } from './resolution';
+export type { IndexProgress, IndexResult, SyncResult } from './extraction';
+export { detectLanguage, isLanguageSupported, isGrammarLoaded, getSupportedLanguages, initGrammars, loadGrammarsForLanguages, loadAllGrammars } from './extraction/grammars';
+export type { ResolutionResult } from './resolution';
 export {
   CodeGraphError,
   FileError,
@@ -103,10 +92,11 @@ export {
   getLogger,
   silentLogger,
   defaultLogger,
+  LockUnavailableError,
 } from './errors';
 export { Mutex, FileLock, processInBatches, debounce, throttle, MemoryMonitor } from './utils';
-export { FileWatcher, WatchOptions, PendingFile, LockUnavailableError } from './sync';
-export { MCPServer } from './mcp';
+export type { WatchOptions, PendingFile } from './sync';
+export { FileWatcher, MCPServer } from './lazy-engine';
 
 /**
  * Options for initializing a new CodeGraph project
@@ -184,6 +174,18 @@ function parseNameList(value: string | null): string[] | null {
   }
 }
 
+/**
+ * CODEGRAPH_SYNTH_MIN_INTERVAL_MS: the least time between two repo-wide
+ * synthesis passes a long-lived instance's syncs run (#2911). Whole
+ * milliseconds, 1000 to 24 hours; unset, empty or out of range means no hold.
+ */
+export function parseSynthMinIntervalEnv(raw: string | undefined): number | undefined {
+  if (!raw || !raw.trim()) return undefined;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1000 || n > 86_400_000) return undefined;
+  return n;
+}
+
 export class CodeGraph {
   private db: DatabaseConnection;
   private queries: QueryBuilder;
@@ -191,8 +193,6 @@ export class CodeGraph {
   // Assigned via wireLayers() from the constructor (and again on reopen) — the
   // `!` tells TS these are definitely set even though the assignment is one
   // method call away from the constructor body.
-  private orchestrator!: ExtractionOrchestrator;
-  private resolver!: ReferenceResolver;
   private graphManager!: GraphQueryManager;
   private traverser!: GraphTraverser;
   private contextBuilder!: ContextBuilder;
@@ -205,6 +205,12 @@ export class CodeGraph {
 
   // File watcher for auto-sync on file changes
   private watcher: FileWatcher | null = null;
+
+  // When this instance last rebuilt the synthesized edges, and the timer that
+  // runs a synthesis a sync put off under CODEGRAPH_SYNTH_MIN_INTERVAL_MS
+  // (#2911). Per instance: the daemon's watcher is what syncs on every edit.
+  private lastSynthesisAt = 0;
+  private deferredSynthesisTimer: NodeJS.Timeout | null = null;
 
   private constructor(
     db: DatabaseConnection,
@@ -290,8 +296,12 @@ export class CodeGraph {
     };
     this.queries.setDeprioritizedPathMatcher(deprioritized);
 
-    this.orchestrator = new ExtractionOrchestrator(this.projectRoot, this.queries);
-    this.resolver = createResolver(this.projectRoot, this.queries);
+    this.builtOrchestrator = null;
+    this.builtResolver = null;
+    if (!this.db.readOnly) {
+      void this.orchestrator;
+      void this.resolver;
+    }
     this.graphManager = new GraphQueryManager(this.queries);
     this.traverser = new GraphTraverser(this.queries);
     this.contextBuilder = createContextBuilder(
@@ -299,6 +309,22 @@ export class CodeGraph {
       this.queries,
       this.traverser
     );
+  }
+
+  // The layers that write an index. A read-only instance answers queries without
+  // them, and building them is most of what a read command would otherwise pay
+  // for: extraction and resolution are 90% of the code to load, and the resolver
+  // detects the project's frameworks as it starts. So wireLayers() builds them
+  // for a writer, and a read-only instance only if something asks.
+  private builtOrchestrator: ExtractionOrchestrator | null = null;
+  private builtResolver: ReferenceResolver | null = null;
+
+  private get orchestrator(): ExtractionOrchestrator {
+    return (this.builtOrchestrator ??= new (engine().ExtractionOrchestrator)(this.projectRoot, this.queries));
+  }
+
+  private get resolver(): ReferenceResolver {
+    return (this.builtResolver ??= engine().createResolver(this.projectRoot, this.queries));
   }
 
   /**
@@ -581,10 +607,23 @@ export class CodeGraph {
   }
 
   /**
+   * Give back the memory the database connection holds only to read faster,
+   * keeping it open and keeping every answer it has worked out (see
+   * {@link DatabaseConnection.releaseMemory}).
+   */
+  releaseMemory(): void {
+    this.db.releaseMemory();
+  }
+
+  /**
    * Close the CodeGraph instance and release resources
    */
   close(): void {
     this.unwatch();
+    if (this.deferredSynthesisTimer) {
+      clearTimeout(this.deferredSynthesisTimer);
+      this.deferredSynthesisTimer = null;
+    }
     // Release file lock if held
     this.fileLock.release();
     this.db.close();
@@ -784,9 +823,12 @@ export class CodeGraph {
                 total: totalPasses,
               });
             },
-            walValve ? () => walValve!.backpressure() : undefined
+            walValve ? () => walValve!.backpressure() : undefined,
+            true,
+            true
           );
           if (process.env.CODEGRAPH_SYNTH_TIMINGS) console.error(`[phase-timing] resolution: ${Date.now() - tResolve}ms`);
+          this.lastSynthesisAt = Date.now();
 
           // Second pass: chained calls whose method lives on a supertype the
           // receiver conforms to (protocol-extension / inherited / default-
@@ -800,6 +842,7 @@ export class CodeGraph {
           const tDeferred = Date.now();
           await this.resolver.resolveDeferredThisMemberRefs();
           if (process.env.CODEGRAPH_SYNTH_TIMINGS) console.error(`[synth-timing] deferredThisMember: ${Date.now() - tDeferred}ms`);
+          await this.resolver.resolveParameterFlows();
         }
 
         // Over an existing graph the vocabulary was kept (see the top of the
@@ -967,7 +1010,7 @@ export class CodeGraph {
   private stampModuleConfigSnapshot(): void {
     try {
       const stored = this.queries.getMetadata(MODULE_CONFIG_METADATA_KEY);
-      this.queries.setMetadata(MODULE_CONFIG_METADATA_KEY, JSON.stringify(this.resolver.getModuleConfigSnapshot(stored)));
+      this.queries.setMetadata(MODULE_CONFIG_METADATA_KEY, JSON.stringify(this.resolver.getModuleConfigSnapshot(stored, true)));
     } catch { /* metadata is advisory */ }
   }
 
@@ -1065,6 +1108,23 @@ export class CodeGraph {
   }
 
   async sync(options: IndexOptions = {}): Promise<SyncResult> {
+    const {
+      ESM_IMPORT_LANGUAGES,
+      aliasMayName,
+      changedModuleConfigs,
+      changedRoutes,
+      createImportReader,
+      hasSynthesisPattern,
+      isJsxChildCandidate,
+      moduleConfigLanguages,
+      parseModuleConfigSnapshot,
+      reopenNameMatchedImports,
+      reopenReferencesThroughAddedFiles,
+      reopenReferencesThroughBarrels,
+      reopenReferencesThroughChangedDefaults,
+      reopenReferencesThroughDeclaredPackages,
+      reopenReferencesThroughRetargetedModules,
+    } = engine();
     return this.indexMutex.withLock(async () => {
       const startedAt = Date.now();
       try {
@@ -1162,8 +1222,10 @@ export class CodeGraph {
         // routes. Compared with the routes after runPostExtract below.
         const watchRoutes = this.resolver.hasNavigationRouters();
         let routesBefore = null as Node[] | null;
+        const flowChange = this.resolver.trackParameterFlows();
         const result = await this.orchestrator.sync(options.onProgress, options.paths, backpressure,
           (filePath, content) => {
+            flowChange.before(filePath);
             if (watchRoutes && routesBefore === null) routesBefore = this.queries.getNodesByKind('route');
             if (!refreshSynthesis && (this.queries.hasSynthesizedEdgesTouchingFile(filePath) ||
               this.queries.wasSynthesisInput(filePath) ||
@@ -1181,10 +1243,13 @@ export class CodeGraph {
         // to the `Team` this sync adds. The gate above reads each changed file
         // on its own, and a component with no markup of its own (`return null`,
         // a wrapper) matches none of its patterns. Removing one needs no check:
-        // a component a tag rendered had synthesized edges into its file.
+        // a component a tag rendered had synthesized edges into its file. A
+        // function a const in an unchanged file names is the same: `const late
+        // = fns.join` links to the `join` this sync adds.
         if (!refreshSynthesis && result.definitionDelta && result.changedFilePaths) {
           const delta = new Set(result.definitionDelta);
-          if (this.queries.getNodesByFiles(result.changedFilePaths).some((n) => delta.has(n.name) && isJsxChildCandidate(n))) {
+          const defined = this.queries.getNodesByFiles(result.changedFilePaths).filter((n) => delta.has(n.name));
+          if (defined.some(isJsxChildCandidate) || aliasMayName(this.queries, defined)) {
             refreshSynthesis = true;
             this.queries.setMetadata('synthesis_pending', '1');
           }
@@ -1255,14 +1320,14 @@ export class CodeGraph {
         // (`extends` chains included) plus the root's candidates; when one
         // differs, the maps are dropped and every import the file governs is
         // re-opened for the sweep below, as a moved workspace map re-opens
-        // the ES-module imports. A handful of small files, read on every sync.
+        // the ES-module imports. Cargo manifests and a compile database count
+        // too. Looked at on every sync, read only when one's stamp moved.
         // An index stamped by an older engine has no snapshot: record one.
         {
           const tConfig = Date.now();
           const stored = this.queries.getMetadata(MODULE_CONFIG_METADATA_KEY);
-          const snapshot = this.resolver.getModuleConfigSnapshot(stored);
-          const was = parseModuleConfigSnapshot(stored);
-          const changed = stored === null ? [] : Object.keys(snapshot).filter((rel) => (was[rel] ?? 'absent') !== snapshot[rel]);
+          const snapshot = this.resolver.getModuleConfigSnapshot(stored, result.filesAdded > 0 || result.filesRemoved > 0);
+          const changed = stored === null ? [] : changedModuleConfigs(parseModuleConfigSnapshot(stored), snapshot);
           if (changed.length > 0) {
             this.resolver.resetModuleConfig();
             let reopened = 0;
@@ -1628,6 +1693,16 @@ export class CodeGraph {
               this.resolver.clearCaches();
               for (const f of this.orchestrator.resurrectPythonPackageImporters(this.resolver.getPythonPackageImporters(editedInits))) reopened.add(f);
             }
+            // An edit can give a module that only a script's folder provides the
+            // names its importers take from it, or take them away.
+            const scriptModules = this.resolver.getPythonScriptModuleScope(
+              (result.changedFilePaths ?? []).filter((f) => pythonFilesBefore.has(f) && after.has(f))
+            );
+            if (scriptModules.targetFiles.length > 0) {
+              this.resolver.clearCaches();
+              for (const f of this.orchestrator.resurrectResolutionEdgesTouching('python', scriptModules)) reopened.add(f);
+            }
+
             // Resolve the narrow set now, the way the changed files' own
             // references were resolved above, rather than leaving a handful of
             // refs to the orphan sweep and its whole-graph synthesis pass.
@@ -1728,16 +1803,38 @@ export class CodeGraph {
           await this.resolver.resolveDeferredThisMemberRefs();
         }
 
+        // The synthesis passes read the whole graph, whatever this sync
+        // changed, and nearly every TypeScript or Vue file is one of their
+        // inputs, so on a large repo almost every edit paid for a whole-repo
+        // synthesis (#2911). With CODEGRAPH_SYNTH_MIN_INTERVAL_MS set, a
+        // synthesis within that long of the last one is put off, not
+        // dropped: `synthesis_pending` stays set, so a later sync runs it,
+        // and a timer runs it when the interval is up even if no edit
+        // follows. A full index is never held.
+        let synthesized = false;
         if (refreshSynthesis) {
-          await this.resolver.refreshSynthesis(this.db.getPath(), (done, total) => {
-            options.onProgress?.({ phase: 'linking', current: done, total });
-          }, backpressure);
-          this.queries.setMetadata('synthesis_pending', '0');
+          const hold = this.synthesisHoldMs();
+          if (hold > 0) {
+            this.armDeferredSynthesis(hold);
+          } else {
+            await this.resolver.refreshSynthesis(this.db.getPath(), (done, total) => {
+              options.onProgress?.({ phase: 'linking', current: done, total });
+            }, backpressure);
+            this.queries.setMetadata('synthesis_pending', '0');
+            this.lastSynthesisAt = Date.now();
+            synthesized = true;
+          }
+        }
+
+        // A call in one file types a parameter in another, so an edit of the
+        // caller can move the callee's edges. Last, as in a full index.
+        if (filesChanged || result.filesRemoved > 0 || orphanCount > 0) {
+          await this.resolver.resolveParameterFlows(flowChange);
         }
 
         // Refresh planner stats + checkpoint the WAL after bulk writes.
         // Off-thread — see indexAll's call site.
-        if (filesChanged || result.filesRemoved > 0 || orphanCount > 0 || refreshSynthesis) {
+        if (filesChanged || result.filesRemoved > 0 || orphanCount > 0 || synthesized) {
           await this.db.runMaintenance();
         }
 
@@ -1790,6 +1887,103 @@ export class CodeGraph {
     return this.indexMutex.isLocked();
   }
 
+  /**
+   * How much longer a sync must wait before it may rebuild the synthesized
+   * edges: the rest of CODEGRAPH_SYNTH_MIN_INTERVAL_MS since this instance last
+   * did (#2911). Zero when the variable is unset or invalid, or the interval
+   * has passed.
+   */
+  private synthesisHoldMs(): number {
+    const interval = parseSynthMinIntervalEnv(process.env.CODEGRAPH_SYNTH_MIN_INTERVAL_MS);
+    if (!interval || this.lastSynthesisAt === 0) return 0;
+    return Math.max(0, this.lastSynthesisAt + interval - Date.now());
+  }
+
+  /** Run the synthesis a sync put off once the interval is up, unless a sync runs it first. */
+  private armDeferredSynthesis(delayMs: number): void {
+    if (this.deferredSynthesisTimer) return;
+    this.deferredSynthesisTimer = setTimeout(() => {
+      this.deferredSynthesisTimer = null;
+      void this.runDeferredSynthesis();
+    }, delayMs);
+    this.deferredSynthesisTimer.unref?.();
+  }
+
+  /**
+   * The put-off synthesis, under the locks a sync holds. Nothing to do when a
+   * sync ran it meanwhile. When the file lock is taken by another process,
+   * try again after the interval; `synthesis_pending` stays set throughout.
+   *
+   * It runs from a timer, so nothing above it catches a failure, and an
+   * unhandled rejection ends the process (`installFatalHandlers`): that would
+   * be the daemon every session shares, over a `database is locked`. A failure
+   * here is logged and tried again after the interval, as lock contention is.
+   */
+  private async runDeferredSynthesis(): Promise<void> {
+    const retryLater = (): void => {
+      if (!this.db.isOpen()) return;
+      this.armDeferredSynthesis(parseSynthMinIntervalEnv(process.env.CODEGRAPH_SYNTH_MIN_INTERVAL_MS) ?? 1000);
+    };
+    try {
+      await this.indexMutex.withLock(async () => {
+        if (this.queries.getMetadata('synthesis_pending') !== '1') return;
+        try {
+          this.fileLock.acquire();
+        } catch {
+          retryLater();
+          return;
+        }
+        try {
+          // A rebuild may have replaced the file meanwhile, as sync checks.
+          this.reopenReplacedDatabase();
+          if (this.queries.getMetadata('synthesis_pending') !== '1') return;
+          await this.synthesizeWithWalDeferred();
+        } finally {
+          this.fileLock.release();
+        }
+      });
+    } catch (err) {
+      logWarn(`Put-off synthesis failed, trying again after the interval: ${err instanceof Error ? err.message : String(err)}`);
+      retryLater();
+    }
+  }
+
+  /**
+   * The rebuild, with the WAL handling a sync gives it (#1231, #1248): a whole
+   * graph's edges rewritten must not be checkpointed inline on this thread by
+   * the next commit on this connection, so the valve bounds the WAL off-thread
+   * and runMaintenance folds it up.
+   */
+  private async synthesizeWithWalDeferred(): Promise<void> {
+    const deferWal = process.env.CODEGRAPH_NO_WAL_DEFER !== '1' && this.db.getJournalMode() === 'wal';
+    let walValve: WalCheckpointValve | null = null;
+    let priorAutocheckpoint = 1000;
+    if (deferWal) {
+      priorAutocheckpoint = this.db.getWalAutocheckpoint();
+      this.db.setWalAutocheckpoint(0);
+      walValve = new WalCheckpointValve(
+        this.db,
+        resolveWalValveMb(process.env.CODEGRAPH_WAL_VALVE_MB, this.db.getDbFileSizeBytes())
+      );
+      walValve.start();
+    }
+    try {
+      await this.resolver.refreshSynthesis(
+        this.db.getPath(),
+        undefined,
+        walValve ? () => walValve!.backpressure() : undefined
+      );
+      this.queries.setMetadata('synthesis_pending', '0');
+      this.lastSynthesisAt = Date.now();
+      await this.db.runMaintenance();
+    } finally {
+      if (walValve) { walValve.stop(); await walValve.drain(); }
+      if (deferWal) {
+        try { this.db.setWalAutocheckpoint(priorAutocheckpoint); } catch { /* connection may be closing */ }
+      }
+    }
+  }
+
   // ===========================================================================
   // File Watching
   // ===========================================================================
@@ -1831,7 +2025,7 @@ export class CodeGraph {
   watch(options: WatchOptions = {}): boolean {
     if (this.watcher?.isActive()) return true;
 
-    this.watcher = new FileWatcher(
+    this.watcher = new (engine().FileWatcher)(
       this.projectRoot,
       async (paths?: string[]) => {
         const result = await this.sync({ paths });
@@ -2016,7 +2210,7 @@ export class CodeGraph {
   extractFromSource(filePath: string, source: string): ExtractionResult {
     // The project root is what tells a Shopify theme's JSON templates (Liquid)
     // apart from other JSON.
-    return extractFromSource(filePath, source, detectLanguage(filePath, source, undefined, this.projectRoot));
+    return engine().extractFromSource(filePath, source, detectLanguage(filePath, source, undefined, this.projectRoot));
   }
 
   // ===========================================================================
@@ -2051,10 +2245,14 @@ export class CodeGraph {
     // continuous reads keep perpetually partial — the WAL then accretes the
     // whole phase's write volume (22GB on a 4.6GB DB at kernel scale).
     backpressure?: () => Promise<void> | null,
-    synthesize: boolean = true
+    synthesize: boolean = true,
+    // The caller has just re-detected the frameworks on this index, so the
+    // resolver pool's workers needn't each read the project again to do it.
+    frameworksCurrent: boolean = false
   ): Promise<ResolutionResult> {
     return this.resolver.resolveAndPersistBatched(onProgress, undefined, onSynthesisProgress, {
       dbPath: this.db.getPath(),
+      shareFrameworks: frameworksCurrent,
       // Bulk-edge-load hooks: on big runs the resolver drops the non-unique
       // edge indexes for the batch loop and recreates them before synthesis
       // (which reads kind-keyed). Concurrent readers (a daemon serving this
@@ -2340,11 +2538,19 @@ export class CodeGraph {
   }
 
   /**
-   * Every ordered pair of files where one reaches into the other — the edge
-   * list a cycle finder runs on. See {@link QueryBuilder.getCrossFileDependencyPairs}.
+   * Every ordered pair of files where one reaches into the other. See
+   * {@link QueryBuilder.getCrossFileDependencyPairs}.
    */
   getFileDependencyPairs(minConfidence = 0): Array<{ source: string; target: string }> {
     return this.queries.getCrossFileDependencyPairs(minConfidence);
+  }
+
+  /**
+   * Every ordered pair of files where one imports the other — the edge list
+   * circular imports are found on. See {@link QueryBuilder.getFileImportPairs}.
+   */
+  getFileImportPairs(): Array<{ source: string; target: string }> {
+    return this.queries.getFileImportPairs();
   }
 
   /**
@@ -2770,6 +2976,21 @@ export class CodeGraph {
     return { needsReindex, parseErrors };
   }
 
+  /**
+   * Files found against files that yielded symbols, by language. Reported by
+   * `status`, whose `--strict` fails on a language that yielded none.
+   */
+  getLanguageCoverage(): LanguageCoverage {
+    const parsedFilesByLanguage: LanguageCoverage['parsedFilesByLanguage'] = {};
+    const unparsedLanguages: Language[] = [];
+    for (const { language, parsed } of this.queries.getParsedFileCounts()) {
+      if (!yieldsSymbols(language)) continue;
+      parsedFilesByLanguage[language] = parsed;
+      if (parsed === 0) unparsedLanguages.push(language);
+    }
+    return { parsedFilesByLanguage, unparsedLanguages };
+  }
+
   // ===========================================================================
   // Graph Query Methods
   // ===========================================================================
@@ -2885,8 +3106,8 @@ export class CodeGraph {
    * @param maxDepth - Maximum depth to traverse (default: 3)
    * @returns Subgraph containing potentially impacted nodes
    */
-  getImpactRadius(nodeId: string, maxDepth: number = 3): Subgraph {
-    return this.traverser.getImpactRadius(nodeId, maxDepth);
+  getImpactRadius(nodeId: string, maxDepth: number = 3, options: ImpactOptions = {}): Subgraph {
+    return this.traverser.getImpactRadius(nodeId, maxDepth, options);
   }
 
   /**
@@ -2946,9 +3167,10 @@ export class CodeGraph {
   }
 
   /**
-   * Find circular dependencies in the codebase
+   * Find circular imports between files
    *
-   * @returns Array of cycles, each cycle is an array of file paths
+   * @returns Groups of file paths that all reach each other through imports,
+   *   smallest group first
    */
   findCircularDependencies(): string[][] {
     return this.graphManager.findCircularDependencies();
