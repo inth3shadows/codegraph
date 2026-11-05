@@ -1,0 +1,64 @@
+name: TS grammar differential
+
+# tsc is the ground truth for TypeScript syntax; this checks the vendored
+# tree-sitter-typescript/tsx wasm against it over pinned corpora.
+# See docs/grammars/ts-differential.md.
+
+on:
+  pull_request:
+    paths:
+      - 'src/extraction/wasm/tree-sitter-typescript.wasm'
+      - 'src/extraction/wasm/tree-sitter-tsx.wasm'
+      - 'codegraph-kernel/grammars/**'
+      - 'docs/grammars/tree-sitter-typescript.*'
+      - 'scripts/ts-differential.mjs'
+      - 'scripts/ts-differential.corpora.json'
+      - 'scripts/ts-differential.baseline.json'
+      - '__tests__/fixtures/ts-syntax/**'
+      - 'package-lock.json'
+      - '.github/workflows/ts-differential.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/extraction/wasm/tree-sitter-typescript.wasm'
+      - 'src/extraction/wasm/tree-sitter-tsx.wasm'
+      - 'codegraph-kernel/grammars/**'
+      - 'docs/grammars/tree-sitter-typescript.*'
+      - 'scripts/ts-differential.mjs'
+      - 'scripts/ts-differential.corpora.json'
+      - 'scripts/ts-differential.baseline.json'
+      - '__tests__/fixtures/ts-syntax/**'
+      - 'package-lock.json'
+      - '.github/workflows/ts-differential.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ts-differential-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  differential:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TS_DIFF_CACHE: ${{ github.workspace }}/../ts-diff-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The script loads the wasm straight from src/ and needs no build.
+      - run: npm ci --ignore-scripts
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.TS_DIFF_CACHE }}
+          key: ts-diff-corpora-${{ hashFiles('scripts/ts-differential.corpora.json') }}
+
+      - name: Differential parse (tsc vs tree-sitter)
+        run: node scripts/ts-differential.mjs --json "$RUNNER_TEMP/ts-differential.json"
