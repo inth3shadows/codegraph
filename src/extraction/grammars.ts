@@ -383,7 +383,7 @@ export async function initGrammars(): Promise<void> {
  * the SAME grammar revisions the native extraction kernel compiles
  * (codegraph-kernel/Cargo.toml), so the kernel path and the wasm fallback
  * parse identically and per-language routing stays graph-neutral:
- *   - inth3shadows/tree-sitter-typescript 84ffdb8 (marionebl 53071c9 + patch) → typescript + tsx
+ *   - our fork inth3shadows/tree-sitter-typescript (marionebl 53071c9 + patch) → typescript + tsx
  *   - tree-sitter/tree-sitter-javascript v0.25.0 (44c892e) → javascript + jsx
  *   - tree-sitter/tree-sitter-java v0.23.5 (94703d5) → java
  *   - tree-sitter/tree-sitter-python v0.23.6 (bffb65a) → python

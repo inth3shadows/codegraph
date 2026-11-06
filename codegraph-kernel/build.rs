@@ -114,7 +114,8 @@ fn main() {
     println!("cargo:rerun-if-changed=grammars/swift");
 
     // TypeScript + TSX grammars — vendored C (sixth vendored-grammar-C
-    // language): our fork inth3shadows/tree-sitter-typescript 84ffdb8, which is
+    // language): our fork inth3shadows/tree-sitter-typescript (the commit is
+    // named in docs/grammars/tree-sitter-typescript.md), i.e.
     // marionebl/tree-sitter-typescript 53071c9 (a maintained fork of
     // tree-sitter/tree-sitter-typescript v0.23.2) plus
     // docs/grammars/tree-sitter-typescript.patch, REGENERATED with
@@ -124,9 +125,9 @@ fn main() {
     // the upstream repo so scanner.c's `../../common/scanner.h` resolves
     // unedited. See docs/grammars/tree-sitter-typescript.md for what the base
     // and the fork each fix.
-    //   common/scanner.h           6bf2fd5994bc8a4b6777c5b8ee63fa2fbe5c206ec59b06cf398a9d78ae4c3142 (fork 84ffdb8)
-    //   typescript/src/parser.c    8226f09238872f3f4825892448ad71c70c30ad03b60b5e32385c32b1b59f1cb1
-    //   tsx/src/parser.c           1de131b0b236d069d975e357dc73722585e12620e330c87d7b2125bfb2dc5bc1
+    //   common/scanner.h           6bf2fd5994bc8a4b6777c5b8ee63fa2fbe5c206ec59b06cf398a9d78ae4c3142
+    //   typescript/src/parser.c    d4033c44e73006419f890b41780324c9bc26a2679e9045956210331a9d6d3c4a
+    //   tsx/src/parser.c           5372712651e0d900af85fb760f358a7b0b39a3ef624f575d4952c84e5e2ff2a7
     // Flags crib the crate's bindings/rust/build.rs (c11). Each parser.c is
     // ~9 MB.
     for dialect in ["typescript", "tsx"] {
