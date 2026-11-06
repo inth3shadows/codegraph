@@ -71,7 +71,8 @@ the `tree-sitter-typescript` crate, so the two paths stay table-identical
   exactly where a `<` or `(` continues the member, and there the scanner
   inserts no `;`. A first version checked whether `(` was valid, which the
   JavaScript grammar does for `'||'`. That also fired after `typeof x` and
-  `import("m").X` types and after `return`, and undid #335 there. Compared
+  `import("m").X` types, which undid #335 there, and after `return`, where
+  `return\n<any>x` took the next line as the returned value. Compared
   node by node against the build without this hunk, it changes no tree on
   the four corpora, `src/`, `ui/src/` or TypeScript's own `lib/`.
   `__tests__/typescript-member-asi-parse.test.ts` pins both sides.
@@ -157,8 +158,13 @@ base commit, re-apply the patch, and drop any hunk the base now covers. Run
 the differential before and after the move. Then check that `<out>` still
 parses as a parameter name, `[out: T]` as a tuple label, and `<in const T>`
 with `const` after the variance. `__tests__/typescript-variance-parse.test.ts`
-and the `ts-syntax` fixtures cover all three. The patch also carries a
-`common/scanner.h` hunk (the member marker): re-run
-`__tests__/typescript-member-asi-parse.test.ts`, which checks node kinds the
-differential cannot see, and drop the hunk if the base reads
-`name\n<T>(...)` members as tsc does. Tracking: inth3shadows/codegraph#11.
+and the `ts-syntax` fixtures cover all three. The patch also carries the
+member marker, which has two halves: the `common/scanner.h` hunk and, in
+`common/define-grammar.js`, the `_member_signature_marker` external plus its
+three `optional(...)` uses. Re-run `__tests__/typescript-member-asi-parse.test.ts`,
+which checks node kinds the differential cannot see, and drop both halves
+together if the base reads `name\n<T>(...)` members as tsc does. The marker
+is also valid in some states where `||` is (such as `{ a` at the start of a
+statement). The `(`/`[`/`<` case already returns no `;` there, so it changes
+nothing, but reusing the marker for another character would need that same
+guard. Tracking: inth3shadows/codegraph#11.

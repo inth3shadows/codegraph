@@ -85,10 +85,13 @@ describe('TypeScript member ASI before `<`', () => {
     }
   });
 
-  it('typescript: `return` then `<` on the next line still ends the return', () => {
-    // tsc: `return;` then a type-assertion / generic-arrow statement.
-    for (const src of ['function f() {\n  return\n  <any>x\n}', 'function f() {\n  return\n  <T,>(x: T) => x\n}']) {
-      const root = getParser('typescript')!.parse(src)!.rootNode;
+  it.each([
+    ['typescript', ['function f() {\n  return\n  <any>x\n}', 'function f() {\n  return\n  <T,>(x: T) => x\n}']],
+    ['tsx', ['function f() {\n  return\n  <div/>\n}', 'function f() {\n  return\n  <T,>(x: T) => x\n}']],
+  ] as const)('%s: `return` then `<` on the next line still ends the return', (language, sources) => {
+    // tsc: `return;` then a type-assertion / generic-arrow / JSX statement.
+    for (const src of sources) {
+      const root = getParser(language)!.parse(src)!.rootNode;
       expect(root.hasError, src).toBe(false);
       const ret = root.descendantsOfType('return_statement');
       expect(ret, src).toHaveLength(1);
