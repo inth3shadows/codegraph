@@ -2,9 +2,13 @@
 > **This is a personal fork of [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph).**
 > It exists to carry fixes for bugs that put wrong edges in the graph, found while using CodeGraph
 > as the ground truth for other tools. Wrong edges are worse than missing ones: a
-> fabricated call makes every tool built on the graph confidently wrong.
+> fabricated call makes every tool built on the graph confidently wrong. The fix it carries now:
 >
-> Every fork fix is now in upstream: `codegraph sync` on an index from an older engine
+> - **Impact is fast again.** `codegraph impact`, `codegraph_impact` and the viewer's blast
+>   radius had become 2–3x slower on busy symbols; the answer itself was unchanged
+>   (upstream [#3249](https://github.com/colbymchenry/codegraph/pull/3249), fixes #3248).
+>
+> Earlier fork fixes are now in upstream: `codegraph sync` on an index from an older engine
 > (#1842, which upstream made a warning rather than a refusal), imports onto an exported
 > object's method (#2990), sync after a delete or rename (#3004), `package.json`-only
 > framework changes in `codegraph status` (#3005), skipped files re-linking their importers
