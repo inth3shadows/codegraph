@@ -1,7 +1,8 @@
 # TS grammar differential
 
-The vendored `tree-sitter-typescript.wasm` / `tree-sitter-tsx.wasm` come from an
-upstream grammar that is no longer maintained, and we carry patches on top of it.
+The vendored `tree-sitter-typescript.wasm` / `tree-sitter-tsx.wasm` come from a
+fork of an upstream grammar that is no longer maintained, with our patch on top
+(`docs/grammars/tree-sitter-typescript.md`).
 This job makes `tsc` the ground truth on every grammar change.
 
 ## Scope

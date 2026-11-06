@@ -1,8 +1,18 @@
 diff --git a/common/define-grammar.js b/common/define-grammar.js
-index 016c151..73a8e7e 100644
+index 016c151..2a72f69 100644
 --- a/common/define-grammar.js
 +++ b/common/define-grammar.js
-@@ -63,7 +63,6 @@ module.exports = function defineGrammar(dialect) {
+@@ -7,6 +7,9 @@ module.exports = function defineGrammar(dialect) {
+     externals: ($, previous) => previous.concat([
+       $._function_signature_automatic_semicolon,
+       $.__error_recovery,
++      // codegraph delta: never produced; lets the scanner see whether `(` is
++      // valid (only right after a member name), as '||' does for expressions.
++      '(',
+     ]),
+ 
+     supertypes: ($, previous) => previous.concat([
+@@ -63,7 +66,6 @@ module.exports = function defineGrammar(dialect) {
        [$.decorator_call_expression, $.decorator],
        [$.literal_type, $.pattern],
        [$.predefined_type, $.pattern],
@@ -10,7 +20,7 @@ index 016c151..73a8e7e 100644
        [$.call_expression, $._type_query_call_expression_in_type_annotation],
        [$.new_expression, $.primary_expression],
        [$.meta_property, $.primary_expression],
-@@ -71,6 +70,9 @@ module.exports = function defineGrammar(dialect) {
+@@ -71,6 +73,9 @@ module.exports = function defineGrammar(dialect) {
      ]),
  
      conflicts: ($, previous) => previous.concat([
@@ -20,7 +30,7 @@ index 016c151..73a8e7e 100644
        [$.call_expression, $.instantiation_expression, $.binary_expression],
        [$.call_expression, $.instantiation_expression, $.binary_expression, $.unary_expression],
        [$.call_expression, $.instantiation_expression, $.binary_expression, $.update_expression],
-@@ -111,6 +113,10 @@ module.exports = function defineGrammar(dialect) {
+@@ -111,6 +116,10 @@ module.exports = function defineGrammar(dialect) {
        [$.array_pattern, $.tuple_type],
  
        [$.template_literal_type, $.template_string],
@@ -31,7 +41,7 @@ index 016c151..73a8e7e 100644
      ]).concat(
        dialect === 'typescript' ? [
          [$.primary_type, $.type_parameter],
-@@ -749,8 +755,6 @@ module.exports = function defineGrammar(dialect) {
+@@ -749,8 +758,6 @@ module.exports = function defineGrammar(dialect) {
          $.readonly_type,
          $.constructor_type,
          $.infer_type,
@@ -40,7 +50,7 @@ index 016c151..73a8e7e 100644
        ),
  
        tuple_parameter: $ => seq(
-@@ -805,6 +809,8 @@ module.exports = function defineGrammar(dialect) {
+@@ -805,6 +812,8 @@ module.exports = function defineGrammar(dialect) {
          $.intersection_type,
          $.union_type,
          'const',
@@ -49,7 +59,7 @@ index 016c151..73a8e7e 100644
        ),
  
        template_type: $ => seq('${', choice($.primary_type, $.infer_type), '}'),
-@@ -842,6 +848,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -842,6 +851,7 @@ module.exports = function defineGrammar(dialect) {
          field('name', choice(
            $._type_identifier,
            $.nested_type_identifier,
@@ -57,7 +67,7 @@ index 016c151..73a8e7e 100644
          )),
          field('type_arguments', $.type_arguments),
        )),
-@@ -1029,7 +1036,12 @@ module.exports = function defineGrammar(dialect) {
+@@ -1029,7 +1039,12 @@ module.exports = function defineGrammar(dialect) {
        type_parameter: $ => seq(
          optional('const'),
          optional($.variance),
@@ -71,3 +81,30 @@ index 016c151..73a8e7e 100644
          field('constraint', optional($.constraint)),
          field('value', optional($.default_type)),
        ),
+diff --git a/common/scanner.h b/common/scanner.h
+index ddefcdf..55d4ba6 100644
+--- a/common/scanner.h
++++ b/common/scanner.h
+@@ -13,6 +13,7 @@ enum TokenType {
+     JSX_TEXT,
+     FUNCTION_SIGNATURE_AUTOMATIC_SEMICOLON,
+     ERROR_RECOVERY,
++    OPEN_PAREN,
+ };
+ 
+ static void advance(TSLexer *lexer) { lexer->advance(lexer, false); }
+@@ -155,6 +156,14 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
+             if (valid_symbols[LOGICAL_OR]) {
+                 return false;
+             }
++            // codegraph delta: `(` is valid only right after a member name
++            // (`find` / `find?`), where a `<` on the next line opens that
++            // member's type parameters (`find\n<T>(id): T` is a method, as tsc
++            // reads it), not a new call signature. After a type
++            // (`a: string\n<T>(): T`) `(` is not valid and ASI still applies.
++            if (lexer->lookahead == '<' && valid_symbols[OPEN_PAREN]) {
++                return false;
++            }
+             break;
+ 
+             // Insert a semicolon before `--` and `++`, but not before binary `+` or `-`.

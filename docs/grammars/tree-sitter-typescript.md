@@ -4,7 +4,8 @@
 vendored C (`codegraph-kernel/grammars/typescript/`) are both built from
 [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript)
 (MIT) commit `53071c97beb59f6ddc197a3473d22882ad756918`, with the patch in
-`tree-sitter-typescript.patch` applied to `common/define-grammar.js`.
+`tree-sitter-typescript.patch` applied to `common/define-grammar.js` and
+`common/scanner.h`.
 
 marionebl's repo is a maintained fork of
 [tree-sitter/tree-sitter-typescript](https://github.com/tree-sitter/tree-sitter-typescript)
@@ -18,17 +19,17 @@ The patch changes grammar **rules**, so the parser is **regenerated** with
 tree-sitter-cli 0.25.10 (ABI 15). The fork's checked-in `parser.c` (ABI 14)
 is not used. The kernel compiles the same generated C (build.rs) in place of
 the `tree-sitter-typescript` crate, so the two paths stay table-identical
-(`kernel-grammar-parity.test.ts`). The external scanner (`common/scanner.h`)
-is marionebl's, unpatched.
+(`kernel-grammar-parity.test.ts`) and share one external scanner
+(`common/scanner.h`, marionebl's plus one patch hunk).
 
 | file | base (marionebl 53071c9) sha256 | ours sha256 |
 |---|---|---|
-| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `0183cfdb24b02e9a469dd5a689c8b140b1229c8ce5d62a2621ce30a077c7bf47` |
-| `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | unchanged |
-| `typescript/src/parser.c` | (regenerated) | `b1b225c9efc2ec3efaf93eb7c68cf61e62a46b3286624695500553d34cabc2ef` |
-| `tsx/src/parser.c` | (regenerated) | `a585fb70b97dd156912358ac93db8f662531b5858921f56e71909f7a0c9d7213` |
-| `tree-sitter-typescript.wasm` | — | `0123a84ec395c76f54b7035496c236f41924cff922f092c064e2dee0e614fdc6` |
-| `tree-sitter-tsx.wasm` | — | `068469cb7158a4f54b8a7e3bca5a6e478e94d921901f474b2aab39e1262f8dcf` |
+| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `66068379ba183462488f580e22c42b8f72422e480a07c68f5d675a89aa025692` |
+| `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `744d61a154d57f48121f80f4a6b4f5298788ea1df63215f45bf9e7a6615c9d54` |
+| `typescript/src/parser.c` | (regenerated) | `fc67c5ab51aa8ce655c525b1fc281bfe50808f56edd35192b022d466ee09dae8` |
+| `tsx/src/parser.c` | (regenerated) | `478eeadc939e8e0b2838f632448f07b49477f3893a2c30675cf4a25eae97275c` |
+| `tree-sitter-typescript.wasm` | — | `c07043e2e9dedbcb8ebbe139b776ccd0ce447a7b354d4d6cca6505f96ad1a00d` |
+| `tree-sitter-tsx.wasm` | — | `b7801690c9ad15888ea96497c39eb3781cf23914473ef5ab268e26f3fc7f770f` |
 
 ## What the base fixes (marionebl, over v0.23.2)
 
@@ -58,6 +59,17 @@ is marionebl's, unpatched.
   `out` decides.
 - Our own: `const` is also accepted after the variance (`<in const T>`), as
   tsc accepts it.
+- Our own, in the scanner: marionebl's #335 fix inserts an implicit `;`
+  before any `<` that starts a line in a type or class body. Right after a
+  bare member name that is wrong: tsc reads `find\n  <T>(id): T` as one
+  method, and splitting it made the member a property (with no parse error
+  in an interface) and dropped a class method's call edges. The grammar now
+  lists `(` as an external token the scanner never produces, the same trick
+  the JavaScript grammar uses for `'||'`, so the scanner can see whether `(`
+  is valid. It is valid only right after a member name, and there the `;` is
+  not inserted. On all four corpora this changes no tree at all, compared
+  node by node. `__tests__/typescript-member-asi-parse.test.ts` pins both
+  sides.
 
 ### Known limits
 
@@ -73,6 +85,15 @@ is marionebl's, unpatched.
 - In VS Code, `start < unique.length` fails, because `unique` reads as the
   `unique symbol` keyword. So does a labeled tuple type used as an array
   element type (`[spoken: string, symbol: string][]`).
+- A parenthesized import type, `(import("m").A)[]`, still fails, as does
+  `f<import("m").Y>()`.
+- marionebl's ASI-before-`in` fix only covers `in` followed by a non-letter
+  other than `_`. A line starting `in1`, `in2` or `in$x` after a statement
+  with no `;` still fails (it did before too), and so do `in?: T` and
+  `in<T>()` members after a member with no `;`.
+- The same scanner change reads `a\n in(b)` (a line break, then `in(` with
+  no space) as a call to a function named `in`, where tsc reads `a in (b)`.
+  There is no parse error to flag it.
 - The parser also accepts some forms tsc rejects, such as `<out extends X>`
   and `<out in>`.
 
@@ -92,8 +113,10 @@ numbers come from `node scripts/ts-differential.mjs` (tsc 5.9.3, web-tree-sitter
 
 On its own, marionebl fails only `variance-out-name.{ts,tsx}` (`<out>` as a
 name). No file got worse at either step, and the five `gap-*` fixtures are
-unchanged. The patched grammar passes all 119 tests in the grammar's own
-corpus, including the ones dokimasia added.
+unchanged. The scanner hunk changes no tree on any corpus file. The patched
+grammar passes marionebl's 117 corpus tests, and the 2 that dokimasia's commits
+add when their `test/corpus` hunks are applied too (the patch carries only
+`common/`).
 
 ## Rebuild
 
@@ -101,7 +124,7 @@ corpus, including the ones dokimasia added.
 git clone https://github.com/marionebl/tree-sitter-typescript
 cd tree-sitter-typescript
 git checkout 53071c97beb59f6ddc197a3473d22882ad756918
-npm ci --ignore-scripts          # tree-sitter-javascript, the grammar it extends
+npm ci --ignore-scripts          # tree-sitter-javascript 0.23.1 (lockfile), the grammar it extends
 git apply /path/to/codegraph/docs/grammars/tree-sitter-typescript.patch
 (cd typescript && npx -y tree-sitter-cli@0.25.10 generate)
 (cd tsx && npx -y tree-sitter-cli@0.25.10 generate)
