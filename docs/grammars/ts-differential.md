@@ -4,6 +4,12 @@ The vendored `tree-sitter-typescript.wasm` / `tree-sitter-tsx.wasm` come from an
 upstream grammar that is no longer maintained, and we carry patches on top of it.
 This job makes `tsc` the ground truth on every grammar change.
 
+## Scope
+
+This checks the vendored **wasm** grammars only (`src/extraction/wasm/tree-sitter-typescript.wasm`
+and `tree-sitter-tsx.wasm`). The native kernel's TypeScript grammar is not tested here;
+wasm/kernel parity is `scripts/kernel-parity.mjs`'s job.
+
 ## What it checks
 
 `scripts/ts-differential.mjs` parses every `.ts`/`.tsx`/`.mts`/`.cts` file (`.d.ts`
@@ -15,13 +21,33 @@ included, `node_modules` excluded) in a set of pinned corpora with both parsers:
 Each file lands in one class: `agree-ok`, `agree-err` (both report an error),
 `DIVERGENT` (tsc accepts it, tree-sitter reports an error) or `tsc-only-err` (counted only).
 
-The gate: the run fails if a `DIVERGENT` file is not listed in
-`scripts/ts-differential.baseline.json`. Baseline files that now agree are reported
-(`now-agree`) but never fail the run. The in-repo fixtures
-(`__tests__/fixtures/ts-syntax/`, one small file per modern construct) are baselined
-the same way. `gap-*.ts` and `variance.ts` record constructs tsc accepts that the
-grammar does not parse yet. A grammar that fixes one reports it as `now-agree`, which
-is how a candidate grammar or fork is compared with ours.
+The baseline (`scripts/ts-differential.baseline.json`) is `divergent: {corpus: {path: firstErrorRow}}`
+(an old array-of-paths baseline is still read, with unknown rows, and rewritten by `--update`).
+
+The run **fails with exit 1** when:
+
+- a `DIVERGENT` file is not in the baseline (printed as `corpus:path:row`);
+- a baselined `DIVERGENT` file's first error row moved **earlier** than the baselined row: a new
+  error inside an already-divergent file (printed as `corpus:path:row (was R)`). A later row is
+  an improvement (reported, suggests `--update`, does not fail); an unknown baselined row accepts any row;
+- (`local` fixtures only) tsc reports any syntax error in a fixture ("fixture is not valid TypeScript"),
+  or a fixture that is not a gap fixture (`gap-*`, `variance.*`) is `DIVERGENT`, even if baselined.
+
+It **fails with exit 2** (setup) on bad args, a fetch failure, a corpus that scans 0 files,
+a version mismatch, a blind oracle or grammar (see Canaries), or a baselined path that is
+absent from the run (`vanished`: renamed, deleted, wrong corpus root). Vanished paths are never
+counted as `now-agree`; confirm the change and re-baseline.
+
+Reported, never failing: `now-agree` counts only baselined paths that are now `agree-ok`; a
+baselined path that tsc now rejects too is counted as `now-err`; `improved` is above.
+The in-repo fixtures (`__tests__/fixtures/ts-syntax/`, one small file per modern construct) are
+baselined the same way. `gap-*.ts` and `variance.ts` record constructs tsc accepts that the
+grammar does not parse yet, **one construct per file** so fixing one is visible. A grammar that
+fixes one reports it as `now-agree`, which is how a candidate grammar or fork is compared with ours.
+
+Canaries (fail closed, exit 2): `sf.parseDiagnostics` must be an array and `let x: = ;` must
+yield diagnostics (else the tsc oracle is blind); in both wasm grammars `let x: = ;` must
+`hasError` and `let x: number = 1;` must not.
 
 Corpora (`scripts/ts-differential.corpora.json`, pinned by SHA): Effect, Zod,
 Excalidraw, VS Code `src/`, plus the fixtures.
@@ -35,12 +61,17 @@ node scripts/ts-differential.mjs --only local    # just the fixtures (fast)
 node scripts/ts-differential.mjs --json out.json # full per-file results (first error row each)
 ```
 
-Corpora are cloned (depth 1; VS Code blobless + sparse `src/`) into
-`$TS_DIFF_CACHE`, default `~/.cache/codegraph-ts-differential/<name>-<sha12>`, and
-re-used on later runs. The first run downloads a few hundred MB.
+The script re-execs itself once under `node --liftoff-only` (`WASM_RUNTIME_FLAGS`,
+`src/extraction/wasm-runtime-flags.ts`: V8 Zone OOM compiling big grammar wasm on Node 22+),
+so a plain `node scripts/ts-differential.mjs` is fine. `TS_DIFF_RELAUNCHED` guards the loop.
 
-Exit codes: `0` no new divergences, `1` new divergences, `2` setup failure or the
-installed `typescript` / `web-tree-sitter` version differs from the baseline's.
+Corpora are cloned (depth 1; VS Code blobless + sparse `src/`) into
+`$TS_DIFF_CACHE`, default `~/.cache/codegraph-ts-differential/<name>-<sha12>` (plus `-<sha1(subdir)[0:8]>`
+for a sparse corpus), and re-used on later runs only if the completion marker (JSON `{sha, subdir}`)
+matches. The first run downloads a few hundred MB.
+
+Exit codes: `0` ok, `1` gate failure (above), `2` setup failure (above) or the installed
+`typescript` / `web-tree-sitter` version differs from the baseline's.
 
 ## Re-baseline
 
@@ -49,10 +80,13 @@ node scripts/ts-differential.mjs --update
 ```
 
 Rewrites `scripts/ts-differential.baseline.json` (versions, wasm sha256, sorted
-divergent paths per corpus). Review the diff and commit it with the change that caused it.
+divergent paths per corpus, each with its first error row). It refuses (exit 1) if a local
+fixture is not valid TypeScript or a non-gap fixture diverges. Review the diff and commit it
+with the change that caused it.
 Re-baseline when:
 
-- a grammar patch lands and the report says files `now-agree` (the baseline should shrink);
+- a grammar patch lands and the report says files `now-agree` / `improved` (the baseline should shrink);
+- the report lists `vanished` paths (a fixture was renamed or removed);
 - `typescript` or `web-tree-sitter` is bumped (exit 2 asks for this): check that new
   divergences are real grammar gaps and not an oracle change;
 - a corpus pin changes.
@@ -63,13 +97,17 @@ grammar, or record the gap deliberately in the commit message.
 ## CI
 
 `.github/workflows/ts-differential.yml` runs on PRs and pushes to `main` that touch the
-two wasm files, `codegraph-kernel/grammars/**`, `docs/grammars/tree-sitter-typescript.*`,
-the script, corpora, baseline or fixtures, or `package-lock.json`. The job summary lists
-per-corpus counts and the first 20 new divergences as `corpus:path:line`.
+two wasm files, `codegraph-kernel/grammars/typescript/**`, `docs/grammars/tree-sitter-typescript.*`
+(the last two arrive with the #3226 mirror), the script, corpora, baseline or fixtures, or
+`package-lock.json`. The job summary lists per-corpus counts and the first 20 new divergences
+as `corpus:path:line`. The `--json` results are uploaded as the `ts-differential-json` artifact
+(14 days, even when the job fails). The corpus cache is restored up front and saved with
+`if: always()`, so a failing run still keeps the downloads.
 
 ## Adding a fixture
 
-Add one small file to `__tests__/fixtures/ts-syntax/` for a construct tsc accepts, and
+Add one small file to `__tests__/fixtures/ts-syntax/` for **one** construct tsc accepts, and
 run `node scripts/ts-differential.mjs --only local`. If the current grammar parses it,
 you're done. If it doesn't, name the file `gap-<construct>.ts` and re-baseline
-(`--update`), so the gap is recorded and its fix shows up as `now-agree`.
+(`--update`), so the gap is recorded and its fix shows up as `now-agree`. A file that is not
+valid TypeScript, or a non-gap name that diverges, fails the run and blocks `--update`.

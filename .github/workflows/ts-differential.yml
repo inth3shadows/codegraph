@@ -9,7 +9,7 @@ on:
     paths:
       - 'src/extraction/wasm/tree-sitter-typescript.wasm'
       - 'src/extraction/wasm/tree-sitter-tsx.wasm'
-      - 'codegraph-kernel/grammars/**'
+      - 'codegraph-kernel/grammars/typescript/**'
       - 'docs/grammars/tree-sitter-typescript.*'
       - 'scripts/ts-differential.mjs'
       - 'scripts/ts-differential.corpora.json'
@@ -22,7 +22,7 @@ on:
     paths:
       - 'src/extraction/wasm/tree-sitter-typescript.wasm'
       - 'src/extraction/wasm/tree-sitter-tsx.wasm'
-      - 'codegraph-kernel/grammars/**'
+      - 'codegraph-kernel/grammars/typescript/**'
       - 'docs/grammars/tree-sitter-typescript.*'
       - 'scripts/ts-differential.mjs'
       - 'scripts/ts-differential.corpora.json'
@@ -55,10 +55,40 @@ jobs:
       # The script loads the wasm straight from src/ and needs no build.
       - run: npm ci --ignore-scripts
 
-      - uses: actions/cache@v4
+      # Restore here, save in its own step below with if: always(): a plain
+      # actions/cache saves only when the job succeeds, so a failing run would
+      # re-download every corpus on the next push.
+      - uses: actions/cache/restore@v4
+        id: corpus-cache
         with:
           path: ${{ env.TS_DIFF_CACHE }}
-          key: ts-diff-corpora-${{ hashFiles('scripts/ts-differential.corpora.json') }}
+          key: ts-diff-corpora-v2-${{ hashFiles('scripts/ts-differential.corpora.json') }}
 
       - name: Differential parse (tsc vs tree-sitter)
         run: node scripts/ts-differential.mjs --json "$RUNNER_TEMP/ts-differential.json"
+
+      - name: Upload full per-file results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ts-differential-json
+          path: ${{ runner.temp }}/ts-differential.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # Save only once at least one corpus finished fetching (the cache dir lives
+      # outside the workspace, so hashFiles() cannot test it; use the shell).
+      - name: Check for fetched corpora
+        id: corpus-fetched
+        if: always() && steps.corpus-cache.outputs.cache-hit != 'true'
+        run: |
+          rm -rf "$TS_DIFF_CACHE"/*.partial-*
+          if find "$TS_DIFF_CACHE" -maxdepth 2 -name .ts-differential-complete 2>/dev/null | grep -q .; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/cache/save@v4
+        if: always() && steps.corpus-cache.outputs.cache-hit != 'true' && steps.corpus-fetched.outputs.present == 'true'
+        with:
+          path: ${{ env.TS_DIFF_CACHE }}
+          key: ts-diff-corpora-v2-${{ hashFiles('scripts/ts-differential.corpora.json') }}
