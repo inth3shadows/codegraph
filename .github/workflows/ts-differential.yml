@@ -1,0 +1,103 @@
+name: TS grammar differential
+
+# tsc is the ground truth for TypeScript syntax; this checks the vendored
+# tree-sitter-typescript/tsx wasm against it over pinned corpora.
+# See docs/grammars/ts-differential.md.
+
+on:
+  pull_request:
+    paths:
+      - 'src/extraction/wasm/tree-sitter-typescript.wasm'
+      - 'src/extraction/wasm/tree-sitter-tsx.wasm'
+      - 'src/extraction/wasm-runtime-flags.ts'
+      - 'codegraph-kernel/grammars/typescript/**'
+      - 'docs/grammars/tree-sitter-typescript.*'
+      - 'scripts/ts-differential.mjs'
+      - 'scripts/ts-differential.corpora.json'
+      - 'scripts/ts-differential.baseline.json'
+      - '__tests__/fixtures/ts-syntax/**'
+      - 'package-lock.json'
+      - '.github/workflows/ts-differential.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/extraction/wasm/tree-sitter-typescript.wasm'
+      - 'src/extraction/wasm/tree-sitter-tsx.wasm'
+      - 'src/extraction/wasm-runtime-flags.ts'
+      - 'codegraph-kernel/grammars/typescript/**'
+      - 'docs/grammars/tree-sitter-typescript.*'
+      - 'scripts/ts-differential.mjs'
+      - 'scripts/ts-differential.corpora.json'
+      - 'scripts/ts-differential.baseline.json'
+      - '__tests__/fixtures/ts-syntax/**'
+      - 'package-lock.json'
+      - '.github/workflows/ts-differential.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ts-differential-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  differential:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # The corpus cache lives in $RUNNER_TEMP, outside the workspace. actions/cache
+      # rejects any path containing ".." ("Relative pathing '.' and '..' is not allowed"),
+      # so the old ${{ github.workspace }}/../ts-diff-cache never saved or restored. The
+      # runner context is not available in job-level `env`, so it is exported once here
+      # through $GITHUB_ENV: every later step (the cache restore/save `path:` inputs, the
+      # script and the shell check) then sees the same absolute path via env.TS_DIFF_CACHE.
+      - name: Set corpus cache dir
+        run: echo "TS_DIFF_CACHE=$RUNNER_TEMP/ts-diff-cache" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The script loads the wasm straight from src/ and needs no build.
+      - run: npm ci --ignore-scripts
+
+      # Restore here, save in its own step below with if: always(): a plain
+      # actions/cache saves only when the job succeeds, so a failing run would
+      # re-download every corpus on the next push.
+      - uses: actions/cache/restore@v4
+        id: corpus-cache
+        with:
+          path: ${{ env.TS_DIFF_CACHE }}
+          key: ts-diff-corpora-v3-${{ hashFiles('scripts/ts-differential.corpora.json') }}
+
+      - name: Differential parse (tsc vs tree-sitter)
+        run: node scripts/ts-differential.mjs --json "$RUNNER_TEMP/ts-differential.json"
+
+      - name: Upload full per-file results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ts-differential-json
+          path: ${{ runner.temp }}/ts-differential.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # Save only once at least one corpus finished fetching (the cache dir lives
+      # outside the workspace, so hashFiles() cannot test it; use the shell).
+      - name: Check for fetched corpora
+        id: corpus-fetched
+        if: always() && steps.corpus-cache.outputs.cache-hit != 'true'
+        run: |
+          rm -rf "$TS_DIFF_CACHE"/*.partial-*
+          if find "$TS_DIFF_CACHE" -maxdepth 2 -name .ts-differential-complete 2>/dev/null | grep -q .; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/cache/save@v4
+        if: always() && steps.corpus-cache.outputs.cache-hit != 'true' && steps.corpus-fetched.outputs.present == 'true'
+        with:
+          path: ${{ env.TS_DIFF_CACHE }}
+          key: ts-diff-corpora-v3-${{ hashFiles('scripts/ts-differential.corpora.json') }}
