@@ -12,6 +12,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
+import { createHash } from 'crypto';
 import { initGrammars, loadGrammarsForLanguages, getParser, RUNTIME_WASM_PATH } from '../src/extraction/grammars';
 import { parseWithinBudget } from '../src/extraction/parse-budget';
 
@@ -42,17 +43,35 @@ describe('vendored tree-sitter runtime', () => {
 // The native kernel links the same runtime C (codegraph-kernel/vendor/tree-sitter, patched).
 // A native parse cannot be cancelled from JS, so it runs in a child with a hard timeout.
 // The kernel throws `defer: parse tree contains errors` for an erroring tree (the file then
-// goes to wasm): that is a finished parse, so it counts as done.
+// goes to wasm): a finished parse that went through error recovery, which is what this pins.
+// Only tsx + the first input hangs an unpatched kernel; the rest pin that recovery still errors.
 const KERNEL_PATH = path.join(__dirname, '..', 'codegraph-kernel', 'prebuilds', `${process.platform}-${process.arch}`, 'codegraph-kernel.node');
+const kernelBuilt = fs.existsSync(KERNEL_PATH);
+const expectKernel = process.env.CODEGRAPH_KERNEL_EXPECT === '1';
 const KERNEL_CHILD = `
 const k = require(process.argv[1]);
 const [src, lang] = [process.argv[2], process.argv[3]];
-try { k.extractFile(lang === 'tsx' ? 'poc.tsx' : 'poc.ts', src, lang); }
-catch (e) { if (!String(e && e.message).startsWith('defer:')) throw e; }
-console.log('done');
+try { k.extractFile(lang === 'tsx' ? 'poc.tsx' : 'poc.ts', src, lang); console.log('clean'); }
+catch (e) { if (!String(e && e.message).startsWith('defer:')) throw e; console.log('defer'); }
 `;
 
-describe.skipIf(!fs.existsSync(KERNEL_PATH))('kernel: error recovery finishes on the same input', () => {
+// The kernel's copy of the runtime C: crates.io tree-sitter 0.25.10 src/parser.c + the #5997
+// patch. Re-vendoring without the patch changes this hash; CI catches it without a kernel build.
+const VENDORED_PARSER_C = path.join(__dirname, '..', 'codegraph-kernel', 'vendor', 'tree-sitter', 'src', 'parser.c');
+const VENDORED_PARSER_C_SHA256 = '612383a469d79c61f8b5b749714d60a6a85ca2b49c708e10ad0901be5b3987d0';
+
+describe('kernel runtime', () => {
+  it('vendored parser.c carries the #5997 patch', () => {
+    const sha = createHash('sha256').update(fs.readFileSync(VENDORED_PARSER_C)).digest('hex');
+    expect(sha, 'codegraph-kernel/vendor/tree-sitter/src/parser.c changed: re-apply docs/grammars/web-tree-sitter-runtime.patch, then update this hash').toBe(VENDORED_PARSER_C_SHA256);
+  });
+
+  it.runIf(expectKernel)('kernel binary must exist when CODEGRAPH_KERNEL_EXPECT=1', () => {
+    expect(kernelBuilt, `expected kernel at ${KERNEL_PATH} — run scripts/build-kernel.sh`).toBe(true);
+  });
+});
+
+describe.skipIf(!kernelBuilt)('kernel: error recovery finishes on the same input', () => {
   it.each(['tsx', 'typescript'] as const)('%s', (language) => {
     for (const src of HANG_INPUTS) {
       const child = spawnSync(process.execPath, ['-e', KERNEL_CHILD, KERNEL_PATH, src, language], {
@@ -60,7 +79,7 @@ describe.skipIf(!fs.existsSync(KERNEL_PATH))('kernel: error recovery finishes on
         timeout: 10_000,
       });
       expect(child.error?.message, `${language}: ${JSON.stringify(src)} — kernel parse did not finish within 10s`).toBeUndefined();
-      expect(child.stdout.trim(), child.stderr).toBe('done');
+      expect(child.stdout.trim(), child.stderr).toBe('defer');
     }
   });
 });

@@ -12,7 +12,8 @@ crate-type = ["cdylib"]
 [dependencies]
 napi = { version = "3", default-features = false, features = ["napi8"] }
 napi-derive = "3"
-tree-sitter = "0.25"
+# Exact: the [patch.crates-io] entry below replaces exactly this version.
+tree-sitter = "=0.25.10"
 sha2 = "0.10"
 regex = "1"
 
