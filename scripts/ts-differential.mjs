@@ -16,15 +16,23 @@
  *
  * Gate (exit 1):
  *   - a DIVERGENT file that is not in the baseline ("new");
- *   - a baselined DIVERGENT file whose first error row moved EARLIER than the
- *     baselined row: a new error inside an already-divergent file
+ *   - PINNED corpora only: a baselined DIVERGENT file whose first error row moved
+ *     EARLIER than the baselined row: a new error inside an already-divergent file
  *     ("corpus:path:row (was R)"). A later row is an improvement (reported, not a failure);
- *     an unknown baselined row accepts any row;
+ *     an unknown baselined row accepts any row. The pinned code never changes, so a moved
+ *     row means the grammar changed error recovery or the pin moved: re-baseline with --update.
+ *     The `local` corpus is exempt (its rows shift whenever a fixture is edited; it is
+ *     already strict per file, see below);
  *   - local corpus only: any tsc error in a fixture ("fixture is not valid TypeScript"),
  *     and a DIVERGENT fixture that is not a gap fixture (gap-*, variance.*), even if baselined.
- * Setup failure (exit 2): bad args, fetch failure, a corpus that scans 0 files, a
+ * Setup failure (exit 2; each also appends "**Setup error:** <message>" to
+ * GITHUB_STEP_SUMMARY): bad args, fetch failure, a corpus that scans 0 files, a
  * baselined path that is absent from this run ("vanished": renamed/deleted/wrong
- * root; never counted as now-agree), version mismatch, a blind oracle or grammar.
+ * root; never counted as now-agree), on a full run a baseline corpus that is not in
+ * corpora.json (vanished corpus), a malformed baseline (a row must be a non-negative
+ * integer, or the corpus an old-format array), version mismatch, a blind oracle
+ * (ScriptKind.TS or TSX) or grammar, WASM_RUNTIME_FLAGS drifting from
+ * src/extraction/wasm-runtime-flags.ts, or the relaunch guard set without --liftoff-only.
  * now-agree counts only baselined paths that are now agree-ok; a baselined path that
  * is now agree-err / tsc-only-err is counted separately (now-err). All are reported
  * so the baseline can be re-generated; none but "vanished" fails the run.
@@ -40,9 +48,13 @@
  *
  * The script re-execs itself once under `node --liftoff-only` (WASM_RUNTIME_FLAGS in
  * src/extraction/wasm-runtime-flags.ts: V8 Zone OOM on big grammar wasm); the env var
- * TS_DIFF_RELAUNCHED guards against loops.
+ * TS_DIFF_RELAUNCHED guards against loops. If it is set but the flag is missing from
+ * process.execArgv the run exits 2 instead of running unflagged. This script's copy of
+ * the flag list is checked against the .ts source at startup (regex on the array literal);
+ * a mismatch or an unparseable source is a setup error.
  *
- * Env: TS_DIFF_CACHE  corpus clone cache (default ~/.cache/codegraph-ts-differential)
+ * Env: TS_DIFF_CACHE  corpus clone cache (default ~/.cache/codegraph-ts-differential;
+ *                      CI: $RUNNER_TEMP/ts-diff-cache)
  *      GITHUB_STEP_SUMMARY  when set, a markdown summary is appended to it
  *
  * Exit: 0 = ok, 1 = gate failure (above), 2 = setup failure (above).
@@ -68,11 +80,16 @@ const WASM = {
 };
 const EXTS = new Set(['.ts', '.tsx', '.mts', '.cts']);
 const MARKER = '.ts-differential-complete';
-// Mirrors WASM_RUNTIME_FLAGS in src/extraction/wasm-runtime-flags.ts (a .ts file; not importable here).
+// Mirrors WASM_RUNTIME_FLAGS in src/extraction/wasm-runtime-flags.ts (a .ts file; not
+// importable here). checkFlagsMirror() fails the run if the two drift apart.
 const WASM_RUNTIME_FLAGS = ['--liftoff-only'];
+const FLAGS_SOURCE = path.join(ROOT, 'src', 'extraction', 'wasm-runtime-flags.ts');
 const RELAUNCH_GUARD_ENV = 'TS_DIFF_RELAUNCHED';
 const CANARY_BAD = 'let x: = ;';
 const CANARY_GOOD = 'let x: number = 1;';
+// JSX is only valid under ScriptKind.TSX (verified with tsc: bad -> diagnostics, good -> none).
+const CANARY_TSX_BAD = 'const a = <div>;';
+const CANARY_TSX_GOOD = 'const a = <div />;';
 
 class SetupError extends Error {}
 
@@ -86,20 +103,39 @@ const isGapFixture = (p) => /^(gap-|variance\.)/.test(path.basename(p));
  */
 function relaunchWithWasmFlags() {
   if (WASM_RUNTIME_FLAGS.every((f) => process.execArgv.includes(f))) return null;
-  if (process.env[RELAUNCH_GUARD_ENV]) return null;
+  if (process.env[RELAUNCH_GUARD_ENV]) {
+    // Fail closed: running unflagged risks the V8 Zone OOM (or, worse, a silent half-run).
+    throw new SetupError(`${RELAUNCH_GUARD_ENV} is set but process.execArgv (${JSON.stringify(process.execArgv)}) lacks ${WASM_RUNTIME_FLAGS.join(' ')}: refusing to run unflagged (a stale ${RELAUNCH_GUARD_ENV} in the environment? unset it)`);
+  }
   const r = spawnSync(process.execPath, [...WASM_RUNTIME_FLAGS, ...process.execArgv, SELF, ...process.argv.slice(2)], {
     stdio: 'inherit',
     env: { ...process.env, [RELAUNCH_GUARD_ENV]: '1' },
   });
   if (r.error) {
-    process.stderr.write(`setup error: cannot relaunch under ${WASM_RUNTIME_FLAGS.join(' ')}: ${r.error.message}\n`);
-    return 2;
+    throw new SetupError(`cannot relaunch under ${WASM_RUNTIME_FLAGS.join(' ')}: ${r.error.message}`);
   }
   if (r.status === null) {
-    process.stderr.write(`setup error: relaunched run was killed by ${r.signal}\n`);
-    return 2;
+    throw new SetupError(`relaunched run was killed by ${r.signal}`);
   }
   return r.status;
+}
+
+/** Fail if this script's WASM_RUNTIME_FLAGS copy differs from the one in src/extraction/wasm-runtime-flags.ts. */
+function checkFlagsMirror() {
+  let src;
+  try {
+    src = fs.readFileSync(FLAGS_SOURCE, 'utf8');
+  } catch (e) {
+    throw new SetupError(`cannot read ${path.relative(ROOT, FLAGS_SOURCE)} to check WASM_RUNTIME_FLAGS: ${e.message}`);
+  }
+  const m = /export\s+const\s+WASM_RUNTIME_FLAGS\b[^=]*=\s*\[([^\]]*)\]/.exec(src);
+  if (!m) {
+    throw new SetupError(`cannot parse the WASM_RUNTIME_FLAGS array literal in ${path.relative(ROOT, FLAGS_SOURCE)}; this script's copy is ${JSON.stringify(WASM_RUNTIME_FLAGS)} (reformatted? update the regex in checkFlagsMirror)`);
+  }
+  const theirs = [...m[1].matchAll(/(['"])(.*?)\1/g)].map((x) => x[2]);
+  if (theirs.length !== WASM_RUNTIME_FLAGS.length || theirs.some((f, i) => f !== WASM_RUNTIME_FLAGS[i])) {
+    throw new SetupError(`WASM_RUNTIME_FLAGS drifted: ${path.relative(ROOT, FLAGS_SOURCE)} has ${JSON.stringify(theirs)}, this script has ${JSON.stringify(WASM_RUNTIME_FLAGS)}; update the copy in scripts/ts-differential.mjs`);
+  }
 }
 
 function parseArgs(argv) {
@@ -233,12 +269,32 @@ function firstErrorRow(node) {
   return null;
 }
 
-/** corpus -> Map(path -> first error row | null). Accepts the old array-of-paths format (row unknown). */
+/**
+ * corpus -> Map(path -> first error row | null). A row must be a non-negative integer; the
+ * old array-of-paths format is accepted (row unknown -> null). Anything else is a SetupError:
+ * a malformed row must never silently become "unknown", which accepts any row.
+ */
 function baselineEntries(baseline, corpus) {
   const raw = baseline?.divergent?.[corpus];
-  if (!raw) return new Map();
+  if (raw === undefined || raw === null) return new Map();
   if (Array.isArray(raw)) return new Map(raw.map((p) => [p, null]));
-  return new Map(Object.entries(raw).map(([p, row]) => [p, Number.isInteger(row) ? row : null]));
+  if (typeof raw !== 'object') {
+    throw new SetupError(`baseline divergent.${corpus} must be an object {path: row} or an old-format array of paths, got ${JSON.stringify(raw)}`);
+  }
+  return new Map(Object.entries(raw).map(([p, row]) => {
+    if (!Number.isInteger(row) || row < 0) {
+      throw new SetupError(`baseline divergent.${corpus}["${p}"] = ${JSON.stringify(row)}: a row must be a non-negative integer (corpus "${corpus}", ${path.relative(ROOT, BASELINE_PATH)}); re-baseline with --update`);
+    }
+    return [p, row];
+  }));
+}
+
+function readJson(file, what) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (e) {
+    throw new SetupError(`cannot read ${what} ${path.relative(ROOT, file)}: ${e.message}`);
+  }
 }
 
 function tscDiagnostics(ts, name, text, kind) {
@@ -252,6 +308,7 @@ function tscDiagnostics(ts, name, text, kind) {
 async function main() {
   const t0 = Date.now();
   const opts = parseArgs(process.argv.slice(2));
+  checkFlagsMirror();
 
   let ts, tsVersion, wtsVersion, Parser, Language;
   try {
@@ -274,13 +331,27 @@ async function main() {
   if (tscDiagnostics(ts, 'canary.ts', CANARY_GOOD, ts.ScriptKind.TS).length) {
     throw new SetupError(`tsc oracle blind: "${CANARY_GOOD}" produced parse diagnostics`);
   }
+  if (!tscDiagnostics(ts, 'canary.tsx', CANARY_TSX_BAD, ts.ScriptKind.TSX).length) {
+    throw new SetupError(`tsc oracle blind (TSX): "${CANARY_TSX_BAD}" produced no parse diagnostics`);
+  }
+  if (tscDiagnostics(ts, 'canary.tsx', CANARY_TSX_GOOD, ts.ScriptKind.TSX).length) {
+    throw new SetupError(`tsc oracle blind (TSX): "${CANARY_TSX_GOOD}" produced parse diagnostics`);
+  }
 
-  const corpora = JSON.parse(fs.readFileSync(CORPORA_PATH, 'utf8'));
+  const corpora = readJson(CORPORA_PATH, 'corpora file');
   const selected = opts.only ? corpora.filter((c) => c.name === opts.only) : corpora;
   if (!selected.length) throw new SetupError(`no corpus named "${opts.only}" (have: ${corpora.map((c) => c.name).join(', ')})`);
 
   let baseline = null;
-  if (fs.existsSync(BASELINE_PATH)) baseline = JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf8'));
+  if (fs.existsSync(BASELINE_PATH)) {
+    // --update rewrites the baseline, so a malformed one must not block it.
+    try {
+      baseline = readJson(BASELINE_PATH, 'baseline');
+    } catch (e) {
+      if (!opts.update) throw e;
+      process.stderr.write(`warning: ignoring the unreadable baseline (--update rewrites it): ${e.message}\n`);
+    }
+  }
   if (!opts.update) {
     if (!baseline) throw new SetupError('no baseline; run with --update to create one');
     const bad = [];
@@ -294,6 +365,15 @@ async function main() {
         'The oracle or loader changed, so results are not comparable with the baseline. Re-baseline with `node scripts/ts-differential.mjs --update` and commit the result.',
       ]);
       return { exit: 2 };
+    }
+    // A full run covers every corpus, so a baselined corpus that is no longer in corpora.json
+    // (renamed/removed) would otherwise be silently dropped. (--only compares one entry.)
+    if (!opts.only) {
+      const names = new Set(corpora.map((c) => c.name));
+      const gone = Object.keys(baseline.divergent ?? {}).filter((k) => !names.has(k));
+      if (gone.length) {
+        throw new SetupError(`baseline corpus/corpora VANISHED from ${path.relative(ROOT, CORPORA_PATH)}: ${gone.join(', ')}. If the removal or rename is intended, re-baseline with "node scripts/ts-differential.mjs --update" and commit the result`);
+      }
     }
   }
 
@@ -365,7 +445,14 @@ async function main() {
     const byPath = new Map(rows.map((r) => [r.path, r]));
     const count = (k) => rows.filter((r) => r.cls === k).length;
     const divergent = rows.filter((r) => r.cls === 'DIVERGENT');
-    const known = baselineEntries(baseline, c.name);
+    let known;
+    try {
+      known = baselineEntries(baseline, c.name);
+    } catch (e) {
+      if (!(e instanceof SetupError) || !opts.update) throw e;
+      process.stderr.write(`warning: ignoring the malformed baseline entry (--update rewrites it): ${e.message}\n`);
+      known = new Map();
+    }
     const fresh = divergent.filter((r) => !known.has(r.path));
     let worse = 0;
     let improved = 0;
@@ -377,7 +464,9 @@ async function main() {
       if (!r) vanished.push(p);
       else if (r.cls === 'agree-ok') nowAgree++;
       else if (r.cls === 'agree-err' || r.cls === 'tsc-only-err') nowErr++;
-      else if (was !== null && r.row !== null) {
+      // Row gate: pinned corpora only. `local` is strict per file already, and its rows
+      // shift whenever a fixture is edited.
+      else if (!c.local && was !== null && r.row !== null) {
         if (r.row < was) {
           worse++;
           allWorse.push({ corpus: c.name, path: p, row: r.row, was });
@@ -449,6 +538,7 @@ async function main() {
     if (allNew.length) listRows('NEW divergence(s) (tsc ok, tree-sitter error):', allNew, (r) => `${r.corpus}:${r.path}:${r.row ?? '?'}`);
     if (allWorse.length) {
       listRows('NEW error(s) inside already-divergent files (first error moved earlier):', allWorse, (r) => `${r.corpus}:${r.path}:${r.row} (was ${r.was})`);
+      console.log('If the grammar changed error recovery or the corpus pin moved, re-baseline with --update.');
     }
     if (allVanished.length) {
       listRows('baselined path(s) VANISHED from this run (renamed, deleted or wrong corpus root); they are not "now agree":', allVanished, (r) => `${r.corpus}:${r.path}`);
@@ -483,7 +573,7 @@ async function main() {
     md.push('');
   }
   if (allWorse.length) {
-    md.push(`### ${allWorse.length} new error(s) in already-divergent files`, '', 'The first error moved earlier than the baselined row (first 20):', '');
+    md.push(`### ${allWorse.length} new error(s) in already-divergent files`, '', 'The first error moved earlier than the baselined row (first 20). If the grammar changed error recovery or the corpus pin moved, re-baseline with `node scripts/ts-differential.mjs --update`:', '');
     for (const r of allWorse.slice(0, 20)) md.push(`- \`${r.corpus}:${r.path}:${r.row}\` (was ${r.was})`);
     md.push('');
   }
@@ -521,19 +611,25 @@ async function main() {
   return { exit: allNew.length || allWorse.length || localBad ? 1 : 0 };
 }
 
-const relaunched = relaunchWithWasmFlags();
+/** Report a failure and exit 2. A SetupError also goes to the step summary (best-effort). */
+function fatal(e) {
+  if (e instanceof SetupError) {
+    process.stderr.write(`setup error: ${e.message}\n`);
+    appendSummary(['## TS grammar differential', '', `**Setup error:** ${e.message}`]);
+  } else {
+    process.stderr.write(`${e.stack ?? e}\n`);
+  }
+  process.exit(2);
+}
+
+let relaunched = null;
+try {
+  relaunched = relaunchWithWasmFlags();
+} catch (e) {
+  fatal(e);
+}
 if (relaunched !== null) {
   process.exit(relaunched);
 } else {
-  main().then(
-    ({ exit }) => process.exit(exit),
-    (e) => {
-      if (e instanceof SetupError) {
-        process.stderr.write(`setup error: ${e.message}\n`);
-      } else {
-        process.stderr.write(`${e.stack ?? e}\n`);
-      }
-      process.exit(2);
-    },
-  );
+  main().then(({ exit }) => process.exit(exit), fatal);
 }

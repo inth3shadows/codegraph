@@ -9,6 +9,7 @@ on:
     paths:
       - 'src/extraction/wasm/tree-sitter-typescript.wasm'
       - 'src/extraction/wasm/tree-sitter-tsx.wasm'
+      - 'src/extraction/wasm-runtime-flags.ts'
       - 'codegraph-kernel/grammars/typescript/**'
       - 'docs/grammars/tree-sitter-typescript.*'
       - 'scripts/ts-differential.mjs'
@@ -22,6 +23,7 @@ on:
     paths:
       - 'src/extraction/wasm/tree-sitter-typescript.wasm'
       - 'src/extraction/wasm/tree-sitter-tsx.wasm'
+      - 'src/extraction/wasm-runtime-flags.ts'
       - 'codegraph-kernel/grammars/typescript/**'
       - 'docs/grammars/tree-sitter-typescript.*'
       - 'scripts/ts-differential.mjs'
@@ -43,10 +45,17 @@ jobs:
   differential:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      TS_DIFF_CACHE: ${{ github.workspace }}/../ts-diff-cache
     steps:
       - uses: actions/checkout@v4
+
+      # The corpus cache lives in $RUNNER_TEMP, outside the workspace. actions/cache
+      # rejects any path containing ".." ("Relative pathing '.' and '..' is not allowed"),
+      # so the old ${{ github.workspace }}/../ts-diff-cache never saved or restored. The
+      # runner context is not available in job-level `env`, so it is exported once here
+      # through $GITHUB_ENV: every later step (the cache restore/save `path:` inputs, the
+      # script and the shell check) then sees the same absolute path via env.TS_DIFF_CACHE.
+      - name: Set corpus cache dir
+        run: echo "TS_DIFF_CACHE=$RUNNER_TEMP/ts-diff-cache" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v4
         with:
@@ -62,7 +71,7 @@ jobs:
         id: corpus-cache
         with:
           path: ${{ env.TS_DIFF_CACHE }}
-          key: ts-diff-corpora-v2-${{ hashFiles('scripts/ts-differential.corpora.json') }}
+          key: ts-diff-corpora-v3-${{ hashFiles('scripts/ts-differential.corpora.json') }}
 
       - name: Differential parse (tsc vs tree-sitter)
         run: node scripts/ts-differential.mjs --json "$RUNNER_TEMP/ts-differential.json"
@@ -91,4 +100,4 @@ jobs:
         if: always() && steps.corpus-cache.outputs.cache-hit != 'true' && steps.corpus-fetched.outputs.present == 'true'
         with:
           path: ${{ env.TS_DIFF_CACHE }}
-          key: ts-diff-corpora-v2-${{ hashFiles('scripts/ts-differential.corpora.json') }}
+          key: ts-diff-corpora-v3-${{ hashFiles('scripts/ts-differential.corpora.json') }}

@@ -27,16 +27,24 @@ The baseline (`scripts/ts-differential.baseline.json`) is `divergent: {corpus: {
 The run **fails with exit 1** when:
 
 - a `DIVERGENT` file is not in the baseline (printed as `corpus:path:row`);
-- a baselined `DIVERGENT` file's first error row moved **earlier** than the baselined row: a new
-  error inside an already-divergent file (printed as `corpus:path:row (was R)`). A later row is
-  an improvement (reported, suggests `--update`, does not fail); an unknown baselined row accepts any row;
+- (pinned corpora only) a baselined `DIVERGENT` file's first error row moved **earlier** than the
+  baselined row: a new error inside an already-divergent file (printed as `corpus:path:row (was R)`).
+  The pinned code never changes, so the grammar changed error recovery or the pin moved: re-baseline
+  with `--update` if that is intended. A later row is an improvement (reported, suggests `--update`,
+  does not fail); an unknown baselined row accepts any row. The `local` corpus is exempt from this
+  row gate (its rows shift whenever a fixture is edited, and it is strict per file already, below);
 - (`local` fixtures only) tsc reports any syntax error in a fixture ("fixture is not valid TypeScript"),
   or a fixture that is not a gap fixture (`gap-*`, `variance.*`) is `DIVERGENT`, even if baselined.
 
 It **fails with exit 2** (setup) on bad args, a fetch failure, a corpus that scans 0 files,
-a version mismatch, a blind oracle or grammar (see Canaries), or a baselined path that is
-absent from the run (`vanished`: renamed, deleted, wrong corpus root). Vanished paths are never
-counted as `now-agree`; confirm the change and re-baseline.
+a version mismatch, a blind oracle or grammar (see Canaries), a baselined path that is
+absent from the run (`vanished`: renamed, deleted, wrong corpus root), on a full run a baseline
+corpus that is no longer in `corpora.json`, a malformed baseline (a row must be a non-negative
+integer, or the corpus an old-format array; anything else names the corpus and path), or
+`WASM_RUNTIME_FLAGS` drifting from the source (below). Vanished paths are never counted as
+`now-agree`; confirm the change and re-baseline. Every exit-2 path also appends
+`## TS grammar differential` + `**Setup error:** <message>` to `$GITHUB_STEP_SUMMARY`
+(best-effort), so the job summary is never empty.
 
 Reported, never failing: `now-agree` counts only baselined paths that are now `agree-ok`; a
 baselined path that tsc now rejects too is counted as `now-err`; `improved` is above.
@@ -45,8 +53,9 @@ baselined the same way. `gap-*.ts` and `variance.ts` record constructs tsc accep
 grammar does not parse yet, **one construct per file** so fixing one is visible. A grammar that
 fixes one reports it as `now-agree`, which is how a candidate grammar or fork is compared with ours.
 
-Canaries (fail closed, exit 2): `sf.parseDiagnostics` must be an array and `let x: = ;` must
-yield diagnostics (else the tsc oracle is blind); in both wasm grammars `let x: = ;` must
+Canaries (fail closed, exit 2): `sf.parseDiagnostics` must be an array, `let x: = ;` must
+yield diagnostics and `let x: number = 1;` none under `ScriptKind.TS`, and under `ScriptKind.TSX`
+`const a = <div>;` must yield diagnostics and `const a = <div />;` none (else the tsc oracle is blind); in both wasm grammars `let x: = ;` must
 `hasError` and `let x: number = 1;` must not.
 
 Corpora (`scripts/ts-differential.corpora.json`, pinned by SHA): Effect, Zod,
@@ -63,10 +72,14 @@ node scripts/ts-differential.mjs --json out.json # full per-file results (first 
 
 The script re-execs itself once under `node --liftoff-only` (`WASM_RUNTIME_FLAGS`,
 `src/extraction/wasm-runtime-flags.ts`: V8 Zone OOM compiling big grammar wasm on Node 22+),
-so a plain `node scripts/ts-differential.mjs` is fine. `TS_DIFF_RELAUNCHED` guards the loop.
+so a plain `node scripts/ts-differential.mjs` is fine. `TS_DIFF_RELAUNCHED` guards the loop; if it is
+set but `--liftoff-only` is missing from `process.execArgv`, the run exits 2 rather than running unflagged.
+The script keeps its own copy of the flag list (the `.ts` source is not importable from `.mjs`);
+at startup it extracts the `WASM_RUNTIME_FLAGS` array literal from `src/extraction/wasm-runtime-flags.ts`
+with a regex and exits 2 naming both lists on a mismatch or if the literal cannot be parsed.
 
 Corpora are cloned (depth 1; VS Code blobless + sparse `src/`) into
-`$TS_DIFF_CACHE`, default `~/.cache/codegraph-ts-differential/<name>-<sha12>` (plus `-<sha1(subdir)[0:8]>`
+`$TS_DIFF_CACHE`, default `~/.cache/codegraph-ts-differential/<name>-<sha12>` (CI: `$RUNNER_TEMP/ts-diff-cache`) (plus `-<sha1(subdir)[0:8]>`
 for a sparse corpus), and re-used on later runs only if the completion marker (JSON `{sha, subdir}`)
 matches. The first run downloads a few hundred MB.
 
@@ -97,12 +110,15 @@ grammar, or record the gap deliberately in the commit message.
 ## CI
 
 `.github/workflows/ts-differential.yml` runs on PRs and pushes to `main` that touch the
-two wasm files, `codegraph-kernel/grammars/typescript/**`, `docs/grammars/tree-sitter-typescript.*`
+two wasm files, `src/extraction/wasm-runtime-flags.ts`, `codegraph-kernel/grammars/typescript/**`, `docs/grammars/tree-sitter-typescript.*`
 (the last two arrive with the #3226 mirror), the script, corpora, baseline or fixtures, or
 `package-lock.json`. The job summary lists per-corpus counts and the first 20 new divergences
 as `corpus:path:line`. The `--json` results are uploaded as the `ts-differential-json` artifact
 (14 days, even when the job fails). The corpus cache is restored up front and saved with
-`if: always()`, so a failing run still keeps the downloads.
+`if: always()`, so a failing run still keeps the downloads. It lives in `$RUNNER_TEMP/ts-diff-cache`
+(exported through `$GITHUB_ENV` by the first step: `actions/cache` rejects a `path` containing `..`,
+and the `runner` context is not available in job-level `env`); the key is
+`ts-diff-corpora-v3-<hash of corpora.json>`.
 
 ## Adding a fixture
 
