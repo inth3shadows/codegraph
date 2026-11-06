@@ -123,9 +123,9 @@ fn main() {
     // the upstream repo so scanner.c's `../../common/scanner.h` resolves
     // unedited. See docs/grammars/tree-sitter-typescript.md for what the base
     // and the patch each fix.
-    //   common/scanner.h           744d61a154d57f48121f80f4a6b4f5298788ea1df63215f45bf9e7a6615c9d54 (marionebl + patch)
-    //   typescript/src/parser.c    fc67c5ab51aa8ce655c525b1fc281bfe50808f56edd35192b022d466ee09dae8
-    //   tsx/src/parser.c           478eeadc939e8e0b2838f632448f07b49477f3893a2c30675cf4a25eae97275c
+    //   common/scanner.h           834a0b60fba90355410cf7456069d9e1dd1aac309fdc8485f80d64724fc1e98b (marionebl + patch)
+    //   typescript/src/parser.c    2617ac3e51b9938277d904d58b02e454183b0c86e04bb5fdd9792adb60506a26
+    //   tsx/src/parser.c           f6aadca29573f480ea13f5b3f9db803fceba34c4da50f1008f3594e2ffe60961
     // Flags crib the crate's bindings/rust/build.rs (c11). Each parser.c is
     // ~9 MB.
     for dialect in ["typescript", "tsx"] {

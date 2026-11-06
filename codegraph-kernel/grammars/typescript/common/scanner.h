@@ -13,7 +13,7 @@ enum TokenType {
     JSX_TEXT,
     FUNCTION_SIGNATURE_AUTOMATIC_SEMICOLON,
     ERROR_RECOVERY,
-    OPEN_PAREN,
+    MEMBER_SIGNATURE_MARKER,
 };
 
 static void advance(TSLexer *lexer) { lexer->advance(lexer, false); }
@@ -156,12 +156,11 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols, 
             if (valid_symbols[LOGICAL_OR]) {
                 return false;
             }
-            // codegraph delta: `(` is valid only right after a member name
-            // (`find` / `find?`), where a `<` on the next line opens that
-            // member's type parameters (`find\n<T>(id): T` is a method, as tsc
-            // reads it), not a new call signature. After a type
-            // (`a: string\n<T>(): T`) `(` is not valid and ASI still applies.
-            if (lexer->lookahead == '<' && valid_symbols[OPEN_PAREN]) {
+            // codegraph delta: right after a member name (`find`, `find?`) a
+            // `<` or `(` on the next line opens that member's signature, as tsc
+            // reads it, so no semicolon. MEMBER_SIGNATURE_MARKER is never
+            // produced; the grammar makes it valid only in that position.
+            if ((lexer->lookahead == '<' || lexer->lookahead == '(') && valid_symbols[MEMBER_SIGNATURE_MARKER]) {
                 return false;
             }
             break;

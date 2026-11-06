@@ -24,12 +24,12 @@ the `tree-sitter-typescript` crate, so the two paths stay table-identical
 
 | file | base (marionebl 53071c9) sha256 | ours sha256 |
 |---|---|---|
-| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `66068379ba183462488f580e22c42b8f72422e480a07c68f5d675a89aa025692` |
-| `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `744d61a154d57f48121f80f4a6b4f5298788ea1df63215f45bf9e7a6615c9d54` |
-| `typescript/src/parser.c` | (regenerated) | `fc67c5ab51aa8ce655c525b1fc281bfe50808f56edd35192b022d466ee09dae8` |
-| `tsx/src/parser.c` | (regenerated) | `478eeadc939e8e0b2838f632448f07b49477f3893a2c30675cf4a25eae97275c` |
-| `tree-sitter-typescript.wasm` | — | `c07043e2e9dedbcb8ebbe139b776ccd0ce447a7b354d4d6cca6505f96ad1a00d` |
-| `tree-sitter-tsx.wasm` | — | `b7801690c9ad15888ea96497c39eb3781cf23914473ef5ab268e26f3fc7f770f` |
+| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `fa1dd3e0881e7b087d6b0c650bdfb04f200a667db915249a9b60e74627deeeee` |
+| `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `834a0b60fba90355410cf7456069d9e1dd1aac309fdc8485f80d64724fc1e98b` |
+| `typescript/src/parser.c` | (regenerated) | `2617ac3e51b9938277d904d58b02e454183b0c86e04bb5fdd9792adb60506a26` |
+| `tsx/src/parser.c` | (regenerated) | `f6aadca29573f480ea13f5b3f9db803fceba34c4da50f1008f3594e2ffe60961` |
+| `tree-sitter-typescript.wasm` | — | `1c9f9d3047815b15ccafbd33ba85eeaa045feca4d0438421a77a781ba51d8c6a` |
+| `tree-sitter-tsx.wasm` | — | `34da1f49d4c84acfc6a4f795ecd932f9e1de82b7fee2b563ce114eaefd1557a3` |
 
 ## What the base fixes (marionebl, over v0.23.2)
 
@@ -63,13 +63,18 @@ the `tree-sitter-typescript` crate, so the two paths stay table-identical
   before any `<` that starts a line in a type or class body. Right after a
   bare member name that is wrong: tsc reads `find\n  <T>(id): T` as one
   method, and splitting it made the member a property (with no parse error
-  in an interface) and dropped a class method's call edges. The grammar now
-  lists `(` as an external token the scanner never produces, the same trick
-  the JavaScript grammar uses for `'||'`, so the scanner can see whether `(`
-  is valid. It is valid only right after a member name, and there the `;` is
-  not inserted. On all four corpora this changes no tree at all, compared
-  node by node. `__tests__/typescript-member-asi-parse.test.ts` pins both
-  sides.
+  in an interface) and dropped a class method's call edges. `find\n  (id): T`
+  had the same split even before the base switch. The grammar now has a
+  marker token (`_member_signature_marker`) that the scanner never produces,
+  placed between the name and the signature of `method_signature`,
+  `method_definition` and `abstract_method_signature`. So it is valid
+  exactly where a `<` or `(` continues the member, and there the scanner
+  inserts no `;`. A first version checked whether `(` was valid, which the
+  JavaScript grammar does for `'||'`. That also fired after `typeof x` and
+  `import("m").X` types and after `return`, and undid #335 there. Compared
+  node by node against the build without this hunk, it changes no tree on
+  the four corpora, `src/`, `ui/src/` or TypeScript's own `lib/`.
+  `__tests__/typescript-member-asi-parse.test.ts` pins both sides.
 
 ### Known limits
 
@@ -152,4 +157,8 @@ base commit, re-apply the patch, and drop any hunk the base now covers. Run
 the differential before and after the move. Then check that `<out>` still
 parses as a parameter name, `[out: T]` as a tuple label, and `<in const T>`
 with `const` after the variance. `__tests__/typescript-variance-parse.test.ts`
-and the `ts-syntax` fixtures cover all three. Tracking: inth3shadows/codegraph#11.
+and the `ts-syntax` fixtures cover all three. The patch also carries a
+`common/scanner.h` hunk (the member marker): re-run
+`__tests__/typescript-member-asi-parse.test.ts`, which checks node kinds the
+differential cannot see, and drop the hunk if the base reads
+`name\n<T>(...)` members as tsc does. Tracking: inth3shadows/codegraph#11.

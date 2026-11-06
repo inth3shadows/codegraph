@@ -9,7 +9,13 @@
  * Right after a bare member name, though, tsc reads the `<` as that member's
  * type parameters, so `find\n<T>(id): T` is ONE method. Splitting it there
  * turns a method into a property and drops its call edges, and the interface
- * form parses without an error, so only the node kinds show it.
+ * form parses without an error, so only the node kinds show it. The same holds
+ * for `(`: `find\n(id): T` is one method too.
+ *
+ * The scanner learns "right after a member name" from a never-produced
+ * external token that the grammar allows only there. Checking whether `(`
+ * could come next instead also fired after `typeof x` / `import("m").X`
+ * types and after `return`, which these cases pin.
  * See docs/grammars/tree-sitter-typescript.md.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -44,6 +50,9 @@ describe('TypeScript member ASI before `<`', () => {
       ['class Svc {\n  load\n    <T>(id: string): T { return helper(id) }\n}', ['method_definition']],
       ['abstract class A {\n  abstract m\n  <T>(): T\n}', ['abstract_method_signature']],
       ['declare class D {\n  m\n  <T>(): T\n}', ['method_signature']],
+      ['interface I {\n  find\n  (id: string): T\n}', ['method_signature']],
+      ['interface I {\n  a?\n  (id: string): T\n}', ['method_signature']],
+      ['class C {\n  load\n  (id: string) { return helper(id) }\n}', ['method_definition']],
     ];
     for (const [src, want] of cases) {
       const got = members(language, src);
@@ -58,6 +67,12 @@ describe('TypeScript member ASI before `<`', () => {
       ['interface I {\n  a: Foo\n  <A>(self: A): A\n}', ['property_signature', 'call_signature']],
       ['interface I {\n  f(): void\n  <A>(self: A): A\n}', ['method_signature', 'call_signature']],
       ['interface I {\n  (a: string)\n  <A>(self: A): A\n}', ['call_signature', 'call_signature']],
+      ['interface I {\n  a: string\n  (id: string): T\n}', ['property_signature', 'call_signature']],
+      ['interface I {\n  a: typeof b\n  <A>(self: A): A\n}', ['property_signature', 'call_signature']],
+      ['interface I {\n  a: typeof b.c\n  <A>(self: A): A\n}', ['property_signature', 'call_signature']],
+      ['interface I {\n  a: typeof this.x\n  <A>(self: A): A\n}', ['property_signature', 'call_signature']],
+      ['type O = {\n  a: keyof typeof b\n  <A>(self: A): A\n}', ['property_signature', 'call_signature']],
+      ['interface I {\n  a: import("m").X\n  <A>(self: A): A\n}', ['property_signature', 'call_signature']],
       [
         'type T = {\n  readonly a: number\n  <A>(self: A): A\n  new <B>(b: B): B\n}',
         ['property_signature', 'call_signature', 'construct_signature'],
@@ -67,6 +82,18 @@ describe('TypeScript member ASI before `<`', () => {
       const got = members(language, src);
       expect(got.hasError, src).toBe(false);
       expect(got.kinds, src).toEqual(want);
+    }
+  });
+
+  it('typescript: `return` then `<` on the next line still ends the return', () => {
+    // tsc: `return;` then a type-assertion / generic-arrow statement.
+    for (const src of ['function f() {\n  return\n  <any>x\n}', 'function f() {\n  return\n  <T,>(x: T) => x\n}']) {
+      const root = getParser('typescript')!.parse(src)!.rootNode;
+      expect(root.hasError, src).toBe(false);
+      const ret = root.descendantsOfType('return_statement');
+      expect(ret, src).toHaveLength(1);
+      expect(ret[0]!.namedChildCount, src).toBe(0);
+      expect(root.descendantsOfType('expression_statement'), src).toHaveLength(1);
     }
   });
 });
