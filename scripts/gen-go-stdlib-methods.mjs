@@ -28,6 +28,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { initVendoredRuntime } from './tree-sitter-runtime.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MODULE = path.join(ROOT, 'src', 'resolution', 'go-stdlib-methods.ts');
@@ -52,7 +53,7 @@ const open = moduleText.indexOf('{', moduleText.indexOf('const GO_STDLIB_METHODS
 const close = moduleText.indexOf('\n};', open);
 const listed = new Function(`return ${moduleText.slice(open, close + 2)}`)();
 
-await Parser.init();
+await initVendoredRuntime(Parser);
 const parser = new Parser();
 parser.setLanguage(await Language.load(wasm));
 

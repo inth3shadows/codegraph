@@ -188,7 +188,7 @@ jobs:
           if [ -f release/kernel/linux-x64/codegraph-kernel.node ]; then
             mkdir -p codegraph-kernel/prebuilds/linux-x64
             cp release/kernel/linux-x64/codegraph-kernel.node codegraph-kernel/prebuilds/linux-x64/
-            CODEGRAPH_KERNEL_EXPECT=1 npx vitest run __tests__/kernel-*.test.ts
+            CODEGRAPH_KERNEL_EXPECT=1 npx vitest run __tests__/kernel-*.test.ts __tests__/tsx-error-recovery-hang.test.ts
           else
             echo "::error::linux-x64 kernel prebuild missing despite required matrix"
             exit 1

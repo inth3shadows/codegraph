@@ -53,6 +53,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixes
 
+- A TSX file with a broken JSX attribute such as `<a {{b:>c:d(e f)` no longer stalls indexing for about 90 seconds and then drops out of the index; it is indexed like any other file with a syntax error.
 - TypeScript variance annotations like `interface Stream<out A, in E>` or `<in out T>` now parse. Before, each one was a parse error, and in a large file enough of them could make the whole file fail to parse and show up with almost no symbols. Re-index TypeScript projects after upgrading.
 - In TypeScript, an awaited call with type arguments like `await fetchApi<User>("/me")` or `await api.get<T>(url)` now links to the function it calls. Before, the call was dropped, so typed fetch wrappers looked like they had no callers. (#2586)
 - In JavaScript and TypeScript, a call or `new` in a parameter's default value, like `function renderWithNote(note = buildNote())`, a destructured `{ size = defaultSize() }` or `constructor(private svc = new Service())`, now counts as the function's own call. Before, it was dropped, so `buildNote` was missing that caller and impact on it came back incomplete. Re-index JavaScript and TypeScript projects after upgrading. Thanks @inth3shadows for the report and the pull request. (#2588)

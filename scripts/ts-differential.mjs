@@ -68,6 +68,7 @@ import * as crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { initVendoredRuntime } from './tree-sitter-runtime.mjs';
 
 const SELF = fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(SELF), '..');
@@ -377,7 +378,7 @@ async function main() {
     }
   }
 
-  await Parser.init();
+  await initVendoredRuntime(Parser);
   const langs = {
     typescript: await Language.load(WASM.typescript),
     tsx: await Language.load(WASM.tsx),
