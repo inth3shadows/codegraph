@@ -2,7 +2,7 @@
 
 `src/extraction/wasm/tree-sitter-{typescript,tsx}.wasm` and the kernel's
 vendored C (`codegraph-kernel/grammars/typescript/`) are built from
-**inth3shadows/tree-sitter-typescript** commit `2e6d064`, our own fork of the
+**inth3shadows/tree-sitter-typescript** commit `9582ff6`, our own fork of the
 grammar. This is the one place that names the commit; the code comments point here. It is private while it is being burned in, so the public,
 reproducible form is
 [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript)
@@ -19,14 +19,14 @@ kernel compiles the same generated C (build.rs) in place of the
 `tree-sitter-typescript` crate, so the two paths stay table-identical
 (`kernel-grammar-parity.test.ts`) and share one external scanner.
 
-| file | base (marionebl 53071c9) sha256 | ours (fork 2e6d064) sha256 |
+| file | base (marionebl 53071c9) sha256 | ours (fork 9582ff6) sha256 |
 |---|---|---|
-| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `0cd3f108914eb713ce0fc510b06f52acdf943ee9208faac759ee28fd858461f1` |
-| `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `daa69422522f270cb38b7927ad8b35205222ce9b3094a40074fab00c3d673ee5` |
-| `typescript/src/parser.c` | (regenerated) | `69145b216b33599dd0c1d3e67bf57c9bc9b63243c1f60503c702df679da2cc85` |
-| `tsx/src/parser.c` | (regenerated) | `c9cd43c6d10e969e7e586475a1dd02c5070284567dc7dc4784b6170831abdc93` |
-| `tree-sitter-typescript.wasm` | — | `39d08d0c0c79349c057527b619499a08fcaad059ff6dfd8f5b2f24c66099c44a` |
-| `tree-sitter-tsx.wasm` | — | `52996d3f54fa0ae9aac0ad33779d3a43a3c381fc7e451af41247e6c26683cfe0` |
+| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `e08483f3391ea3e14e77dbd47ade94233533d8b6f6bd0c95b72ed40710d1aa72` |
+| `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `6deb73c27156db9c3787bfcef76021ba04c05aa4fc1018607c0754d9257362dc` |
+| `typescript/src/parser.c` | (regenerated) | `c0a9c82d9b020fc1f7dcb471c3f7aac2553ac359a56a15f81d1cddb8e122cae8` |
+| `tsx/src/parser.c` | (regenerated) | `a83c528cd11252f5555a97ea9af19b098e5845cb28d98c579027835de5234ed8` |
+| `tree-sitter-typescript.wasm` | — | `e795214a62e3ada31b41258d77cb898c4917826148581d100601d44946f41d16` |
+| `tree-sitter-tsx.wasm` | — | `8ad91626fcfde0aff54feaa54abd2899dd41714cf823fa675c59dbcf59fbacb8` |
 
 ## What the base fixes (marionebl, over v0.23.2)
 
@@ -52,17 +52,24 @@ kernel compiles the same generated C (build.rs) in place of the
   boolean string symbol object never unknown readonly new keyof), each a word that already
   lexes as a keyword where a type starts; a type named `type`, `get` or `declare` still
   works: `[type]`.
-- `unique symbol` is one token (whitespace and comments allowed between the words), so
-  `unique` alone is always a name: `i < unique.length`, `let x: unique`, `implements unique`.
+- `unique symbol` is one token, so `unique` alone is a name: `i < unique.length`,
+  `implements unique`, `[unique: T]`. Between the words it takes any whitespace the grammar
+  skips elsewhere (`unique\u00A0symbol`) and comments; a line comment must reach its
+  newline, so `a < unique // the symbol` stays a comparison.
   (Making `unique` a reserved identifier instead broke `f<typeof unique>(x)`.)
-- ASI before a line starting with `in2` or `in$x` (upstream #373), and before members named
-  `in` written `in?:`, `in<T>()` or `in!:`; `a\n in(b)` stays `a in (b)`.
+- ASI before a line starting with `in2` or `in$x` (upstream #373), and before a member named
+  `in` on the next line of a class or object type: `in?:` always; `in(`, `in<T>(` and `in!:`
+  after a member that cannot continue (a typed member, a method); and `in(…)` followed by `:`
+  or `{` even after an initializer (`a = () => {}\n in(): void {}`). A never-produced
+  `_member_end_marker` external, valid only where a member ends, tells the scanner it is
+  between members, so `for (var k\n in!o)` stays a for-in and `a\n in(b)` / `a = x\n in(b)`
+  stay `in` operators.
+  The marker costs parse-table size, not speed: STATE_COUNT 6124 -> 7239 (typescript) and
+  6242 -> 7391 (tsx), wasm +15%; parsing 3,000 vscode files ran at the same 2.8-3.0 MB/s with the
+  same load time and RSS. Most of it is the class-body placement (after a field initializer).
 
-Every fix was gated by the differential (no new or worse file), and compared node by
-node against the previous build: only files containing the targeted construct changed
-(against em.34: 34 files for the tagged templates and tuple labels; the `unique`
-token changes 4 more, and only anonymous tokens under `unique symbol` in 51 others). The fork's `CHANGELOG.md`
-lists node-type changes. `__tests__/typescript-grammar-fork-shapes.test.ts` pins the
+Every fix was gated by the differential (no new or worse file) and by a tsc fixture for its
+construct. The fork's `CHANGELOG.md` lists node-type changes. `__tests__/typescript-grammar-fork-shapes.test.ts` pins the
 node shapes and the call edges codegraph derives from them.
 
 ### Known limits
@@ -84,6 +91,10 @@ node shapes and the call edges codegraph derives from them.
 - Not in the corpora but known: `accessor` / `abstract` / `declare` as member names
   followed by a line break (#369, #377), `(import("m").A)[]` and `f<import("m").Y>()`.
 - The parser accepts some forms tsc rejects, such as `<out extends X>` and `<out in>`.
+- A member named `in` written `in = 1`, `in;`, a bare `in`, or `in[k]: T` right after a
+  member with no `;` still fails, as do `in?:`, `in!:` and `in<T>` after an initializer
+  other than a block-bodied arrow.
+- A comment between `unique` and `symbol` is part of the token (no `comment` node).
 
 ## Measured
 
@@ -98,7 +109,7 @@ Divergent files are those tsc parses clean and tree-sitter does not, from
 | microsoft/vscode ca43fc94 `src/` | 11,267 | 11 | 11 | 3 | 0 |
 | **total** | | **201** | **45** | **32** | **3** |
 
-The five `gap-*` fixtures are unchanged. The fork's corpus passes 129/129 tests.
+The five `gap-*` fixtures are unchanged. The fork's corpus passes 131/131 tests.
 
 ## Rebuild
 
