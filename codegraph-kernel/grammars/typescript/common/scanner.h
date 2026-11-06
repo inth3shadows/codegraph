@@ -156,7 +156,7 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols, 
             if (valid_symbols[LOGICAL_OR]) {
                 return false;
             }
-            // codegraph delta: right after a member name (`find`, `find?`) a
+            // right after a member name (`find`, `find?`) a
             // `<` or `(` on the next line opens that member's signature, as tsc
             // reads it, so no semicolon. MEMBER_SIGNATURE_MARKER is never
             // produced; the grammar makes it valid only in that position.

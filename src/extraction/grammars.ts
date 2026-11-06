@@ -383,7 +383,7 @@ export async function initGrammars(): Promise<void> {
  * the SAME grammar revisions the native extraction kernel compiles
  * (codegraph-kernel/Cargo.toml), so the kernel path and the wasm fallback
  * parse identically and per-language routing stays graph-neutral:
- *   - marionebl/tree-sitter-typescript 53071c9 (fork of v0.23.2) → typescript + tsx
+ *   - inth3shadows/tree-sitter-typescript 84ffdb8 (marionebl 53071c9 + patch) → typescript + tsx
  *   - tree-sitter/tree-sitter-javascript v0.25.0 (44c892e) → javascript + jsx
  *   - tree-sitter/tree-sitter-java v0.23.5 (94703d5) → java
  *   - tree-sitter/tree-sitter-python v0.23.6 (bffb65a) → python
@@ -391,8 +391,8 @@ export async function initGrammars(): Promise<void> {
  * Built from each repo's CHECKED-IN parser.c (no `generate`) with
  * tree-sitter-cli 0.25.10 `build --wasm` — the same tables crates.io compiles
  * (parser.c sha-matched against the crates.io tarball). Exception:
- * typescript + tsx carry docs/grammars/tree-sitter-typescript.patch on the
- * marionebl base, so they are
+ * typescript + tsx come from our grammar fork (docs/grammars/tree-sitter-typescript.md),
+ * so they are
  * REGENERATED with tree-sitter-cli 0.25.10 (ABI 15) and the kernel compiles
  * the same generated C from codegraph-kernel/grammars/typescript instead of
  * the crate.

@@ -1,12 +1,12 @@
 diff --git a/common/define-grammar.js b/common/define-grammar.js
-index 016c151..87d23ba 100644
+index 016c151..05d3b29 100644
 --- a/common/define-grammar.js
 +++ b/common/define-grammar.js
 @@ -7,6 +7,11 @@ module.exports = function defineGrammar(dialect) {
      externals: ($, previous) => previous.concat([
        $._function_signature_automatic_semicolon,
        $.__error_recovery,
-+      // codegraph delta: never produced. It is valid only between a member's
++      // never produced. It is valid only between a member's
 +      // name and its signature, so the scanner can tell that a `<` or `(` on
 +      // the next line continues that member (tsc reads `find\n<T>(id): T` as
 +      // one method) rather than starting a call signature.
@@ -22,17 +22,20 @@ index 016c151..87d23ba 100644
        [$.call_expression, $._type_query_call_expression_in_type_annotation],
        [$.new_expression, $.primary_expression],
        [$.meta_property, $.primary_expression],
-@@ -71,6 +75,9 @@ module.exports = function defineGrammar(dialect) {
+@@ -71,6 +75,12 @@ module.exports = function defineGrammar(dialect) {
      ]),
  
      conflicts: ($, previous) => previous.concat([
-+      // codegraph delta: `<in out>` (modifier `in`, parameter named `out`)
++      // `[any?: T]` (a labeled optional element) vs `[any?]` (an optional type):
++      // only the token after `?` decides.
++      [$.optional_tuple_parameter, $.predefined_type],
++      // `<in out>` (modifier `in`, parameter named `out`)
 +      // vs `<in out T>`; the token after `out` decides.
 +      [$.variance],
        [$.call_expression, $.instantiation_expression, $.binary_expression],
        [$.call_expression, $.instantiation_expression, $.binary_expression, $.unary_expression],
        [$.call_expression, $.instantiation_expression, $.binary_expression, $.update_expression],
-@@ -111,6 +118,10 @@ module.exports = function defineGrammar(dialect) {
+@@ -111,6 +121,10 @@ module.exports = function defineGrammar(dialect) {
        [$.array_pattern, $.tuple_type],
  
        [$.template_literal_type, $.template_string],
@@ -43,7 +46,22 @@ index 016c151..87d23ba 100644
      ]).concat(
        dialect === 'typescript' ? [
          [$.primary_type, $.type_parameter],
-@@ -370,6 +381,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -176,6 +190,14 @@ module.exports = function defineGrammar(dialect) {
+           field('type_arguments', optional($.type_arguments)),
+           field('arguments', $.arguments),
+         )),
++        // A tagged template with type arguments, sql<{ id: number }>`SELECT ...`, is
++        // ambiguous with `<` / `>` comparisons exactly like f<T>(x), so it takes the
++        // generic call's precedence and conflicts rather than template_call's.
++        prec('call', seq(
++          field('function', choice($.expression, $.import)),
++          field('type_arguments', $.type_arguments),
++          field('arguments', $.template_string),
++        )),
+         prec('template_call', seq(
+           field('function', choice($.primary_expression, $.new_expression)),
+           field('arguments', $.template_string),
+@@ -370,6 +392,7 @@ module.exports = function defineGrammar(dialect) {
          optional(choice('get', 'set', '*')),
          field('name', $._property_name),
          optional('?'),
@@ -51,7 +69,7 @@ index 016c151..87d23ba 100644
          $._call_signature,
        ),
  
-@@ -380,6 +392,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -380,6 +403,7 @@ module.exports = function defineGrammar(dialect) {
          optional(choice('get', 'set', '*')),
          field('name', $._property_name),
          optional('?'),
@@ -59,7 +77,7 @@ index 016c151..87d23ba 100644
          $._call_signature,
        ),
  
-@@ -475,6 +488,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -475,6 +499,7 @@ module.exports = function defineGrammar(dialect) {
          optional(choice('get', 'set', '*')),
          field('name', $._property_name),
          optional('?'),
@@ -67,7 +85,7 @@ index 016c151..87d23ba 100644
          $._call_signature,
          field('body', $.statement_block),
        )),
-@@ -749,8 +763,6 @@ module.exports = function defineGrammar(dialect) {
+@@ -749,17 +774,17 @@ module.exports = function defineGrammar(dialect) {
          $.readonly_type,
          $.constructor_type,
          $.infer_type,
@@ -75,8 +93,21 @@ index 016c151..87d23ba 100644
 -        prec(-1, alias($._type_query_call_expression_in_type_annotation, $.call_expression)),
        ),
  
++      // A tuple label may be a contextual keyword that also names a type:
++      // [symbol: string], [string: number, number?: string].
        tuple_parameter: $ => seq(
-@@ -805,6 +817,8 @@ module.exports = function defineGrammar(dialect) {
+-        field('name', choice($.identifier, $.rest_pattern)),
++        field('name', choice($.identifier, alias($._reserved_identifier, $.identifier), $.rest_pattern)),
+         field('type', $.type_annotation),
+       ),
+ 
+       optional_tuple_parameter: $ => seq(
+-        field('name', $.identifier),
++        field('name', choice($.identifier, alias($._reserved_identifier, $.identifier))),
+         '?',
+         field('type', $.type_annotation),
+       ),
+@@ -805,6 +830,8 @@ module.exports = function defineGrammar(dialect) {
          $.intersection_type,
          $.union_type,
          'const',
@@ -85,7 +116,7 @@ index 016c151..87d23ba 100644
        ),
  
        template_type: $ => seq('${', choice($.primary_type, $.infer_type), '}'),
-@@ -842,6 +856,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -842,6 +869,7 @@ module.exports = function defineGrammar(dialect) {
          field('name', choice(
            $._type_identifier,
            $.nested_type_identifier,
@@ -93,12 +124,12 @@ index 016c151..87d23ba 100644
          )),
          field('type_arguments', $.type_arguments),
        )),
-@@ -1029,7 +1044,12 @@ module.exports = function defineGrammar(dialect) {
+@@ -1029,7 +1057,12 @@ module.exports = function defineGrammar(dialect) {
        type_parameter: $ => seq(
          optional('const'),
          optional($.variance),
 -        field('name', $._type_identifier),
-+        // codegraph delta: `out` stays usable as a parameter name (`<out>`,
++        // `out` stays usable as a parameter name (`<out>`,
 +        // `<out = X>`, `<in out>` = modifier `in` on a parameter named `out`),
 +        // as tsc accepts it (brajevicm@9fcaa13). tsc also takes `const` on
 +        // either side of the variance (`<in const T>`).
@@ -107,8 +138,56 @@ index 016c151..87d23ba 100644
          field('constraint', optional($.constraint)),
          field('value', optional($.default_type)),
        ),
+@@ -1117,6 +1150,9 @@ module.exports = function defineGrammar(dialect) {
+         'object',
+         'new',
+         'readonly',
++        // `unique` is only a keyword in `unique symbol`; elsewhere it is a name
++        // (`i < unique.length`).
++        'unique',
+         previous,
+       ),
+     },
+@@ -1128,8 +1164,7 @@ module.exports = function defineGrammar(dialect) {
+  *
+  * @param {RuleOrLiteral} rule
+  *
+- * @return {SeqRule}
+- *
++ * @returns {SeqRule}
+  */
+ function commaSep1(rule) {
+   return sepBy1(',', rule);
+@@ -1140,8 +1175,7 @@ function commaSep1(rule) {
+  *
+  * @param {RuleOrLiteral} rule
+  *
+- * @return {SeqRule}
+- *
++ * @returns {SeqRule}
+  */
+ function commaSep(rule) {
+   return sepBy(',', rule);
+@@ -1154,7 +1188,7 @@ function commaSep(rule) {
+  *
+  * @param {RuleOrLiteral} rule
+  *
+- * @return {ChoiceRule}
++ * @returns {ChoiceRule}
+  */
+ function sepBy(sep, rule) {
+   return optional(sepBy1(sep, rule));
+@@ -1167,7 +1201,7 @@ function sepBy(sep, rule) {
+  *
+  * @param {RuleOrLiteral} rule
+  *
+- * @return {SeqRule}
++ * @returns {SeqRule}
+  */
+ function sepBy1(sep, rule) {
+   return seq(rule, repeat(seq(sep, rule)));
 diff --git a/common/scanner.h b/common/scanner.h
-index ddefcdf..1a99663 100644
+index ddefcdf..860cd01 100644
 --- a/common/scanner.h
 +++ b/common/scanner.h
 @@ -13,6 +13,7 @@ enum TokenType {
@@ -123,7 +202,7 @@ index ddefcdf..1a99663 100644
              if (valid_symbols[LOGICAL_OR]) {
                  return false;
              }
-+            // codegraph delta: right after a member name (`find`, `find?`) a
++            // right after a member name (`find`, `find?`) a
 +            // `<` or `(` on the next line opens that member's signature, as tsc
 +            // reads it, so no semicolon. MEMBER_SIGNATURE_MARKER is never
 +            // produced; the grammar makes it valid only in that position.
