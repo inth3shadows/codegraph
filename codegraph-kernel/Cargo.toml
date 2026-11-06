@@ -21,7 +21,7 @@ regex = "1"
 # kernel-grammar-parity test asserts node-kind-table equality at test time;
 # bump these together with the wasm side or that gate fails.
 # typescript + tsx: vendored C (grammars/typescript, compiled in build.rs) —
-# marionebl 53071c9 carries docs/grammars/tree-sitter-typescript.patch, regenerated.
+# our fork inth3shadows/tree-sitter-typescript (marionebl 53071c9 + docs/grammars/tree-sitter-typescript.patch), regenerated.
 tree-sitter-javascript = "0.25"
 tree-sitter-java = "0.23"
 tree-sitter-python = "0.23"

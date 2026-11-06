@@ -39,8 +39,8 @@ extern "C" {
 extern "C" {
     fn tree_sitter_swift() -> *const ();
 }
-// Vendored typescript + tsx grammars (build.rs-compiled C — marionebl 53071c9 with
-// docs/grammars/tree-sitter-typescript.patch, regenerated; see
+// Vendored typescript + tsx grammars (build.rs-compiled C — our grammar fork,
+// i.e. marionebl 53071c9 + docs/grammars/tree-sitter-typescript.patch, regenerated; see
 // grammars/typescript and docs/grammars/tree-sitter-typescript.md).
 extern "C" {
     fn tree_sitter_typescript() -> *const ();
@@ -56,7 +56,7 @@ pub const LANGUAGES: [&str; 20] = [
 
 pub fn grammar_for(language: &str) -> Option<Language> {
     match language {
-        // marionebl 53071c9 + docs/grammars/tree-sitter-typescript.patch, regenerated;
+        // our grammar fork (marionebl 53071c9 + patch), regenerated;
         // vendored C compiled in build.rs, same sources as the vendored wasm.
         "typescript" => Some(
             unsafe { tree_sitter_language::LanguageFn::from_raw(tree_sitter_typescript) }.into(),

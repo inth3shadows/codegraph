@@ -10,12 +10,14 @@
 > - **Much more TypeScript parses.** The TypeScript grammar is built from
 >   [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript),
 >   a maintained fork of the stalled upstream grammar, with two fixes from
->   [dokimasia's fork](https://github.com/dokimasia/tree-sitter-typescript) and our own patch.
->   Variance annotations (`interface Stream<out A, in E>`), generic overloads after a member with
->   no `;`, `export type *`, `import("m").X[]` and template-literal escapes no longer turn a
->   declaration, and in large files the whole file, into a parse error that indexes as almost
->   nothing. On Effect, Zod, Excalidraw and VS Code, the files that tsc accepts but the grammar
->   rejects drop from 201 to 32 (upstream [#3226](https://github.com/colbymchenry/codegraph/pull/3226)
+>   [dokimasia's fork](https://github.com/dokimasia/tree-sitter-typescript) and our own, kept in
+>   our grammar fork (checked against tsc in its CI). Variance annotations
+>   (`interface Stream<out A, in E>`), generic overloads after a member with no `;`, tagged
+>   templates with type arguments (``sql<Row>`...` ``), `export type *`, `import("m").X[]`,
+>   keyword-named tuple labels and template-literal escapes no longer turn a declaration, and in
+>   large files the whole file, into a parse error that indexes as almost nothing. On Effect, Zod,
+>   Excalidraw and VS Code, the files that tsc accepts but the grammar rejects drop from 201 to 5
+>   (upstream [#3226](https://github.com/colbymchenry/codegraph/pull/3226)
 >   covers variance only; see `docs/grammars/tree-sitter-typescript.md`). Re-index TypeScript
 >   projects after updating.
 >
