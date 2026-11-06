@@ -114,16 +114,18 @@ fn main() {
     println!("cargo:rerun-if-changed=grammars/swift");
 
     // TypeScript + TSX grammars — vendored C (sixth vendored-grammar-C
-    // language): tree-sitter/tree-sitter-typescript v0.23.2 (f975a62) with
+    // language): marionebl/tree-sitter-typescript 53071c9 (a maintained fork
+    // of tree-sitter/tree-sitter-typescript v0.23.2) with
     // docs/grammars/tree-sitter-typescript.patch applied to the grammar source,
     // then REGENERATED with tree-sitter-cli 0.25.10 (ABI 15) — the patch
     // touches grammar rules, so the checked-in parser.c can't be reused. The
     // vendored wasm is built from these same generated sources. Layout mirrors
     // the upstream repo so scanner.c's `../../common/scanner.h` resolves
-    // unedited. The patch: TS 4.7 variance annotations (`<in T>`, `<out T>`).
-    //   common/scanner.h           da66ef2bd14a3f7ea743e25ba068c6c9aae2c3509db200ff80c4a0e6116e564c (unpatched)
-    //   typescript/src/parser.c    eafc3e8cd89fbbfdcec9182b22446f19c31756f3c8c1212cfd7bffdb4b761424
-    //   tsx/src/parser.c           232fe5b8178180307a40b393713d82074920977b147638bae898874085bcee86
+    // unedited. See docs/grammars/tree-sitter-typescript.md for what the base
+    // and the patch each fix.
+    //   common/scanner.h           834a0b60fba90355410cf7456069d9e1dd1aac309fdc8485f80d64724fc1e98b (marionebl + patch)
+    //   typescript/src/parser.c    2617ac3e51b9938277d904d58b02e454183b0c86e04bb5fdd9792adb60506a26
+    //   tsx/src/parser.c           f6aadca29573f480ea13f5b3f9db803fceba34c4da50f1008f3594e2ffe60961
     // Flags crib the crate's bindings/rust/build.rs (c11). Each parser.c is
     // ~9 MB.
     for dialect in ["typescript", "tsx"] {

@@ -1,24 +1,135 @@
 diff --git a/common/define-grammar.js b/common/define-grammar.js
-index efb0b76..2949f97 100644
+index 016c151..87d23ba 100644
 --- a/common/define-grammar.js
 +++ b/common/define-grammar.js
-@@ -1004,7 +1004,18 @@ module.exports = function defineGrammar(dialect) {
+@@ -7,6 +7,11 @@ module.exports = function defineGrammar(dialect) {
+     externals: ($, previous) => previous.concat([
+       $._function_signature_automatic_semicolon,
+       $.__error_recovery,
++      // codegraph delta: never produced. It is valid only between a member's
++      // name and its signature, so the scanner can tell that a `<` or `(` on
++      // the next line continues that member (tsc reads `find\n<T>(id): T` as
++      // one method) rather than starting a call signature.
++      $._member_signature_marker,
+     ]),
  
+     supertypes: ($, previous) => previous.concat([
+@@ -63,7 +68,6 @@ module.exports = function defineGrammar(dialect) {
+       [$.decorator_call_expression, $.decorator],
+       [$.literal_type, $.pattern],
+       [$.predefined_type, $.pattern],
+-      [$.call_expression, $._type_query_call_expression],
+       [$.call_expression, $._type_query_call_expression_in_type_annotation],
+       [$.new_expression, $.primary_expression],
+       [$.meta_property, $.primary_expression],
+@@ -71,6 +75,9 @@ module.exports = function defineGrammar(dialect) {
+     ]),
+ 
+     conflicts: ($, previous) => previous.concat([
++      // codegraph delta: `<in out>` (modifier `in`, parameter named `out`)
++      // vs `<in out T>`; the token after `out` decides.
++      [$.variance],
+       [$.call_expression, $.instantiation_expression, $.binary_expression],
+       [$.call_expression, $.instantiation_expression, $.binary_expression, $.unary_expression],
+       [$.call_expression, $.instantiation_expression, $.binary_expression, $.update_expression],
+@@ -111,6 +118,10 @@ module.exports = function defineGrammar(dialect) {
+       [$.array_pattern, $.tuple_type],
+ 
+       [$.template_literal_type, $.template_string],
++
++      // `f<typeof import('m')>()` is a call with a type argument, and `a < typeof import('m')` is a
++      // comparison, so the parser keeps both until one of them fails.
++      [$.call_expression, $._type_query_call_expression],
+     ]).concat(
+       dialect === 'typescript' ? [
+         [$.primary_type, $.type_parameter],
+@@ -370,6 +381,7 @@ module.exports = function defineGrammar(dialect) {
+         optional(choice('get', 'set', '*')),
+         field('name', $._property_name),
+         optional('?'),
++        optional($._member_signature_marker),
+         $._call_signature,
+       ),
+ 
+@@ -380,6 +392,7 @@ module.exports = function defineGrammar(dialect) {
+         optional(choice('get', 'set', '*')),
+         field('name', $._property_name),
+         optional('?'),
++        optional($._member_signature_marker),
+         $._call_signature,
+       ),
+ 
+@@ -475,6 +488,7 @@ module.exports = function defineGrammar(dialect) {
+         optional(choice('get', 'set', '*')),
+         field('name', $._property_name),
+         optional('?'),
++        optional($._member_signature_marker),
+         $._call_signature,
+         field('body', $.statement_block),
+       )),
+@@ -749,8 +763,6 @@ module.exports = function defineGrammar(dialect) {
+         $.readonly_type,
+         $.constructor_type,
+         $.infer_type,
+-        prec(-1, alias($._type_query_member_expression_in_type_annotation, $.member_expression)),
+-        prec(-1, alias($._type_query_call_expression_in_type_annotation, $.call_expression)),
+       ),
+ 
+       tuple_parameter: $ => seq(
+@@ -805,6 +817,8 @@ module.exports = function defineGrammar(dialect) {
+         $.intersection_type,
+         $.union_type,
+         'const',
++        prec(-1, alias($._type_query_member_expression_in_type_annotation, $.member_expression)),
++        prec(-1, alias($._type_query_call_expression_in_type_annotation, $.call_expression)),
+       ),
+ 
+       template_type: $ => seq('${', choice($.primary_type, $.infer_type), '}'),
+@@ -842,6 +856,7 @@ module.exports = function defineGrammar(dialect) {
+         field('name', choice(
+           $._type_identifier,
+           $.nested_type_identifier,
++          alias($._type_query_member_expression_in_type_annotation, $.member_expression),
+         )),
+         field('type_arguments', $.type_arguments),
+       )),
+@@ -1029,7 +1044,12 @@ module.exports = function defineGrammar(dialect) {
        type_parameter: $ => seq(
          optional('const'),
+         optional($.variance),
 -        field('name', $._type_identifier),
-+        // TS 4.7 variance annotations: `in T`, `out T`, `in out T`
-+        // (tree-sitter-typescript#364). `out` stays usable as a parameter
-+        // name (`<out>`, `<in out>`), as tsc accepts it (brajevicm@9fcaa13).
-+        // Known limit: where an expression `<` could also open type
-+        // parameters, `in`/`out` now lex as keywords, so a type or JSX tag
-+        // literally named `out`/`in` there (`<out>x`, `<out>…</out>`) fails.
-+        // Accepting them as type names everywhere broke `[out: T]` tuple
-+        // labels instead, which real code uses.
-+        // tsc takes `const` on either side of the variance (`<in const T>`).
-+        optional(choice('in', seq(optional('in'), 'out'))),
++        // codegraph delta: `out` stays usable as a parameter name (`<out>`,
++        // `<out = X>`, `<in out>` = modifier `in` on a parameter named `out`),
++        // as tsc accepts it (brajevicm@9fcaa13). tsc also takes `const` on
++        // either side of the variance (`<in const T>`).
 +        optional('const'),
 +        field('name', choice($._type_identifier, alias('out', $.type_identifier))),
          field('constraint', optional($.constraint)),
          field('value', optional($.default_type)),
        ),
+diff --git a/common/scanner.h b/common/scanner.h
+index ddefcdf..1a99663 100644
+--- a/common/scanner.h
++++ b/common/scanner.h
+@@ -13,6 +13,7 @@ enum TokenType {
+     JSX_TEXT,
+     FUNCTION_SIGNATURE_AUTOMATIC_SEMICOLON,
+     ERROR_RECOVERY,
++    MEMBER_SIGNATURE_MARKER,
+ };
+ 
+ static void advance(TSLexer *lexer) { lexer->advance(lexer, false); }
+@@ -155,6 +156,13 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
+             if (valid_symbols[LOGICAL_OR]) {
+                 return false;
+             }
++            // codegraph delta: right after a member name (`find`, `find?`) a
++            // `<` or `(` on the next line opens that member's signature, as tsc
++            // reads it, so no semicolon. MEMBER_SIGNATURE_MARKER is never
++            // produced; the grammar makes it valid only in that position.
++            if ((lexer->lookahead == '<' || lexer->lookahead == '(') && valid_symbols[MEMBER_SIGNATURE_MARKER]) {
++                return false;
++            }
+             break;
+ 
+             // Insert a semicolon before `--` and `++`, but not before binary `+` or `-`.
