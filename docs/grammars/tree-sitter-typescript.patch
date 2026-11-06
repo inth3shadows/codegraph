@@ -1,5 +1,5 @@
 diff --git a/common/define-grammar.js b/common/define-grammar.js
-index 016c151..cb7bb33 100644
+index 016c151..7d37a82 100644
 --- a/common/define-grammar.js
 +++ b/common/define-grammar.js
 @@ -1,5 +1,16 @@
@@ -141,7 +141,18 @@ index 016c151..cb7bb33 100644
          )),
          field('type_arguments', $.type_arguments),
        )),
-@@ -1029,7 +1068,12 @@ module.exports = function defineGrammar(dialect) {
+@@ -967,7 +1006,9 @@ module.exports = function defineGrammar(dialect) {
+         'boolean',
+         'string',
+         'symbol',
+-        alias(seq('unique', 'symbol'), 'unique symbol'),
++        // One token, so `unique` alone is never a keyword: it stays a name in
++        // `i < unique.length`, `let x: unique` and `[unique: T]`.
++        alias(token(seq('unique', /(\s|\/\/[^\r\n]*|\/\*[^*]*\*+([^/*][^*]*\*+)*\/)+/, 'symbol')), 'unique symbol'),
+         'void',
+         'unknown',
+         'string',
+@@ -1029,7 +1070,12 @@ module.exports = function defineGrammar(dialect) {
        type_parameter: $ => seq(
          optional('const'),
          optional($.variance),
@@ -155,7 +166,7 @@ index 016c151..cb7bb33 100644
          field('constraint', optional($.constraint)),
          field('value', optional($.default_type)),
        ),
-@@ -1128,8 +1172,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -1128,8 +1174,7 @@ module.exports = function defineGrammar(dialect) {
   *
   * @param {RuleOrLiteral} rule
   *
@@ -165,7 +176,7 @@ index 016c151..cb7bb33 100644
   */
  function commaSep1(rule) {
    return sepBy1(',', rule);
-@@ -1140,8 +1183,7 @@ function commaSep1(rule) {
+@@ -1140,8 +1185,7 @@ function commaSep1(rule) {
   *
   * @param {RuleOrLiteral} rule
   *
@@ -175,7 +186,7 @@ index 016c151..cb7bb33 100644
   */
  function commaSep(rule) {
    return sepBy(',', rule);
-@@ -1154,7 +1196,7 @@ function commaSep(rule) {
+@@ -1154,7 +1198,7 @@ function commaSep(rule) {
   *
   * @param {RuleOrLiteral} rule
   *
@@ -184,7 +195,7 @@ index 016c151..cb7bb33 100644
   */
  function sepBy(sep, rule) {
    return optional(sepBy1(sep, rule));
-@@ -1167,7 +1209,7 @@ function sepBy(sep, rule) {
+@@ -1167,7 +1211,7 @@ function sepBy(sep, rule) {
   *
   * @param {RuleOrLiteral} rule
   *
@@ -194,7 +205,7 @@ index 016c151..cb7bb33 100644
  function sepBy1(sep, rule) {
    return seq(rule, repeat(seq(sep, rule)));
 diff --git a/common/scanner.h b/common/scanner.h
-index ddefcdf..860cd01 100644
+index ddefcdf..d136d38 100644
 --- a/common/scanner.h
 +++ b/common/scanner.h
 @@ -13,6 +13,7 @@ enum TokenType {
@@ -219,3 +230,35 @@ index ddefcdf..860cd01 100644
              break;
  
              // Insert a semicolon before `--` and `++`, but not before binary `+` or `-`.
+@@ -183,11 +191,17 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
+             }
+             skip(lexer);
+ 
+-            if (!iswalpha(lexer->lookahead) && lexer->lookahead != '_') {
+-                // `in` followed by non-word: could be `in `, `in:`, `in(`, etc.
+-                // Insert ASI if the next non-space char is `:` or `(` (property name),
+-                // but not if it is a space followed by an expression (keyword operator).
+-                if (lexer->lookahead == ':' || lexer->lookahead == '(') {
++            if (!iswalnum(lexer->lookahead) && lexer->lookahead != '_' && lexer->lookahead != '$') {
++                // `in` itself, not an identifier such as `in2` or `in$x` (those get ASI below).
++                // `in:` is a property name. Where no expression continues (no `||`), `in` cannot
++                // be the operator, so `in(`, `in?`, `in<` and `in!` start a member named `in`;
++                // after an expression they continue it (`a\n in(b)` is `a in (b)`).
++                if (lexer->lookahead == ':') {
++                    return true;
++                }
++                if (!valid_symbols[LOGICAL_OR] &&
++                    (lexer->lookahead == '(' || lexer->lookahead == '?' || lexer->lookahead == '<' ||
++                     lexer->lookahead == '!')) {
+                     return true;
+                 }
+                 return false;
+@@ -200,7 +214,7 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
+                 skip(lexer);
+             }
+ 
+-            if (!iswalpha(lexer->lookahead)) {
++            if (!iswalnum(lexer->lookahead) && lexer->lookahead != '_' && lexer->lookahead != '$') {
+                 return false;
+             }
+             break;
