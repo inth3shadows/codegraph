@@ -2,9 +2,10 @@
  * TS 4.7 variance annotations (`interface Stream<out A, in E>`, `<in out T>`)
  * were parse errors in tree-sitter-typescript v0.23.2 (upstream #370), and in
  * a big file such errors can pile up into a whole-file ERROR. The vendored
- * grammar (wasm and kernel) is patched; see docs/grammars/tree-sitter-typescript.md.
+ * grammar (wasm and kernel) is built from a fork that parses them, plus our
+ * patch; see docs/grammars/tree-sitter-typescript.md.
  *
- * The patch makes `in`/`out` keywords where a type parameter starts, so the
+ * The grammar makes `in`/`out` keywords where a type parameter starts, so the
  * cases below also pin that `out` still works as a name where real code uses
  * it: the upstream fix PRs as written break `type F<out> = out[]`, and
  * accepting `out` as a type name everywhere broke `[out: T]` tuple labels
@@ -29,13 +30,19 @@ function parse(language: 'typescript' | 'tsx', src: string) {
   return getParser(language)!.parse(src)!.rootNode;
 }
 
-/** The modifier tokens of every type_parameter, and its name. */
+/**
+ * The modifier tokens of every type_parameter, and its name. `in` / `out`
+ * sit inside a `variance` node (the base grammar's shape); `const` sits
+ * directly under the type_parameter.
+ */
 function typeParams(root: Node): string[] {
   return root.descendantsOfType('type_parameter').map((p) => {
     const mods: string[] = [];
     for (let i = 0; i < p.childCount; i++) {
       const c = p.child(i)!;
-      if (!c.isNamed && ['in', 'out', 'const'].includes(c.type)) mods.push(c.type);
+      if (c.type === 'variance') {
+        for (let j = 0; j < c.childCount; j++) mods.push(c.child(j)!.type);
+      } else if (!c.isNamed && c.type === 'const') mods.push(c.type);
     }
     return [...mods, p.childForFieldName('name')!.text].join(' ');
   });

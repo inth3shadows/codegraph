@@ -7,11 +7,17 @@
 > - **Impact is fast again.** `codegraph impact`, `codegraph_impact` and the viewer's blast
 >   radius had become 2–3x slower on busy symbols; the answer itself was unchanged
 >   (upstream [#3249](https://github.com/colbymchenry/codegraph/pull/3249), fixes #3248).
-> - **TypeScript variance annotations parse.** `interface Stream<out A, in E>` and other
->   `in` / `out` type parameters no longer turn the declaration, and in large files the whole
->   file, into a parse error that indexes as almost nothing (upstream
->   [#3226](https://github.com/colbymchenry/codegraph/pull/3226); the grammar's own fix PRs,
->   tree-sitter/tree-sitter-typescript#361 and #364, are unmerged). Re-index TypeScript projects after updating.
+> - **Much more TypeScript parses.** The TypeScript grammar is built from
+>   [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript),
+>   a maintained fork of the stalled upstream grammar, with two fixes from
+>   [dokimasia's fork](https://github.com/dokimasia/tree-sitter-typescript) and our own patch.
+>   Variance annotations (`interface Stream<out A, in E>`), generic overloads after a member with
+>   no `;`, `export type *`, `import("m").X[]` and template-literal escapes no longer turn a
+>   declaration, and in large files the whole file, into a parse error that indexes as almost
+>   nothing. On Effect, Zod, Excalidraw and VS Code, the files that tsc accepts but the grammar
+>   rejects drop from 201 to 32 (upstream [#3226](https://github.com/colbymchenry/codegraph/pull/3226)
+>   covers variance only; see `docs/grammars/tree-sitter-typescript.md`). Re-index TypeScript
+>   projects after updating.
 >
 > Earlier fork fixes are now in upstream: `codegraph sync` on an index from an older engine
 > (#1842, which upstream made a warning rather than a refusal), imports onto an exported

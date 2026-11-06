@@ -123,7 +123,6 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols, 
         case '*':
         case '%':
         case '>':
-        case '<':
         case '=':
         case '?':
         case '^':
@@ -139,11 +138,20 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols, 
             }
             break;
 
-            // Don't insert a semicolon before a '[' or '(', unless we're parsing
-            // a type. Detect whether we're parsing a type or an expression using
-            // the validity of a binary operator token.
+            // Don't insert a semicolon before a '[', '(', or '<', unless we're
+            // parsing a type. Detect whether we're parsing a type or an expression
+            // using the validity of a binary operator token.
+            //
+            // This covers the case where a generic call-signature overload starts
+            // on a new line inside an object type, e.g.:
+            //
+            //   const f: {
+            //     (): string
+            //     <T>(): T    ← the `<` here needs an implicit semicolon before it
+            //   }
         case '(':
         case '[':
+        case '<':
             if (valid_symbols[LOGICAL_OR]) {
                 return false;
             }
@@ -163,7 +171,10 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols, 
             return lexer->lookahead != '=';
 
             // Don't insert a semicolon before `in` or `instanceof`, but do insert one
-            // before an identifier.
+            // before an identifier.  Also insert one before `in` when it is used as
+            // a property/method name (i.e. followed by `:` or `(`), because
+            //   interface Foo { name: string\n  in: string }
+            // must parse `in:` as a property name, not as a keyword operator.
         case 'i':
             skip(lexer);
 
@@ -172,7 +183,13 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols, 
             }
             skip(lexer);
 
-            if (!iswalpha(lexer->lookahead)) {
+            if (!iswalpha(lexer->lookahead) && lexer->lookahead != '_') {
+                // `in` followed by non-word: could be `in `, `in:`, `in(`, etc.
+                // Insert ASI if the next non-space char is `:` or `(` (property name),
+                // but not if it is a space followed by an expression (keyword operator).
+                if (lexer->lookahead == ':' || lexer->lookahead == '(') {
+                    return true;
+                }
                 return false;
             }
 
