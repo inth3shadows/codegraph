@@ -24,7 +24,7 @@
  *     The `local` corpus is exempt (its rows shift whenever a fixture is edited; it is
  *     already strict per file, see below);
  *   - local corpus only: any tsc error in a fixture ("fixture is not valid TypeScript"),
- *     and a DIVERGENT fixture that is not a gap fixture (gap-*, variance.*), even if baselined.
+ *     and a DIVERGENT fixture that is not a gap fixture (gap-*), even if baselined.
  * Setup failure (exit 2; each also appends "**Setup error:** <message>" to
  * GITHUB_STEP_SUMMARY): bad args, fetch failure, a corpus that scans 0 files, a
  * baselined path that is absent from this run ("vanished": renamed/deleted/wrong
@@ -94,7 +94,7 @@ const CANARY_TSX_GOOD = 'const a = <div />;';
 class SetupError extends Error {}
 
 /** A fixture that is allowed to diverge: a recorded grammar gap. */
-const isGapFixture = (p) => /^(gap-|variance\.)/.test(path.basename(p));
+const isGapFixture = (p) => /^gap-/.test(path.basename(p));
 
 /**
  * V8 flags are read at engine init, so --liftoff-only must be on node's command
@@ -549,7 +549,7 @@ async function main() {
     listRows('local fixture(s): fixture is not valid TypeScript (tsc reports a syntax error):', invalidFixtures, (r) => `${r.corpus}:${r.path} (${r.cls})`);
   }
   if (nonGapDivergent.length) {
-    listRows('local non-gap fixture(s) DIVERGENT (only gap-* / variance.* may diverge; this is a grammar regression or a misnamed gap):', nonGapDivergent, (r) => `${r.corpus}:${r.path}:${r.row ?? '?'}`);
+    listRows('local non-gap fixture(s) DIVERGENT (only gap-* may diverge; this is a grammar regression or a misnamed gap):', nonGapDivergent, (r) => `${r.corpus}:${r.path}:${r.row ?? '?'}`);
   }
 
   if (opts.json) {

@@ -34,7 +34,7 @@ The run **fails with exit 1** when:
   does not fail); an unknown baselined row accepts any row. The `local` corpus is exempt from this
   row gate (its rows shift whenever a fixture is edited, and it is strict per file already, below);
 - (`local` fixtures only) tsc reports any syntax error in a fixture ("fixture is not valid TypeScript"),
-  or a fixture that is not a gap fixture (`gap-*`, `variance.*`) is `DIVERGENT`, even if baselined.
+  or a fixture that is not a gap fixture (`gap-*`) is `DIVERGENT`, even if baselined.
 
 It **fails with exit 2** (setup) on bad args, a fetch failure, a corpus that scans 0 files,
 a version mismatch, a blind oracle or grammar (see Canaries), a baselined path that is
@@ -49,7 +49,7 @@ integer, or the corpus an old-format array; anything else names the corpus and p
 Reported, never failing: `now-agree` counts only baselined paths that are now `agree-ok`; a
 baselined path that tsc now rejects too is counted as `now-err`; `improved` is above.
 The in-repo fixtures (`__tests__/fixtures/ts-syntax/`, one small file per modern construct) are
-baselined the same way. `gap-*.ts` and `variance.ts` record constructs tsc accepts that the
+baselined the same way. `gap-*.ts` fixtures record constructs tsc accepts that the
 grammar does not parse yet, **one construct per file** so fixing one is visible. A grammar that
 fixes one reports it as `now-agree`, which is how a candidate grammar or fork is compared with ours.
 
