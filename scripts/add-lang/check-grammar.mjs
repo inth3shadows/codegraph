@@ -150,8 +150,8 @@ function describeEnd(run) {
 async function runGrammar(wasmPath, samplePath, itersArg) {
   const iters = Number(itersArg);
   const { Parser, Language } = await import('web-tree-sitter');
-  try { await Parser.init(); }
-  catch { await Parser.init({ locateFile: () => require.resolve('web-tree-sitter/tree-sitter.wasm') }); }
+  const { initVendoredRuntime } = await import('../tree-sitter-runtime.mjs');
+  await initVendoredRuntime(Parser);
 
   // The other grammars an index loads beside this one: the corruption surfaces
   // under the multi-grammar runtime that real indexing uses, not a single

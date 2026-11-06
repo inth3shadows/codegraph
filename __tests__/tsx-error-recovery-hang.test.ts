@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
+import { spawnSync } from 'child_process';
 import { initGrammars, loadGrammarsForLanguages, getParser, RUNTIME_WASM_PATH } from '../src/extraction/grammars';
 import { parseWithinBudget } from '../src/extraction/parse-budget';
 
@@ -38,14 +39,38 @@ describe('vendored tree-sitter runtime', () => {
   });
 });
 
+// The native kernel links the same runtime C (codegraph-kernel/vendor/tree-sitter, patched).
+// A native parse cannot be cancelled from JS, so it runs in a child with a hard timeout.
+// The kernel throws `defer: parse tree contains errors` for an erroring tree (the file then
+// goes to wasm): that is a finished parse, so it counts as done.
+const KERNEL_PATH = path.join(__dirname, '..', 'codegraph-kernel', 'prebuilds', `${process.platform}-${process.arch}`, 'codegraph-kernel.node');
+const KERNEL_CHILD = `
+const k = require(process.argv[1]);
+const [src, lang] = [process.argv[2], process.argv[3]];
+try { k.extractFile(lang === 'tsx' ? 'poc.tsx' : 'poc.ts', src, lang); }
+catch (e) { if (!String(e && e.message).startsWith('defer:')) throw e; }
+console.log('done');
+`;
+
+describe.skipIf(!fs.existsSync(KERNEL_PATH))('kernel: error recovery finishes on the same input', () => {
+  it.each(['tsx', 'typescript'] as const)('%s', (language) => {
+    for (const src of HANG_INPUTS) {
+      const child = spawnSync(process.execPath, ['-e', KERNEL_CHILD, KERNEL_PATH, src, language], {
+        encoding: 'utf8',
+        timeout: 10_000,
+      });
+      expect(child.error?.message, `${language}: ${JSON.stringify(src)} — kernel parse did not finish within 10s`).toBeUndefined();
+      expect(child.stdout.trim(), child.stderr).toBe('done');
+    }
+  });
+});
+
 describe('error recovery finishes on input that once looped forever', () => {
   it.each(['tsx', 'typescript'] as const)('%s', (language) => {
     for (const src of HANG_INPUTS) {
-      const started = Date.now();
       const tree = parseWithinBudget(getParser(language)!, src, 2000);
       expect(tree, `${language}: ${JSON.stringify(src)} did not finish within 2000ms`).not.toBeNull();
       expect(tree!.rootNode.hasError).toBe(true);
-      expect(Date.now() - started).toBeLessThan(2000);
       tree!.delete();
     }
   });

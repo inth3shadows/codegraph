@@ -16,6 +16,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { Parser, Language } from 'web-tree-sitter';
+import { initVendoredRuntime } from '../tree-sitter-runtime.mjs';
 
 const require = createRequire(import.meta.url);
 const fail = (msg) => { console.error(`[dump-ast] ${msg}`); process.exit(1); };
@@ -57,11 +58,7 @@ function resolveWasm(token) {
 const wasmPath = resolveWasm(langOrWasm);
 const source = readFileSync(sampleFile, 'utf8');
 
-try {
-  await Parser.init();
-} catch {
-  await Parser.init({ locateFile: () => require.resolve('web-tree-sitter/tree-sitter.wasm') });
-}
+await initVendoredRuntime(Parser);
 
 let language;
 try {

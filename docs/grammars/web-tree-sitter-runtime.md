@@ -1,7 +1,8 @@
 # Vendored tree-sitter runtime (web-tree-sitter 0.25.10 + #5997)
 
 `src/extraction/runtime/tree-sitter.wasm` replaces the `tree-sitter.wasm` that ships in the
-web-tree-sitter npm package. `initGrammars()` loads it through `Parser.init({ locateFile })`
+web-tree-sitter npm package, and `codegraph-kernel/vendor/tree-sitter` replaces the crates.io
+`tree-sitter` crate for the native kernel. `initGrammars()` loads the wasm through `Parser.init({ locateFile })`
 and throws if it is missing. `copy-assets` copies it into `dist/extraction/runtime/`, and
 `scripts/check-ui-build.mjs` fails a build without it.
 
@@ -47,7 +48,17 @@ cp lib/binding_web/lib/tree-sitter.wasm <codegraph>/src/extraction/runtime/tree-
 - web-tree-sitter is pinned exactly (`0.25.10`). `__tests__/tsx-error-recovery-hang.test.ts`
   fails if the installed version moves, because new glue with this wasm is untested.
 - The same test fails under the unpatched npm runtime (`did not finish within 2000ms`).
+- Dev scripts (ts-differential, add-lang/dump-ast, add-lang/check-grammar, gen-go-stdlib-methods)
+  init through `scripts/tree-sitter-runtime.mjs`; `check-ui-build` checks the dist copy's sha256.
 - Exit: once the legacy-`dylink` grammars are rebuilt (or tree-sitter-wasms is replaced), move to
   web-tree-sitter 0.27.1+ and delete this runtime, the patch and this file.
-- The native kernel (`codegraph-kernel`, Rust `tree-sitter` 0.25) carries the same bug and is
-  not patched here.
+- The native kernel builds against the same patched runtime C:
+  `codegraph-kernel/vendor/tree-sitter` is the crates.io `tree-sitter` 0.25.10 crate (its
+  `src/parser.c` is identical to the git tag's) with the same patch applied, wired in through
+  `[patch.crates-io]` in `codegraph-kernel/Cargo.toml`. TypeScript and TSX are kernel-routed by
+  default whenever the kernel is present (release bundles ship it). The kernel half of the hang
+  test runs `extractFile` in a child with a 10s timeout; with the unpatched crate the tsx case
+  times out.
+- Bumping the kernel's `tree-sitter` crate means re-vendoring: copy the new crate source into
+  `codegraph-kernel/vendor/tree-sitter` and re-apply the patch, or drop the `[patch]` entry
+  once the crate is 0.27.1+.

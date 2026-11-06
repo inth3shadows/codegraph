@@ -76,3 +76,9 @@ cc = "1"
 lto = true
 codegen-units = 1
 strip = "symbols"
+
+# tree-sitter 0.25.10 + tree-sitter/tree-sitter#5997 (error-recovery livelock), the same
+# runtime C as the wasm path's src/extraction/runtime/tree-sitter.wasm. Patch:
+# docs/grammars/web-tree-sitter-runtime.patch. See docs/grammars/web-tree-sitter-runtime.md.
+[patch.crates-io]
+tree-sitter = { path = "vendor/tree-sitter" }

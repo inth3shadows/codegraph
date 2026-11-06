@@ -9,7 +9,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { Parser, Language as WasmLanguage } from 'web-tree-sitter';
-import { readGrammarWasmBytes } from '../src/extraction/grammars';
+import { initGrammars, readGrammarWasmBytes } from '../src/extraction/grammars';
 
 describe('readGrammarWasmBytes', () => {
   it('reads bytes for a tree-sitter-wasms grammar and a vendored grammar', async () => {
@@ -31,7 +31,7 @@ describe('readGrammarWasmBytes', () => {
   });
 
   it('produces bytes web-tree-sitter can load into a working parser', async () => {
-    await Parser.init();
+    await initGrammars();
     const bytes = await readGrammarWasmBytes(['javascript']);
     const language = await WasmLanguage.load(bytes.javascript);
     const parser = new Parser();
