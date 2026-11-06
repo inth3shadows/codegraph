@@ -7,3 +7,5 @@
 # reach the files inside it.
 codegraph-kernel/grammars/** linguist-vendored
 codegraph-kernel/grammars/**/parser.c linguist-generated
+# The kernel's patched copy of the tree-sitter runtime crate (docs/grammars/web-tree-sitter-runtime.md).
+codegraph-kernel/vendor/** linguist-vendored

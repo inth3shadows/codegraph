@@ -26,6 +26,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const argv = process.argv.slice(2);
 const rootFlag = argv.indexOf('--root');
@@ -149,9 +150,31 @@ if (missingGrammars.length > 0) {
   );
 }
 
+// The vendored tree-sitter runtime (see src/extraction/grammars.ts RUNTIME_WASM_PATH): without it
+// initGrammars() throws, so every parse fails. Copied by copy-assets like the grammars.
+const runtimeWasm = join(root, 'dist', 'extraction', 'runtime', 'tree-sitter.wasm');
+if (!existsSync(runtimeWasm)) {
+  fail(
+    `missing ${runtimeWasm}`,
+    staged
+      ? 'dist/extraction/runtime was not copied into the bundle — re-run scripts/build-bundle.sh'
+      : 'run `npm run copy-assets` (it copies src/extraction/runtime/tree-sitter.wasm into dist/)'
+  );
+}
+// Identity, not just presence: npm's unpatched tree-sitter.wasm at this path would ship the
+// error-recovery livelock (docs/grammars/web-tree-sitter-runtime.md lists the sha256).
+const RUNTIME_SHA256 = 'd48b82be2c17998ef4b2b9ab0cadbbd5ae838ef6ff0eca37b9c12ab887988d78';
+const runtimeSha = createHash('sha256').update(readFileSync(runtimeWasm)).digest('hex');
+if (runtimeSha !== RUNTIME_SHA256) {
+  fail(
+    `${runtimeWasm} is not the vendored runtime (sha256 ${runtimeSha.slice(0, 16)}…, want ${RUNTIME_SHA256.slice(0, 16)}…)`,
+    'copy src/extraction/runtime/tree-sitter.wasm again (npm run copy-assets); if the runtime was rebuilt on purpose, update RUNTIME_SHA256 and the doc'
+  );
+}
+
 const grammarCount = readdirSync(wasmDir).filter((n) => n.endsWith('.wasm')).length;
 
 console.log(
   `[check-ui-build] dist/viewer ok (index.html + ${assets} referenced asset(s)); ` +
-    `dist/extraction/wasm ok (${grammarCount} grammars); dist/ engine intact`
+    `dist/extraction/wasm ok (${grammarCount} grammars); runtime ok; dist/ engine intact`
 );
