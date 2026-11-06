@@ -3,7 +3,7 @@ declare const unique: string[];
 for (let i = 0; i < unique.length; i++) {}
 export const b = 1 < unique.length;
 interface unique { a: 1 }
-export declare const u: unique[];
+export type U = typeof unique;
 export class D implements unique { a = 1 as const }
 export type A = [unique: number, unique2?: string];
 export declare const s: unique symbol;

@@ -2,7 +2,7 @@
 
 `src/extraction/wasm/tree-sitter-{typescript,tsx}.wasm` and the kernel's
 vendored C (`codegraph-kernel/grammars/typescript/`) are built from
-**inth3shadows/tree-sitter-typescript** commit `9582ff6`, our own fork of the
+**inth3shadows/tree-sitter-typescript** commit `9ce21f8`, our own fork of the
 grammar. This is the one place that names the commit; the code comments point here. It is private while it is being burned in, so the public,
 reproducible form is
 [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript)
@@ -19,14 +19,14 @@ kernel compiles the same generated C (build.rs) in place of the
 `tree-sitter-typescript` crate, so the two paths stay table-identical
 (`kernel-grammar-parity.test.ts`) and share one external scanner.
 
-| file | base (marionebl 53071c9) sha256 | ours (fork 9582ff6) sha256 |
+| file | base (marionebl 53071c9) sha256 | ours (fork 9ce21f8) sha256 |
 |---|---|---|
-| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `e08483f3391ea3e14e77dbd47ade94233533d8b6f6bd0c95b72ed40710d1aa72` |
-| `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `6deb73c27156db9c3787bfcef76021ba04c05aa4fc1018607c0754d9257362dc` |
-| `typescript/src/parser.c` | (regenerated) | `c0a9c82d9b020fc1f7dcb471c3f7aac2553ac359a56a15f81d1cddb8e122cae8` |
-| `tsx/src/parser.c` | (regenerated) | `a83c528cd11252f5555a97ea9af19b098e5845cb28d98c579027835de5234ed8` |
-| `tree-sitter-typescript.wasm` | — | `e795214a62e3ada31b41258d77cb898c4917826148581d100601d44946f41d16` |
-| `tree-sitter-tsx.wasm` | — | `8ad91626fcfde0aff54feaa54abd2899dd41714cf823fa675c59dbcf59fbacb8` |
+| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `4f20dd17be937d58d5f7c17bb95e515bee695c6279e6af23b6c0e0b50e8bab58` |
+| `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `23fd656d7e82f80bf66e0b9b8ef96aa6102ef5bfd9f32c561a4caabe08b9fd34` |
+| `typescript/src/parser.c` | (regenerated) | `316370e67ff52aa6e41c13bbd0b865d65696c5e300174e65d296ea02ffdd117e` |
+| `tsx/src/parser.c` | (regenerated) | `f3df67db8af8316f5f66e00bd4e5cfe72223c9223839cdbc915b87d7d3779172` |
+| `tree-sitter-typescript.wasm` | — | `453d6f83d2171cc603dfa9b154477ac599469545d9bd9628362cc97b48cfc271` |
+| `tree-sitter-tsx.wasm` | — | `0b0caf9648c83d068d08a3e8679a822a433ade538a6f3ecaa0ca0b05b69913b4` |
 
 ## What the base fixes (marionebl, over v0.23.2)
 
@@ -60,7 +60,8 @@ kernel compiles the same generated C (build.rs) in place of the
 - ASI before a line starting with `in2` or `in$x` (upstream #373), and before a member named
   `in` on the next line of a class or object type: `in?:` always; `in(`, `in<T>(` and `in!:`
   after a member that cannot continue (a typed member, a method); and `in(…)` followed by `:`
-  or `{` even after an initializer (`a = () => {}\n in(): void {}`). A never-produced
+  or `{` even after an initializer (`a = () => {}\n in(): void {}`; strings and comments inside
+  the parameters are skipped, so `a = x\n in(")")` stays the operator). A never-produced
   `_member_end_marker` external, valid only where a member ends, tells the scanner it is
   between members, so `for (var k\n in!o)` stays a for-in and `a\n in(b)` / `a = x\n in(b)`
   stay `in` operators.
@@ -92,8 +93,12 @@ node shapes and the call edges codegraph derives from them.
   followed by a line break (#369, #377), `(import("m").A)[]` and `f<import("m").Y>()`.
 - The parser accepts some forms tsc rejects, such as `<out extends X>` and `<out in>`.
 - A member named `in` written `in = 1`, `in;`, a bare `in`, or `in[k]: T` right after a
-  member with no `;` still fails, as do `in?:`, `in!:` and `in<T>` after an initializer
-  other than a block-bodied arrow.
+  member with no `;` still fails, as do `in!:` and `in<T>` after any field initializer
+  (arrows included); `in?:` works after any member. After a block-bodied arrow field, a method
+  overload signature `in(x: string)` followed by another `in(...)` reads as the `in` operator
+  (no error).
+- `unique` followed by a word starting with `symbol` (`unique\nsymbolic()`, `unique symbolic`)
+  fails: the `unique symbol` token matches the prefix.
 - A comment between `unique` and `symbol` is part of the token (no `comment` node).
 
 ## Measured
@@ -109,7 +114,7 @@ Divergent files are those tsc parses clean and tree-sitter does not, from
 | microsoft/vscode ca43fc94 `src/` | 11,267 | 11 | 11 | 3 | 0 |
 | **total** | | **201** | **45** | **32** | **3** |
 
-The five `gap-*` fixtures are unchanged. The fork's corpus passes 131/131 tests.
+The five `gap-*` fixtures are unchanged. The fork's corpus passes 133/133 tests.
 
 ## Rebuild
 

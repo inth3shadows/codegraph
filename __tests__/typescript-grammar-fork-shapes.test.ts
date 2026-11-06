@@ -75,7 +75,7 @@ describe('unique as a name', () => {
   it.each(LANGS)('%s: `unique` is a name everywhere except `unique symbol`', (language) => {
     for (const src of [
       'for (let i = 0; i < unique.length; i++) {}',
-      'let x: unique[];',
+      'type U = typeof unique;',
       'class D implements unique {}',
       'type A = [unique: T];',
       'declare const s: readonly unique /* c */ symbol[];',
