@@ -149,9 +149,21 @@ if (missingGrammars.length > 0) {
   );
 }
 
+// The vendored tree-sitter runtime (see src/extraction/grammars.ts RUNTIME_WASM_PATH): without it
+// initGrammars() throws, so every parse fails. Copied by copy-assets like the grammars.
+const runtimeWasm = join(root, 'dist', 'extraction', 'runtime', 'tree-sitter.wasm');
+if (!existsSync(runtimeWasm)) {
+  fail(
+    `missing ${runtimeWasm}`,
+    staged
+      ? 'dist/extraction/runtime was not copied into the bundle — re-run scripts/build-bundle.sh'
+      : 'run `npm run copy-assets` (it copies src/extraction/runtime/tree-sitter.wasm into dist/)'
+  );
+}
+
 const grammarCount = readdirSync(wasmDir).filter((n) => n.endsWith('.wasm')).length;
 
 console.log(
   `[check-ui-build] dist/viewer ok (index.html + ${assets} referenced asset(s)); ` +
-    `dist/extraction/wasm ok (${grammarCount} grammars); dist/ engine intact`
+    `dist/extraction/wasm ok (${grammarCount} grammars); runtime ok; dist/ engine intact`
 );

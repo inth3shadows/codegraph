@@ -343,6 +343,15 @@ const unavailableGrammarErrors = new Map<Language, string>();
 let parserInitialized = false;
 
 /**
+ * The tree-sitter runtime wasm, vendored in place of web-tree-sitter's own: the
+ * same v0.25.10 build plus tree-sitter/tree-sitter#5997, without which error
+ * recovery loops forever on some broken input (`<a {{b:>c:d(e f)` in a .tsx
+ * file). 0.27.1 has the fix but cannot load the legacy-`dylink` grammars from
+ * tree-sitter-wasms. See docs/grammars/web-tree-sitter-runtime.md.
+ */
+export const RUNTIME_WASM_PATH = path.join(__dirname, 'runtime', 'tree-sitter.wasm');
+
+/**
  * Initialize the tree-sitter WASM runtime. Must be called before loading grammars.
  * Does NOT load any grammar WASM files — use loadGrammarsForLanguages() for that.
  * Idempotent — safe to call multiple times.
@@ -350,7 +359,15 @@ let parserInitialized = false;
 export async function initGrammars(): Promise<void> {
   if (parserInitialized) return;
 
-  await Parser.init();
+  // Fail loudly rather than fall back to the npm runtime, which would bring the hang back.
+  if (!fs.existsSync(RUNTIME_WASM_PATH)) {
+    throw new Error(`tree-sitter runtime missing: ${RUNTIME_WASM_PATH} (npm run copy-assets copies it into dist/)`);
+  }
+  await Parser.init({
+    // Emscripten's default is scriptDirectory + file; only the runtime itself is swapped.
+    locateFile: (file: string, scriptDirectory: string) =>
+      file === 'tree-sitter.wasm' ? RUNTIME_WASM_PATH : scriptDirectory + file,
+  });
 
   parserInitialized = true;
 }
