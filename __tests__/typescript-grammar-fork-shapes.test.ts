@@ -76,5 +76,14 @@ describe('typeof unique in type arguments', () => {
     const src = 'export function g() { return f<typeof unique>(1); }\ntype E = (typeof unique)[];';
     expect(parse(language, src).hasError).toBe(false);
     expect(calls(language, src)).toContain('f');
+    for (const more of [
+      'f<typeof unique.a>(x);',
+      'f<typeof unique[]>(x);',
+      'f<(typeof unique)[]>(x);',
+      'type A = (typeof unique);',
+      'type T = (typeof unique)["x"];',
+    ]) {
+      expect(parse(language, more).hasError, more).toBe(false);
+    }
   });
 });

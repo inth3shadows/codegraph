@@ -2,7 +2,7 @@
 
 `src/extraction/wasm/tree-sitter-{typescript,tsx}.wasm` and the kernel's
 vendored C (`codegraph-kernel/grammars/typescript/`) are built from
-**inth3shadows/tree-sitter-typescript** commit `fa2be11`, our own fork of the
+**inth3shadows/tree-sitter-typescript** commit `1439129`, our own fork of the
 grammar. This is the one place that names the commit; the code comments point here. It is private while it is being burned in, so the public,
 reproducible form is
 [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript)
@@ -19,9 +19,9 @@ kernel compiles the same generated C (build.rs) in place of the
 `tree-sitter-typescript` crate, so the two paths stay table-identical
 (`kernel-grammar-parity.test.ts`) and share one external scanner.
 
-| file | base (marionebl 53071c9) sha256 | ours (fork fa2be11) sha256 |
+| file | base (marionebl 53071c9) sha256 | ours (fork 1439129) sha256 |
 |---|---|---|
-| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `ca1f4e64ab7cadfc9094a978f97a97ec29919246aef795f04afc7aba408d3375` |
+| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `b06b7801f18ba7e69295b19f27368636b049476b73e094a4be5f7910b0224269` |
 | `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `6bf2fd5994bc8a4b6777c5b8ee63fa2fbe5c206ec59b06cf398a9d78ae4c3142` |
 | `typescript/src/parser.c` | (regenerated) | `d4033c44e73006419f890b41780324c9bc26a2679e9045956210331a9d6d3c4a` |
 | `tsx/src/parser.c` | (regenerated) | `5372712651e0d900af85fb760f358a7b0b39a3ef624f575d4952c84e5e2ff2a7` |
@@ -48,9 +48,10 @@ kernel compiles the same generated C (build.rs) in place of the
   a branch of `call_expression` under the generic call's precedence, with required type
   arguments, so the existing `<`/`>` conflicts decide.
 - Tuple labels named like type keywords: `[symbol: string]`, `[number?: string]`,
-  `[readonly: T]` (upstream #378). Only words that already lex as keywords where a type
-  starts may be labels this way (any number boolean string symbol object never unknown
-  readonly new keyof), so a type named `type`, `get` or `declare` still works: `[type]`.
+  `[readonly: T]` (upstream #378). The keyword labels are a chosen list (any number
+  boolean string symbol object never unknown readonly new keyof), each a word that already
+  lexes as a keyword where a type starts; a type named `type`, `get` or `declare` still
+  works: `[type]`.
 
 Every fix was gated by the differential (no new or worse file), and compared node by
 node against the previous build: only files containing the targeted construct changed
@@ -64,9 +65,14 @@ node shapes and the call edges codegraph derives from them.
   literally named `out` / `in` right after an expression `<` does not parse (`<out>x`,
   tsx `<out>…</out>`, `<out.Provider>`).
 - `unique` lexes as the keyword of `unique symbol` wherever a type can start, so
-  `i < unique.length` fails (VS Code's two remaining files), and so do `unique` as a type
-  name (`type unique = 1`, `unique[]`, `implements unique`). Making `unique` a reserved
-  identifier fixed the comparison but broke `f<typeof unique>(x)`, so it was backed out.
+  `i < unique.length` fails (VS Code's two remaining files), and so do `unique` used as a
+  type (`let x: unique`, `unique[]`, `implements unique`) and as a tuple label
+  (`[unique: T]`). Declaring `type unique = 1` works. Making `unique` a reserved
+  identifier fixed the comparison but broke `f<typeof unique>(x)`, so it was backed out;
+  lexing `unique symbol` as one token is the next thing to try.
+- Other words that lex as keywords where a type starts still fail as tuple labels:
+  `[void: T]`, `[null: T]`, `[undefined: T]`, `[this: T]`, `[typeof: T]`, `[infer: T]`,
+  `[true: T]`, `[false: T]`, `[import: T]`, `[abstract: T]`.
 - An operator in front of a typed tag takes the tag's call: ``a + b<T>`c` `` and
   ``!f<T>`c` `` parse as a call whose function is `a + b` / `!f`, with no error. Generic
   calls have always done the same (`a + b<T>(c)`); behind `await` codegraph still records
@@ -76,7 +82,8 @@ node shapes and the call edges codegraph derives from them.
   ``String.raw`'\uZZZZ'`` (an invalid escape, which tagged templates allow), and one
   unexplained whole-file error in `Schema.tst.ts`.
 - Not in the corpora but known: `in2` / `in$x` at the start of a line after a statement
-  with no `;` (upstream #373), `in?: T` and `in<T>()` members after a member with no `;`,
+  with no `;` (upstream #373), `in?: T` and `in<T>()` members after a property or a
+  signature with no `;` (`a = 1\n in?: T`; after a method body they parse),
   `accessor` / `abstract` / `declare` as member names followed by a line break (#369,
   #377), `a\n in(b)` read as a call to `in`, `(import("m").A)[]` and `f<import("m").Y>()`.
 - The parser accepts some forms tsc rejects, such as `<out extends X>` and `<out in>`.
