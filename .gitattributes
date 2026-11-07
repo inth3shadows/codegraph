@@ -9,3 +9,5 @@ codegraph-kernel/grammars/** linguist-vendored
 codegraph-kernel/grammars/**/parser.c linguist-generated
 # The kernel's patched copy of the tree-sitter runtime crate (docs/grammars/web-tree-sitter-runtime.md).
 codegraph-kernel/vendor/** linguist-vendored
+# Keep the CRLF line continuation in these fixtures byte-exact.
+__tests__/fixtures/ts-syntax/tagged-template-invalid-escape.* -text
