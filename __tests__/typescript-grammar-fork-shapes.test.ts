@@ -95,6 +95,16 @@ describe('ASI before names starting with in', () => {
     expect(root.descendantsOfType('binary_expression').map((n) => n.child(1)!.type)).toEqual(['in']);
     expect(calls(language, 'export function g() { return a\n  in(b) }')).not.toContain('in');
   });
+
+  // Silent before fork 9ce21f8: `in(b)` vanished (`a = x ? 1 : 2`), and no ERROR shows it.
+  it.each(LANGS)('%s: after a field initializer, `in(b) ? 1 : 2` keeps the `in` operator', (language) => {
+    const root = parse(language, 'class K {\n  a = x\n  in(b) ? 1 : 2\n  c = x\n  in(")") ? 1 : 2\n}');
+    expect(root.hasError).toBe(false);
+    const conds = root.descendantsOfType('ternary_expression').map((t) => t.childForFieldName('condition')!);
+    expect(conds.map((c) => c.type)).toEqual(['binary_expression', 'binary_expression']);
+    expect(conds.map((c) => c.child(1)!.type)).toEqual(['in', 'in']);
+    expect(root.descendantsOfType(['method_definition', 'method_signature'])).toHaveLength(0);
+  });
 });
 
 describe('typeof unique in type arguments', () => {

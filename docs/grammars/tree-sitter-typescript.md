@@ -94,9 +94,12 @@ node shapes and the call edges codegraph derives from them.
 - The parser accepts some forms tsc rejects, such as `<out extends X>` and `<out in>`.
 - A member named `in` written `in = 1`, `in;`, a bare `in`, or `in[k]: T` right after a
   member with no `;` still fails, as do `in!:` and `in<T>` after any field initializer
-  (arrows included); `in?:` works after any member. After a block-bodied arrow field, a method
-  overload signature `in(x: string)` followed by another `in(...)` reads as the `in` operator
-  (no error).
+  (arrows included). `in?:` parses after any member (after an initializer tsc rejects it).
+  After a block-bodied arrow field, a bare `in(...)` with no `:` or `{` after it, such as a method
+  overload signature `in(x: string)`, reads as the `in` operator (no error). Only spaces and tabs
+  may sit between `in` and the `(`, `?`, `<` or `!` that follows; `in : T` (a space before the
+  colon), a comment, or a line break there fails. A regex literal containing a quote, `)` or `//`
+  inside `in(...)` after an initializer can make the parameter scan misjudge it (ERROR).
 - `unique` followed by a word starting with `symbol` (`unique\nsymbolic()`, `unique symbolic`)
   fails: the `unique symbol` token matches the prefix.
 - A comment between `unique` and `symbol` is part of the token (no `comment` node).
