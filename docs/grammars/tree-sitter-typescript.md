@@ -2,7 +2,7 @@
 
 `src/extraction/wasm/tree-sitter-{typescript,tsx}.wasm` and the kernel's
 vendored C (`codegraph-kernel/grammars/typescript/`) are built from
-**inth3shadows/tree-sitter-typescript** commit `1439129`, our own fork of the
+**inth3shadows/tree-sitter-typescript** commit `9ce21f8`, our own fork of the
 grammar. This is the one place that names the commit; the code comments point here. It is private while it is being burned in, so the public,
 reproducible form is
 [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript)
@@ -19,14 +19,14 @@ kernel compiles the same generated C (build.rs) in place of the
 `tree-sitter-typescript` crate, so the two paths stay table-identical
 (`kernel-grammar-parity.test.ts`) and share one external scanner.
 
-| file | base (marionebl 53071c9) sha256 | ours (fork 1439129) sha256 |
+| file | base (marionebl 53071c9) sha256 | ours (fork 9ce21f8) sha256 |
 |---|---|---|
-| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `b06b7801f18ba7e69295b19f27368636b049476b73e094a4be5f7910b0224269` |
-| `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `6bf2fd5994bc8a4b6777c5b8ee63fa2fbe5c206ec59b06cf398a9d78ae4c3142` |
-| `typescript/src/parser.c` | (regenerated) | `d4033c44e73006419f890b41780324c9bc26a2679e9045956210331a9d6d3c4a` |
-| `tsx/src/parser.c` | (regenerated) | `5372712651e0d900af85fb760f358a7b0b39a3ef624f575d4952c84e5e2ff2a7` |
-| `tree-sitter-typescript.wasm` | — | `a4f6366673b68181d171d52f099ac2083f064a5b5c646f559a186b602e21fc86` |
-| `tree-sitter-tsx.wasm` | — | `f6974cd56d78975a7a17888ae5be165becd368661982af89e8c63b35426a2f15` |
+| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `4f20dd17be937d58d5f7c17bb95e515bee695c6279e6af23b6c0e0b50e8bab58` |
+| `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `23fd656d7e82f80bf66e0b9b8ef96aa6102ef5bfd9f32c561a4caabe08b9fd34` |
+| `typescript/src/parser.c` | (regenerated) | `316370e67ff52aa6e41c13bbd0b865d65696c5e300174e65d296ea02ffdd117e` |
+| `tsx/src/parser.c` | (regenerated) | `f3df67db8af8316f5f66e00bd4e5cfe72223c9223839cdbc915b87d7d3779172` |
+| `tree-sitter-typescript.wasm` | — | `453d6f83d2171cc603dfa9b154477ac599469545d9bd9628362cc97b48cfc271` |
+| `tree-sitter-tsx.wasm` | — | `0b0caf9648c83d068d08a3e8679a822a433ade538a6f3ecaa0ca0b05b69913b4` |
 
 ## What the base fixes (marionebl, over v0.23.2)
 
@@ -48,15 +48,29 @@ kernel compiles the same generated C (build.rs) in place of the
   a branch of `call_expression` under the generic call's precedence, with required type
   arguments, so the existing `<`/`>` conflicts decide.
 - Tuple labels named like type keywords: `[symbol: string]`, `[number?: string]`,
-  `[readonly: T]` (upstream #378). The keyword labels are a chosen list (any number
+  `[readonly: T]`, `[unique: T]` (upstream #378). The keyword labels are a chosen list (any number
   boolean string symbol object never unknown readonly new keyof), each a word that already
   lexes as a keyword where a type starts; a type named `type`, `get` or `declare` still
   works: `[type]`.
+- `unique symbol` is one token, so `unique` alone is a name: `i < unique.length`,
+  `implements unique`, `[unique: T]`. Between the words it takes any whitespace the grammar
+  skips elsewhere (`unique\u00A0symbol`) and comments; a line comment must reach its
+  newline, so `a < unique // the symbol` stays a comparison.
+  (Making `unique` a reserved identifier instead broke `f<typeof unique>(x)`.)
+- ASI before a line starting with `in2` or `in$x` (upstream #373), and before a member named
+  `in` on the next line of a class or object type: `in?:` always; `in(`, `in<T>(` and `in!:`
+  after a member that cannot continue (a typed member, a method); and `in(…)` followed by `:`
+  or `{` even after an initializer (`a = () => {}\n in(): void {}`; strings and comments inside
+  the parameters are skipped, so `a = x\n in(")")` stays the operator). A never-produced
+  `_member_end_marker` external, valid only where a member ends, tells the scanner it is
+  between members, so `for (var k\n in!o)` stays a for-in and `a\n in(b)` / `a = x\n in(b)`
+  stay `in` operators.
+  The marker costs parse-table size, not speed: STATE_COUNT 6124 -> 7239 (typescript) and
+  6242 -> 7391 (tsx), wasm +15%; parsing 3,000 vscode files ran at the same 2.8-3.0 MB/s with the
+  same load time and RSS. Most of it is the class-body placement (after a field initializer).
 
-Every fix was gated by the differential (no new or worse file), and compared node by
-node against the previous build: only files containing the targeted construct changed
-(34 corpus files against the previous vendored grammar). The fork's `CHANGELOG.md`
-lists node-type changes. `__tests__/typescript-grammar-fork-shapes.test.ts` pins the
+Every fix was gated by the differential (no new or worse file) and by a tsc fixture for its
+construct. The fork's `CHANGELOG.md` lists node-type changes. `__tests__/typescript-grammar-fork-shapes.test.ts` pins the
 node shapes and the call edges codegraph derives from them.
 
 ### Known limits
@@ -64,15 +78,9 @@ node shapes and the call edges codegraph derives from them.
 - `in` and `out` lex as keywords where a type parameter can start, so a type or JSX tag
   literally named `out` / `in` right after an expression `<` does not parse (`<out>x`,
   tsx `<out>…</out>`, `<out.Provider>`).
-- `unique` lexes as the keyword of `unique symbol` wherever a type can start, so
-  `i < unique.length` fails (VS Code's two remaining files), and so do `unique` used as a
-  type (`let x: unique`, `unique[]`, `implements unique`) and as a tuple label
-  (`[unique: T]`). Declaring `type unique = 1` works. Making `unique` a reserved
-  identifier fixed the comparison but broke `f<typeof unique>(x)`, so it was backed out;
-  lexing `unique symbol` as one token is the next thing to try.
 - Other words that lex as keywords where a type starts still fail as tuple labels:
   `[void: T]`, `[null: T]`, `[undefined: T]`, `[this: T]`, `[typeof: T]`, `[infer: T]`,
-  `[true: T]`, `[false: T]`, `[import: T]`, `[abstract: T]`.
+  `[true: T]`, `[false: T]`, `[import: T]`, `[abstract: T]` (`[unique: T]` works).
 - An operator in front of a typed tag takes the tag's call: ``a + b<T>`c` `` and
   ``!f<T>`c` `` parse as a call whose function is `a + b` / `!f`, with no error. Generic
   calls have always done the same (`a + b<T>(c)`); behind `await` codegraph still records
@@ -81,12 +89,20 @@ node shapes and the call edges codegraph derives from them.
 - Effect's three remaining failures: `let as = …` (`as` reads as the keyword),
   ``String.raw`'\uZZZZ'`` (an invalid escape, which tagged templates allow), and one
   unexplained whole-file error in `Schema.tst.ts`.
-- Not in the corpora but known: `in2` / `in$x` at the start of a line after a statement
-  with no `;` (upstream #373), `in?: T` and `in<T>()` members after a property or a
-  signature with no `;` (`a = 1\n in?: T`; after a method body they parse),
-  `accessor` / `abstract` / `declare` as member names followed by a line break (#369,
-  #377), `a\n in(b)` read as a call to `in`, `(import("m").A)[]` and `f<import("m").Y>()`.
+- Not in the corpora but known: `accessor` / `abstract` / `declare` as member names
+  followed by a line break (#369, #377), `(import("m").A)[]` and `f<import("m").Y>()`.
 - The parser accepts some forms tsc rejects, such as `<out extends X>` and `<out in>`.
+- A member named `in` written `in = 1`, `in;`, a bare `in`, or `in[k]: T` right after a
+  member with no `;` still fails, as do `in!:` and `in<T>` after any field initializer
+  (arrows included). `in?:` parses after any member (after an initializer tsc rejects it).
+  After a block-bodied arrow field, a bare `in(...)` with no `:` or `{` after it, such as a method
+  overload signature `in(x: string)`, reads as the `in` operator (no error). Only spaces and tabs
+  may sit between `in` and the `(`, `?`, `<` or `!` that follows; `in : T` (a space before the
+  colon), a comment, or a line break there fails. A regex literal containing a quote, `)` or `//`
+  inside `in(...)` after an initializer can make the parameter scan misjudge it (ERROR).
+- `unique` followed by a word starting with `symbol` (`unique\nsymbolic()`, `unique symbolic`)
+  fails: the `unique symbol` token matches the prefix.
+- A comment between `unique` and `symbol` is part of the token (no `comment` node).
 
 ## Measured
 
@@ -98,11 +114,10 @@ Divergent files are those tsc parses clean and tree-sitter does not, from
 | Effect-TS/effect 7a87ff9 | 2,056 | 185 | 29 | 29 | 3 |
 | colinhacks/zod 2554b70 | 515 | 0 | 0 | 0 | 0 |
 | excalidraw/excalidraw dd2f8fc (.ts + .tsx) | 695 | 5 | 5 | 0 | 0 |
-| microsoft/vscode ca43fc94 `src/` | 11,267 | 11 | 11 | 3 | 2 |
-| **total** | | **201** | **45** | **32** | **5** |
+| microsoft/vscode ca43fc94 `src/` | 11,267 | 11 | 11 | 3 | 0 |
+| **total** | | **201** | **45** | **32** | **3** |
 
-The five original `gap-*` fixtures are unchanged, and `gap-unique-in-comparison` records
-the `unique` gap. The fork's corpus passes 127/127 tests.
+The five `gap-*` fixtures are unchanged. The fork's corpus passes 133/133 tests.
 
 ## Rebuild
 
