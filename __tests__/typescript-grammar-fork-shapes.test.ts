@@ -123,3 +123,27 @@ describe('typeof unique in type arguments', () => {
     }
   });
 });
+
+describe('bare \\x / \\u escapes in templates (fork #15)', () => {
+  it.each(LANGS)('%s: String.raw`\\usepackage` parses clean and is a call edge', (language) => {
+    const src = 'export function f() {\n  return String.raw`\\usepackage \\x41`;\n}';
+    const root = parse(language, src);
+    expect(root.hasError).toBe(false);
+    expect(root.descendantsOfType('escape_sequence').map((n) => n.text)).toEqual(['\\u', '\\x41']);
+    expect(calls(language, src)).toContain('String.raw');
+  });
+
+  it.each(LANGS)('%s: f<`\\u`>(1) is a call with type arguments, not a comparison', (language) => {
+    const src = 'export function g() {\n  return f<`\\u`>(1);\n}';
+    const root = parse(language, src);
+    expect(root.hasError).toBe(false);
+    expect(root.descendantsOfType('binary_expression')).toHaveLength(0);
+    const call = root.descendantsOfType('call_expression')[0]!;
+    expect(call.childForFieldName('type_arguments')!.type).toBe('type_arguments');
+    expect(calls(language, src)).toContain('f');
+  });
+
+  it.each(LANGS)('%s: a string still rejects a bare \\u', (language) => {
+    expect(parse(language, 'const s = "\\u";').hasError).toBe(true);
+  });
+});

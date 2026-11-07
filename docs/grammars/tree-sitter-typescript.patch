@@ -1,5 +1,5 @@
 diff --git a/common/define-grammar.js b/common/define-grammar.js
-index 016c151..90c155f 100644
+index 016c151..ddf3b6f 100644
 --- a/common/define-grammar.js
 +++ b/common/define-grammar.js
 @@ -1,5 +1,16 @@
@@ -137,16 +137,46 @@ index 016c151..90c155f 100644
          '?',
          field('type', $.type_annotation),
        ),
-@@ -805,6 +845,8 @@ module.exports = function defineGrammar(dialect) {
+@@ -805,6 +845,30 @@ module.exports = function defineGrammar(dialect) {
          $.intersection_type,
          $.union_type,
          'const',
 +        prec(-1, alias($._type_query_member_expression_in_type_annotation, $.member_expression)),
 +        prec(-1, alias($._type_query_call_expression_in_type_annotation, $.call_expression)),
++      ),
++
++      // A tagged template may contain escapes that are invalid elsewhere (ES2018), e.g.
++      // String.raw`\usepackage` (upstream #353). JavaScript's escape_sequence rejects a
++      // bare `\x` or `\u` (no hex digits after it), so template strings also take this
++      // token, under the same node name. The longest match still gives `\x41` and `\u0041`
++      // to escape_sequence. Template literal types take it too: tsc accepts `\u` in a
++      // type template without substitutions, and in `f<`\u`>(1)` the type-argument reading
++      // must survive as long as the comparison reading does (the two are a declared conflict).
++      // Strings keep JavaScript's rule. A token cannot see the tag, so untagged templates,
++      // and type templates with substitutions, accept the bare form though tsc rejects it.
++      _template_bare_escape: _ => token.immediate(seq('\\', /[xu]/)),
++
++      template_string: $ => seq(
++        '`',
++        repeat(choice(
++          alias($._template_chars, $.string_fragment),
++          $.escape_sequence,
++          alias($._template_bare_escape, $.escape_sequence),
++          $.template_substitution,
++        )),
++        '`',
        ),
  
        template_type: $ => seq('${', choice($.primary_type, $.infer_type), '}'),
-@@ -842,6 +884,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -814,6 +878,7 @@ module.exports = function defineGrammar(dialect) {
+         repeat(choice(
+           alias($._template_chars, $.string_fragment),
+           $.escape_sequence,
++          alias($._template_bare_escape, $.escape_sequence),
+           $.template_type,
+         )),
+         '`',
+@@ -842,6 +907,7 @@ module.exports = function defineGrammar(dialect) {
          field('name', choice(
            $._type_identifier,
            $.nested_type_identifier,
@@ -154,7 +184,7 @@ index 016c151..90c155f 100644
          )),
          field('type_arguments', $.type_arguments),
        )),
-@@ -967,7 +1010,11 @@ module.exports = function defineGrammar(dialect) {
+@@ -967,7 +1033,11 @@ module.exports = function defineGrammar(dialect) {
          'boolean',
          'string',
          'symbol',
@@ -167,7 +197,7 @@ index 016c151..90c155f 100644
          'void',
          'unknown',
          'string',
-@@ -987,7 +1034,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -987,7 +1057,7 @@ module.exports = function defineGrammar(dialect) {
          optional(seq(
            optional(choice(',', ';')),
            sepBy1(
@@ -176,7 +206,7 @@ index 016c151..90c155f 100644
              choice(
                $.export_statement,
                $.property_signature,
-@@ -997,7 +1044,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -997,7 +1067,7 @@ module.exports = function defineGrammar(dialect) {
                $.method_signature,
              ),
            ),
@@ -185,7 +215,7 @@ index 016c151..90c155f 100644
          )),
          choice('}', '|}'),
        ),
-@@ -1029,7 +1076,12 @@ module.exports = function defineGrammar(dialect) {
+@@ -1029,7 +1099,12 @@ module.exports = function defineGrammar(dialect) {
        type_parameter: $ => seq(
          optional('const'),
          optional($.variance),
@@ -199,7 +229,7 @@ index 016c151..90c155f 100644
          field('constraint', optional($.constraint)),
          field('value', optional($.default_type)),
        ),
-@@ -1128,8 +1180,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -1128,8 +1203,7 @@ module.exports = function defineGrammar(dialect) {
   *
   * @param {RuleOrLiteral} rule
   *
@@ -209,7 +239,7 @@ index 016c151..90c155f 100644
   */
  function commaSep1(rule) {
    return sepBy1(',', rule);
-@@ -1140,8 +1191,7 @@ function commaSep1(rule) {
+@@ -1140,8 +1214,7 @@ function commaSep1(rule) {
   *
   * @param {RuleOrLiteral} rule
   *
@@ -219,7 +249,7 @@ index 016c151..90c155f 100644
   */
  function commaSep(rule) {
    return sepBy(',', rule);
-@@ -1154,7 +1204,7 @@ function commaSep(rule) {
+@@ -1154,7 +1227,7 @@ function commaSep(rule) {
   *
   * @param {RuleOrLiteral} rule
   *
@@ -228,7 +258,7 @@ index 016c151..90c155f 100644
   */
  function sepBy(sep, rule) {
    return optional(sepBy1(sep, rule));
-@@ -1167,7 +1217,7 @@ function sepBy(sep, rule) {
+@@ -1167,7 +1240,7 @@ function sepBy(sep, rule) {
   *
   * @param {RuleOrLiteral} rule
   *

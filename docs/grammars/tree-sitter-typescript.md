@@ -2,7 +2,7 @@
 
 `src/extraction/wasm/tree-sitter-{typescript,tsx}.wasm` and the kernel's
 vendored C (`codegraph-kernel/grammars/typescript/`) are built from
-**inth3shadows/tree-sitter-typescript** commit `9ce21f8`, our own fork of the
+**inth3shadows/tree-sitter-typescript** commit `7dbdfae`, our own fork of the
 grammar. This is the one place that names the commit; the code comments point here. It is private while it is being burned in, so the public,
 reproducible form is
 [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript)
@@ -19,14 +19,14 @@ kernel compiles the same generated C (build.rs) in place of the
 `tree-sitter-typescript` crate, so the two paths stay table-identical
 (`kernel-grammar-parity.test.ts`) and share one external scanner.
 
-| file | base (marionebl 53071c9) sha256 | ours (fork 9ce21f8) sha256 |
+| file | base (marionebl 53071c9) sha256 | ours (fork 7dbdfae) sha256 |
 |---|---|---|
-| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `4f20dd17be937d58d5f7c17bb95e515bee695c6279e6af23b6c0e0b50e8bab58` |
+| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `0db1ed2a3d3b0157011d1e7843096eb8d4d307566e6ada2fbf08e24d347de514` |
 | `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `23fd656d7e82f80bf66e0b9b8ef96aa6102ef5bfd9f32c561a4caabe08b9fd34` |
-| `typescript/src/parser.c` | (regenerated) | `316370e67ff52aa6e41c13bbd0b865d65696c5e300174e65d296ea02ffdd117e` |
-| `tsx/src/parser.c` | (regenerated) | `f3df67db8af8316f5f66e00bd4e5cfe72223c9223839cdbc915b87d7d3779172` |
-| `tree-sitter-typescript.wasm` | — | `453d6f83d2171cc603dfa9b154477ac599469545d9bd9628362cc97b48cfc271` |
-| `tree-sitter-tsx.wasm` | — | `0b0caf9648c83d068d08a3e8679a822a433ade538a6f3ecaa0ca0b05b69913b4` |
+| `typescript/src/parser.c` | (regenerated) | `2a0e260b20b549794d633422ad63b4783252b3bd497d06b531cc2a21405670ac` |
+| `tsx/src/parser.c` | (regenerated) | `1634073b56b61987f8435b80d4a335166e6c05b55c143f301415b52b86fce142` |
+| `tree-sitter-typescript.wasm` | — | `c0401d4f70834e082da483c89d6ba410a13f73a44fb3883306f6a766e04907ee` |
+| `tree-sitter-tsx.wasm` | — | `3f665ebc3c8dd8c943ae49590f006772bb64c899c0458c2ae651b88a5ea1c7fd` |
 
 ## What the base fixes (marionebl, over v0.23.2)
 
@@ -57,6 +57,10 @@ kernel compiles the same generated C (build.rs) in place of the
   skips elsewhere (`unique\u00A0symbol`) and comments; a line comment must reach its
   newline, so `a < unique // the symbol` stays a comparison.
   (Making `unique` a reserved identifier instead broke `f<typeof unique>(x)`.)
+- A bare `\x` or `\u` (no hex digits after it) in a template string or template literal
+  type, which tagged templates allow: ``String.raw`\usepackage` `` (upstream #353), and
+  ``f<`\u`>(1)`` stays a call. Strings still reject it; untagged templates and type
+  templates with substitutions accept it though tsc does not (one token cannot see the tag).
 - ASI before a line starting with `in2` or `in$x` (upstream #373), and before a member named
   `in` on the next line of a class or object type: `in?:` always; `in(`, `in<T>(` and `in!:`
   after a member that cannot continue (a typed member, a method); and `in(…)` followed by `:`
@@ -86,8 +90,7 @@ node shapes and the call edges codegraph derives from them.
   calls have always done the same (`a + b<T>(c)`); behind `await` codegraph still records
   the call. A typed tag with two or more type arguments inside an argument list or array
   (``f(sql<Row, Err>`x`)``) still parses as two comparisons.
-- Effect's three remaining failures: `let as = …` (`as` reads as the keyword),
-  ``String.raw`'\uZZZZ'`` (an invalid escape, which tagged templates allow), and one
+- Effect's two remaining failures: `let as = …` (`as` reads as the keyword) and one
   unexplained whole-file error in `Schema.tst.ts`.
 - Not in the corpora but known: `accessor` / `abstract` / `declare` as member names
   followed by a line break (#369, #377), `(import("m").A)[]` and `f<import("m").Y>()`.
@@ -111,13 +114,13 @@ Divergent files are those tsc parses clean and tree-sitter does not, from
 
 | corpus | files | v0.23.2 + old patch | marionebl 53071c9 | previous (fork PR #15) | now |
 |---|---|---|---|---|---|
-| Effect-TS/effect 7a87ff9 | 2,056 | 185 | 29 | 29 | 3 |
+| Effect-TS/effect 7a87ff9 | 2,056 | 185 | 29 | 29 | 2 |
 | colinhacks/zod 2554b70 | 515 | 0 | 0 | 0 | 0 |
 | excalidraw/excalidraw dd2f8fc (.ts + .tsx) | 695 | 5 | 5 | 0 | 0 |
 | microsoft/vscode ca43fc94 `src/` | 11,267 | 11 | 11 | 3 | 0 |
-| **total** | | **201** | **45** | **32** | **3** |
+| **total** | | **201** | **45** | **32** | **2** |
 
-The five `gap-*` fixtures are unchanged. The fork's corpus passes 133/133 tests.
+The five `gap-*` fixtures are unchanged. The fork's corpus passes 137/137 tests.
 
 ## Rebuild
 
