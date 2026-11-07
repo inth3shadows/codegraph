@@ -143,7 +143,8 @@ describe('bare \\x / \\u escapes in templates (fork #15)', () => {
     expect(calls(language, src)).toContain('f');
   });
 
-  it.each(LANGS)('%s: a string still rejects a bare \\u', (language) => {
+  it.each(LANGS)('%s: a string still rejects a bare \\u or \\x', (language) => {
     expect(parse(language, 'const s = "\\u";').hasError).toBe(true);
+    expect(parse(language, "const s = '\\x';").hasError).toBe(true);
   });
 });

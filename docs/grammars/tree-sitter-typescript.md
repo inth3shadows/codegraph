@@ -94,7 +94,9 @@ node shapes and the call edges codegraph derives from them.
   unexplained whole-file error in `Schema.tst.ts`.
 - Not in the corpora but known: `accessor` / `abstract` / `declare` as member names
   followed by a line break (#369, #377), `(import("m").A)[]` and `f<import("m").Y>()`.
-- The parser accepts some forms tsc rejects, such as `<out extends X>` and `<out in>`.
+- The parser accepts some forms tsc rejects, such as `<out extends X>` and `<out in>`, and a bare
+  `\x`/`\u` in an untagged template (``const a = `\u` ``) or in a type template with a
+  substitution (``type T = `\u${string}` ``).
 - A member named `in` written `in = 1`, `in;`, a bare `in`, or `in[k]: T` right after a
   member with no `;` still fails, as do `in!:` and `in<T>` after any field initializer
   (arrows included). `in?:` parses after any member (after an initializer tsc rejects it).
