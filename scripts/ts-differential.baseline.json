@@ -1,10 +1,10 @@
 {
  "tsc": "5.9.3",
  "webTreeSitter": "0.25.10",
- "generatedAt": "2026-11-07T15:58:35.730Z",
+ "generatedAt": "2026-11-08T00:46:42.138Z",
  "wasmSha256": {
-  "typescript": "c0401d4f70834e082da483c89d6ba410a13f73a44fb3883306f6a766e04907ee",
-  "tsx": "3f665ebc3c8dd8c943ae49590f006772bb64c899c0458c2ae651b88a5ea1c7fd"
+  "typescript": "6fb8195ec5e96d926c2b434aa883455cc07d58c324f97038b437a6aec18801f9",
+  "tsx": "6c552220d7a1310ec96de6d1193694cd424a96754eec8f786ac167ff113e3c2e"
  },
  "divergent": {
   "effect": {
@@ -18,7 +18,6 @@
    "__tests__/fixtures/ts-syntax/gap-await-using-in-for.ts": 3,
    "__tests__/fixtures/ts-syntax/gap-export-named-from-attributes.ts": 2,
    "__tests__/fixtures/ts-syntax/gap-export-star-from-attributes.ts": 2,
-   "__tests__/fixtures/ts-syntax/gap-static-accessor.ts": 2,
    "__tests__/fixtures/ts-syntax/gap-using-in-for.ts": 3
   }
  }

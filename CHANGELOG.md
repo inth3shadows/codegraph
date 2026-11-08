@@ -53,6 +53,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixes
 
+- TypeScript classes with members named `abstract` or `accessor`, and auto-accessors with `static`, `override` or `abstract` modifiers, now index correctly; re-index TypeScript projects after upgrading.
 - A TSX file with a broken JSX attribute such as `<a {{b:>c:d(e f)` no longer stalls indexing for about 90 seconds and then drops out of the index; it is indexed like any other file with a syntax error.
 - In TypeScript, a template string with a `\u` or `\x` that has no hex digits after it, like LaTeX in ``String.raw`\usepackage{x}` ``, now parses. Before, the file had a parse error there and the template's tag, such as `String.raw`, was not recorded as a call. Re-index TypeScript projects after upgrading.
 - TypeScript variance annotations like `interface Stream<out A, in E>` or `<in out T>` now parse. Before, each one was a parse error, and in a large file enough of them could make the whole file fail to parse and show up with almost no symbols. Re-index TypeScript projects after upgrading.
