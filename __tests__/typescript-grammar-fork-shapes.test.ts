@@ -5,9 +5,12 @@
  * codegraph derives from it, so a later grammar move cannot regress them silently.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import type { Node } from 'web-tree-sitter';
 import { extractFromSource } from '../src/extraction';
 import { initGrammars, loadGrammarsForLanguages, getParser } from '../src/extraction/grammars';
+import { getKernel, decodeExtractBuffers } from '../src/extraction/kernel';
 
 beforeAll(async () => {
   await initGrammars();
@@ -146,5 +149,159 @@ describe('bare \\x / \\u escapes in templates (fork #15)', () => {
   it.each(LANGS)('%s: a string still rejects a bare \\u or \\x', (language) => {
     expect(parse(language, 'const s = "\\u";').hasError).toBe(true);
     expect(parse(language, "const s = '\\x';").hasError).toBe(true);
+  });
+});
+
+describe('contextual abstract and accessor members (fork #12 and #13)', () => {
+  const members = 'export class Names { abstract = 1; accessor() { return helper(); } }';
+  const modifiers = [
+    'class Base { accessor value = 0; }',
+    'class Derived extends Base {',
+    '  public static accessor shared = 1;',
+    '  static accessor #hidden = 2;',
+    '  override accessor value = 3;',
+    '  @dec accessor decorated = 4;',
+    '}',
+    'abstract class Abstract { abstract accessor value: number; }',
+  ].join('\n');
+
+  it.each(LANGS)('%s: keyword names retain member nodes and calls', (language) => {
+    const root = parse(language, members);
+    expect(root.hasError).toBe(false);
+    const body = root.descendantsOfType('class_body')[0]!;
+    expect(body.namedChildren.map((n) => [n.type, n.childForFieldName('name')?.text])).toEqual([
+      ['public_field_definition', 'abstract'],
+      ['method_definition', 'accessor'],
+    ]);
+    const result = extractFromSource('src/names.' + (language === 'tsx' ? 'tsx' : 'ts'), members, language);
+    expect(result.nodes.filter((n) => n.kind === 'method').map((n) => n.name)).toContain('accessor');
+    expect(calls(language, members)).toContain('helper');
+    expect(parse(language, 'interface I { abstract(): void; accessor?: boolean; }').hasError).toBe(false);
+  });
+
+  it.each(LANGS)('%s: auto-accessors accept field modifiers and private names', (language) => {
+    const root = parse(language, modifiers);
+    expect(root.hasError).toBe(false);
+    expect(root.descendantsOfType('public_field_definition').map((n) => n.childForFieldName('name')?.text))
+      .toEqual(['value', 'shared', '#hidden', 'value', 'decorated', 'value']);
+  });
+
+  it.each(LANGS)('%s: bare names end at a newline; a signature continues the method', (language) => {
+    const root = parse(language, 'class C { abstract\n one = 1; accessor\n two = 2; accessor\n () {} }');
+    expect(root.hasError).toBe(false);
+    expect(root.descendantsOfType('class_body')[0]!.namedChildren
+      .map((n) => [n.type, n.childForFieldName('name')?.text])).toEqual([
+      ['public_field_definition', 'abstract'],
+      ['public_field_definition', 'one'],
+      ['public_field_definition', 'accessor'],
+      ['public_field_definition', 'two'],
+      ['method_definition', 'accessor'],
+    ]);
+  });
+
+  it.each(LANGS)('%s: accessor type arguments remain calls and shorthand remains a name', (language) => {
+    const src = 'type T = (accessor); type Q = accessor.Value; f<accessor>(0); f<typeof accessor>``; const o = { accessor };';
+    const root = parse(language, src);
+    expect(root.hasError).toBe(false);
+    expect(root.descendantsOfType('binary_expression')).toHaveLength(0);
+    expect(root.descendantsOfType('call_expression').map((n) => n.childForFieldName('type_arguments')?.type))
+      .toEqual(['type_arguments', 'type_arguments']);
+    expect(root.descendantsOfType('parenthesized_type')).toHaveLength(1);
+    expect(root.descendantsOfType('shorthand_property_identifier').map((n) => n.text)).toEqual(['accessor']);
+    expect(calls(language, src)).toEqual(['f', 'f']);
+  });
+
+  const kernelBuilt = fs.existsSync(path.join(__dirname, '..', 'codegraph-kernel', 'prebuilds',
+    `${process.platform}-${process.arch}`, 'codegraph-kernel.node'));
+  it.skipIf(!kernelBuilt).each(LANGS)('%s: native grammar handles these members without deferring', (language) => {
+    const kernel = getKernel();
+    expect(kernel).not.toBeNull();
+    const file = 'src/native.' + (language === 'tsx' ? 'tsx' : 'ts');
+    const result = decodeExtractBuffers(kernel!.extractFile(file, members + '\n' + modifiers, language), file, language);
+    expect(result.errors).toEqual([]);
+    expect(result.nodes.filter((n) => n.kind === 'method').map((n) => n.name)).toContain('accessor');
+    expect(result.unresolvedReferences.filter((r) => r.referenceKind === 'calls').map((r) => r.referenceName))
+      .toContain('helper');
+  });
+
+  const abstractQueries = [
+    'const abstract = { value: 0 };',
+    'function f<T>(value: T) { return value; }',
+    'function tag<T>(parts: TemplateStringsArray) { return parts[0]; }',
+    'export function caller() {',
+    '  f<typeof abstract>(abstract);',
+    '  f<typeof abstract.value>(0);',
+    '  tag<typeof abstract>`hello`;',
+    '}',
+  ].join('\n');
+
+  it.each(LANGS)('%s: typeof abstract keeps generic calls and typed tags', (language) => {
+    const root = parse(language, abstractQueries);
+    expect(root.hasError).toBe(false);
+    expect(root.descendantsOfType('binary_expression')).toHaveLength(0);
+    expect(root.descendantsOfType('call_expression').map((n) => n.childForFieldName('function')?.text))
+      .toEqual(['f', 'f', 'tag']);
+    expect(root.descendantsOfType('type_query').map((n) => n.text))
+      .toEqual(['typeof abstract', 'typeof abstract.value', 'typeof abstract']);
+    expect(calls(language, abstractQueries)).toEqual(['f', 'f', 'tag']);
+  });
+
+  it.each(LANGS)('%s: parenthesized typeof abstract stays a type query', (language) => {
+    const root = parse(language, 'type T = (typeof abstract); type Q = (typeof abstract.value);');
+    expect(root.hasError).toBe(false);
+    expect(root.descendantsOfType('parenthesized_type').map((n) => n.namedChild(0)?.type))
+      .toEqual(['type_query', 'type_query']);
+  });
+
+  it.skipIf(!kernelBuilt).each(LANGS)('%s: native typeof abstract queries preserve calls without errors', (language) => {
+    const kernel = getKernel();
+    expect(kernel).not.toBeNull();
+    const file = 'src/queries.' + (language === 'tsx' ? 'tsx' : 'ts');
+    const result = decodeExtractBuffers(kernel!.extractFile(file, abstractQueries, language), file, language);
+    expect(result.errors).toEqual([]);
+    expect(result.unresolvedReferences.filter((r) => r.referenceKind === 'calls').map((r) => r.referenceName))
+      .toEqual(['f', 'f', 'tag']);
+  });
+
+  it.each(LANGS)('%s: runtime typeof calls stay comparisons, not phantom generic calls', (language) => {
+    const src = [
+      'declare function abstract(x: unknown): number;',
+      'declare const f: string, x: any;',
+      'f < typeof abstract(x) > (x);',
+      'const holder = { abstract: abstract };',
+      'f < typeof holder.abstract(x) > (x);',
+    ].join('\n');
+    const root = parse(language, src);
+    expect(root.hasError).toBe(false);
+    expect(root.descendantsOfType('binary_expression')).toHaveLength(4);
+    expect(root.descendantsOfType('type_query')).toHaveLength(0);
+    expect(calls(language, src)).toEqual(['abstract', 'holder.abstract']);
+    if (kernelBuilt) {
+      const file = 'src/comparison.' + (language === 'tsx' ? 'tsx' : 'ts');
+      const result = decodeExtractBuffers(getKernel()!.extractFile(file, src, language), file, language);
+      expect(result.errors).toEqual([]);
+      expect(result.unresolvedReferences.filter((r) => r.referenceKind === 'calls').map((r) => r.referenceName))
+        .toEqual(['abstract', 'holder.abstract']);
+    }
+  });
+
+  it.each(LANGS)('%s: optional typeof operands stay runtime comparisons', (language) => {
+    const src = [
+      'declare const abstract: { abstract: { value: number } | undefined } | undefined;',
+      'declare const f: string, x: any;',
+      'f < typeof abstract?.abstract > (x);',
+      'f < typeof abstract?.abstract?.["value"] > (x);',
+    ].join('\n');
+    const root = parse(language, src);
+    expect(root.hasError).toBe(false);
+    expect(root.descendantsOfType('binary_expression')).toHaveLength(4);
+    expect(root.descendantsOfType('type_query')).toHaveLength(0);
+    expect(calls(language, src)).toEqual([]);
+    if (kernelBuilt) {
+      const file = 'src/optional.' + (language === 'tsx' ? 'tsx' : 'ts');
+      const result = decodeExtractBuffers(getKernel()!.extractFile(file, src, language), file, language);
+      expect(result.errors).toEqual([]);
+      expect(result.unresolvedReferences.filter((r) => r.referenceKind === 'calls')).toEqual([]);
+    }
   });
 });
