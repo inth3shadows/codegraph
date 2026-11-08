@@ -126,8 +126,8 @@ fn main() {
     // unedited. See docs/grammars/tree-sitter-typescript.md for what the base
     // and the fork each fix.
     //   common/scanner.h           23fd656d7e82f80bf66e0b9b8ef96aa6102ef5bfd9f32c561a4caabe08b9fd34
-    //   typescript/src/parser.c    2e19c6950b932128349565f8788f3672ab4242191aad2db359e3416e5c89d2cc
-    //   tsx/src/parser.c           f545ccfa32ef06243cc7ffff04223cd85ac045f8350d2e0064c6aef2eef8df53
+    //   typescript/src/parser.c    db8c411258ff82520df32ad7213be1c9a60c0cec77fdb6d28858014ae92ea0aa
+    //   tsx/src/parser.c           34f37cd33244724c9d5dc4863123f3a5f6a919f4f472c31981610f6442077394
     // Flags crib the crate's bindings/rust/build.rs (c11). Each parser.c is
     // ~9 MB.
     for dialect in ["typescript", "tsx"] {

@@ -223,4 +223,85 @@ describe('contextual abstract and accessor members (fork #12 and #13)', () => {
     expect(result.unresolvedReferences.filter((r) => r.referenceKind === 'calls').map((r) => r.referenceName))
       .toContain('helper');
   });
+
+  const abstractQueries = [
+    'const abstract = { value: 0 };',
+    'function f<T>(value: T) { return value; }',
+    'function tag<T>(parts: TemplateStringsArray) { return parts[0]; }',
+    'export function caller() {',
+    '  f<typeof abstract>(abstract);',
+    '  f<typeof abstract.value>(0);',
+    '  tag<typeof abstract>`hello`;',
+    '}',
+  ].join('\n');
+
+  it.each(LANGS)('%s: typeof abstract keeps generic calls and typed tags', (language) => {
+    const root = parse(language, abstractQueries);
+    expect(root.hasError).toBe(false);
+    expect(root.descendantsOfType('binary_expression')).toHaveLength(0);
+    expect(root.descendantsOfType('call_expression').map((n) => n.childForFieldName('function')?.text))
+      .toEqual(['f', 'f', 'tag']);
+    expect(root.descendantsOfType('type_query').map((n) => n.text))
+      .toEqual(['typeof abstract', 'typeof abstract.value', 'typeof abstract']);
+    expect(calls(language, abstractQueries)).toEqual(['f', 'f', 'tag']);
+  });
+
+  it.each(LANGS)('%s: parenthesized typeof abstract stays a type query', (language) => {
+    const root = parse(language, 'type T = (typeof abstract); type Q = (typeof abstract.value);');
+    expect(root.hasError).toBe(false);
+    expect(root.descendantsOfType('parenthesized_type').map((n) => n.namedChild(0)?.type))
+      .toEqual(['type_query', 'type_query']);
+  });
+
+  it.skipIf(!kernelBuilt).each(LANGS)('%s: native typeof abstract queries preserve calls without errors', (language) => {
+    const kernel = getKernel();
+    expect(kernel).not.toBeNull();
+    const file = 'src/queries.' + (language === 'tsx' ? 'tsx' : 'ts');
+    const result = decodeExtractBuffers(kernel!.extractFile(file, abstractQueries, language), file, language);
+    expect(result.errors).toEqual([]);
+    expect(result.unresolvedReferences.filter((r) => r.referenceKind === 'calls').map((r) => r.referenceName))
+      .toEqual(['f', 'f', 'tag']);
+  });
+
+  it.each(LANGS)('%s: runtime typeof calls stay comparisons, not phantom generic calls', (language) => {
+    const src = [
+      'declare function abstract(x: unknown): number;',
+      'declare const f: string, x: any;',
+      'f < typeof abstract(x) > (x);',
+      'const holder = { abstract: abstract };',
+      'f < typeof holder.abstract(x) > (x);',
+    ].join('\n');
+    const root = parse(language, src);
+    expect(root.hasError).toBe(false);
+    expect(root.descendantsOfType('binary_expression')).toHaveLength(4);
+    expect(root.descendantsOfType('type_query')).toHaveLength(0);
+    expect(calls(language, src)).toEqual(['abstract', 'holder.abstract']);
+    if (kernelBuilt) {
+      const file = 'src/comparison.' + (language === 'tsx' ? 'tsx' : 'ts');
+      const result = decodeExtractBuffers(getKernel()!.extractFile(file, src, language), file, language);
+      expect(result.errors).toEqual([]);
+      expect(result.unresolvedReferences.filter((r) => r.referenceKind === 'calls').map((r) => r.referenceName))
+        .toEqual(['abstract', 'holder.abstract']);
+    }
+  });
+
+  it.each(LANGS)('%s: optional typeof operands stay runtime comparisons', (language) => {
+    const src = [
+      'declare const abstract: { abstract: { value: number } | undefined } | undefined;',
+      'declare const f: string, x: any;',
+      'f < typeof abstract?.abstract > (x);',
+      'f < typeof abstract?.abstract?.["value"] > (x);',
+    ].join('\n');
+    const root = parse(language, src);
+    expect(root.hasError).toBe(false);
+    expect(root.descendantsOfType('binary_expression')).toHaveLength(4);
+    expect(root.descendantsOfType('type_query')).toHaveLength(0);
+    expect(calls(language, src)).toEqual([]);
+    if (kernelBuilt) {
+      const file = 'src/optional.' + (language === 'tsx' ? 'tsx' : 'ts');
+      const result = decodeExtractBuffers(getKernel()!.extractFile(file, src, language), file, language);
+      expect(result.errors).toEqual([]);
+      expect(result.unresolvedReferences.filter((r) => r.referenceKind === 'calls')).toEqual([]);
+    }
+  });
 });

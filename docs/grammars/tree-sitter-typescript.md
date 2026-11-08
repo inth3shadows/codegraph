@@ -2,7 +2,7 @@
 
 `src/extraction/wasm/tree-sitter-{typescript,tsx}.wasm` and the kernel's
 vendored C (`codegraph-kernel/grammars/typescript/`) are built from
-**inth3shadows/tree-sitter-typescript** commit `608a9db`, our own fork of the
+**inth3shadows/tree-sitter-typescript** commit `ed828ca`, our own fork of the
 grammar. This is the one place that names the commit; the code comments point here. It is private while it is being burned in, so the public,
 reproducible form is
 [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript)
@@ -19,14 +19,14 @@ kernel compiles the same generated C (build.rs) in place of the
 `tree-sitter-typescript` crate, so the two paths stay table-identical
 (`kernel-grammar-parity.test.ts`) and share one external scanner.
 
-| file | base (marionebl 53071c9) sha256 | ours (fork 608a9db) sha256 |
+| file | base (marionebl 53071c9) sha256 | ours (fork ed828ca) sha256 |
 |---|---|---|
-| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `bb9e82ea3b29f2e8099268923e33eeec41dea6f67efbd1b971862e4ff4f3e054` |
+| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `73b4e3dad330d0683871c4ffb27987e19ddf3488ba14664d3e15e7a4cae137dd` |
 | `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `23fd656d7e82f80bf66e0b9b8ef96aa6102ef5bfd9f32c561a4caabe08b9fd34` |
-| `typescript/src/parser.c` | (regenerated) | `2e19c6950b932128349565f8788f3672ab4242191aad2db359e3416e5c89d2cc` |
-| `tsx/src/parser.c` | (regenerated) | `f545ccfa32ef06243cc7ffff04223cd85ac045f8350d2e0064c6aef2eef8df53` |
-| `tree-sitter-typescript.wasm` | — | `6fb8195ec5e96d926c2b434aa883455cc07d58c324f97038b437a6aec18801f9` |
-| `tree-sitter-tsx.wasm` | — | `6c552220d7a1310ec96de6d1193694cd424a96754eec8f786ac167ff113e3c2e` |
+| `typescript/src/parser.c` | (regenerated) | `db8c411258ff82520df32ad7213be1c9a60c0cec77fdb6d28858014ae92ea0aa` |
+| `tsx/src/parser.c` | (regenerated) | `34f37cd33244724c9d5dc4863123f3a5f6a919f4f472c31981610f6442077394` |
+| `tree-sitter-typescript.wasm` | — | `abeb7a0a4eea3007ac0e83a383c0068e336b25880de9e374a57267c15ed5fe9d` |
+| `tree-sitter-tsx.wasm` | — | `a64f018a0a2843df0d46ece1fbf87d89a0d3e5001fd94c75f9fb2e4c0fea0a77` |
 
 ## What the base fixes (marionebl, over v0.23.2)
 
@@ -44,6 +44,11 @@ kernel compiles the same generated C (build.rs) in place of the
   retain their previous trees.
 - Auto-accessor fields after `static`, `override` or `abstract`, including static
   private names and accessibility modifiers (upstream #369).
+- Type queries of a value named `abstract`, including qualified, parenthesized and
+  instantiated names, retain generic calls and typed tags such as `f<typeof abstract>(0)`.
+  Runtime `typeof` calls, optional chains and indexed members remain expressions when
+  they are not valid query names; they do not become phantom generic calls. Query and
+  expression branches survive until the following syntax decides between them.
 - From dokimasia/tree-sitter-typescript `55b0687` and `96ce7e6`: an import type is a primary
   type (`import("m").X[]`, `keyof import("m").X`), and `f<typeof import("m")>()` is a call.
 - `out` as a type-parameter name (`type F<out> = out[]`, `<in out>`), and `<in const T>`.
@@ -96,7 +101,8 @@ node shapes and the call edges codegraph derives from them.
 - An operator in front of a typed tag takes the tag's call: ``a + b<T>`c` `` and
   ``!f<T>`c` `` parse as a call whose function is `a + b` / `!f`, with no error. Generic
   calls have always done the same (`a + b<T>(c)`); behind `await` codegraph still records
-  the call. A typed tag with two or more type arguments inside an argument list or array
+  the call. This includes the generic/unary binding in `typeof obj?.method<T>(x)`.
+  A typed tag with two or more type arguments inside an argument list or array
   (``f(sql<Row, Err>`x`)``) still parses as two comparisons.
 - Effect's two remaining failures: `let as = …` (`as` reads as the keyword) and one
   unexplained whole-file error in `Schema.tst.ts`.
@@ -132,7 +138,7 @@ Divergent files are those tsc parses clean and tree-sitter does not, from
 | **total** | | **201** | **45** | **32** | **2** |
 
 Four unrelated `gap-*` fixtures remain; the static-accessor gap is now a normal
-regression fixture. The fork's corpus passes 143/143 tests.
+regression fixture. The fork's corpus passes 146/146 tests.
 
 ## Rebuild
 
