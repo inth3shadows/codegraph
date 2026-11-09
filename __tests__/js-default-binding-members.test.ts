@@ -106,6 +106,92 @@ describe('a member read through a default binding', () => {
     expect(callsOf(cg, 'run')).toEqual([]);
   });
 
+  it.each([
+    ["const named = require('./m');", 'Decoy'],
+    ["import named from './m.js';", 'Decoy'],
+    ["const named = require('./m');", 'named'],
+  ])('does not borrow an unimported method after %s, even from class %s', async (binding, className) => {
+    const cg = await indexProject({
+      'm.js': 'exports.known = function known() {};\n',
+      'decoy.js': `export class ${className} { static missing() {} }\n`,
+      'use.js': CALLER(binding, ['missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
+  it('keeps real exports beside an unimported method and through a forwarding module', async () => {
+    const cg = await indexProject({
+      'm.js': 'exports.second = function second() {};\n',
+      'index.js': "module.exports = require('./m');\n",
+      'decoy.js': 'export class Decoy { second() {} missing() {} }\n',
+      'use.js': CALLER("const named = require('./index');", ['second', 'missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:second']);
+  });
+
+  it('keeps CommonJS stated class, object, instance and callable exports', async () => {
+    const cg = await indexProject({
+      'class.js': 'class Widget { static make() {} }\nmodule.exports = Widget;\n',
+      'object.js': 'const api = { read() {} };\nmodule.exports = api;\n',
+      'instance.js': 'class Store { load() {} }\nmodule.exports = new Store();\n',
+      'callable.js': 'function create() {}\nmodule.exports = create;\nmodule.exports.extra = function extra() {};\n',
+      'decoy.js': 'export class Decoy { make() {} read() {} load() {} extra() {} }\n',
+      'use.js': "const Widget = require('./class');\nconst object = require('./object');\nconst store = require('./instance');\nconst create = require('./callable');\nfunction run() {\n  Widget.make();\n  object.read();\n  store.load();\n  create();\n  create.extra();\n}\nmodule.exports = run;\n",
+    });
+    expect(callsOf(cg, 'run')).toEqual([
+      '10 callable.js:extra', '6 class.js:Widget::make', '7 object.js:api::read',
+      '8 instance.js:Store::load', '9 callable.js:create',
+    ]);
+  });
+
+  it('keeps typed parameters and local objects that shadow a default binding', async () => {
+    const cg = await indexProject({
+      'm.ts': 'export function known() {}\n',
+      'use.ts': "import named from './m';\nclass Local { missing() {} }\nexport function typed(named: Local) {\n  named.missing();\n}\nexport function literal() {\n  const named = { present() {} };\n  named.present();\n}\n",
+      'decoy.ts': 'export class Decoy { missing() {} present() {} }\n',
+    });
+    expect(callsOf(cg, 'typed')).toEqual(['4 use.ts:Local::missing']);
+    expect(callsOf(cg, 'literal')).toEqual(['8 use.ts:literal::named::present']);
+  });
+
+  it.each([
+    "import named from './m';",
+    "import * as named from './m';",
+  ])('keeps a lexical class shadow after %s', async (binding) => {
+    const cg = await indexProject({
+      'm.ts': 'export function known() {}\n',
+      'use.ts': `${binding}\nexport function outer() {\n  class named { static missing() {} }\n  function run() { named.missing(); }\n  return run;\n}\n`,
+    });
+    expect(callsOf(cg, 'run')).toEqual(['4 use.ts:outer::named::missing']);
+  });
+
+  it.each([
+    'module.exports = new Store();',
+    'export default new Store();',
+  ])('keeps the instance stated by %s', async (statement) => {
+    const cg = await indexProject({
+      'm.js': `class Store { load() {} }\n${statement}\n`,
+      'decoy.js': 'export class Decoy { missing() {} }\n',
+      'use.js': CALLER("const named = require('./m');", ['load']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+  });
+
+  it('keeps a missing member unresolved when a decoy is added by sync', async () => {
+    const cg = await indexProject({
+      'm.js': 'exports.known = function known() {};\n',
+      'use.js': CALLER("const named = require('./m');", ['missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+    const decoy = path.join(roots[roots.length - 1]!, 'decoy.js');
+    fs.writeFileSync(decoy, 'export class Decoy { missing() {} }\n');
+    await cg.sync();
+    expect(callsOf(cg, 'run')).toEqual([]);
+    fs.unlinkSync(decoy);
+    await cg.sync();
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
   it('takes what `module.exports =` states over a neighbour assigned to it', async () => {
     const cg = await indexProject({
       'm.js': 'function main() {}\nmodule.exports = main;\nmodule.exports.extra = function () {};\n',
