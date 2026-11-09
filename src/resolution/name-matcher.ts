@@ -10,6 +10,7 @@ import { Language, Node, IMPLICIT_RECORD_ACCESSOR_DOC } from '../types';
 import { escapeRegExp, escapesRoot } from '../utils';
 import { UnresolvedRef, ResolvedRef, ResolutionContext, ImportMapping, isSupertypeTarget, CPP_DEFINE_SIGNATURE, isInheritanceRef, isImportableKind } from './types';
 import { blankStringContents, stripCommentsForRegex } from './strip-comments';
+import { readCommonJsExportMembers } from './commonjs-export-members';
 import { isJsSuperCallSite } from './js-super-calls';
 import { JS_ARRAY_METHODS, JS_BROWSER_HOST_GLOBALS, JS_BUILT_INS, JS_BUILTIN_METHODS, TS_PRIMITIVE_TYPES } from './js-builtins';
 import { SWIFT_TYPE_PATH_CALL, resolveSwiftTypePathCall } from './swift-type-visibility';
@@ -25439,15 +25440,8 @@ function defaultModuleNamespace(source: string, from: string, language: Language
       const next = defaultModuleNamespace(forwarded[1]!, file, language, context, seen);
       info = { ...next, files: new Set([...files, ...next.files]) };
     } else {
-      // An explicit member may be a callable alias the import resolver cannot
-      // follow yet. Its presence is not evidence that the member is absent.
-      for (const m of code.matchAll(/\b(?:module\s*\.\s*)?exports\s*(?:\.\s*([A-Za-z_$][\w$]*)|\[\s*(['"])([^'"]+)\2\s*\])\s*=(?![=>])/g)) {
-        members.add(m[1] ?? m[3]!);
-      }
-      const uncertain = /\bmodule\b(?!\s*\.\s*exports\s*[.\[])/.test(code) ||
-        /\bexports\b(?!\s*[.\[])/.test(code) ||
-        /\bexports\s*\[(?!\s*(['"])[^'"]+\1\s*\])/.test(code) || members.has('__proto__');
-      info = { namespace: !uncertain, members, files };
+      const exported = readCommonJsExportMembers(code, /\.(?:[cm]?js|[jt]sx)$/.test(file));
+      info = { namespace: !exported.uncertain, members: exported.members, files };
     }
   }
   // A depth/cycle cutoff says nothing about a shorter lookup of this file.
