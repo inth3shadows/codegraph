@@ -286,6 +286,18 @@ describe('a member read through a default binding', () => {
   });
 
   it.each([
+    'wrap(eval)("ignored");',
+    'wrap((eval))(("ignored"));',
+  ])('does not mistake a wrapped eval argument for a direct eval call: %s', async (call) => {
+    const cg = await indexProject({
+      'm.js': `exports.known = function known() {};\nfunction wrap(value) { return function ignore(code) {}; }\n${call}\n`,
+      'decoy.js': 'export class Decoy { missing() {} }\n',
+      'use.js': CALLER("const named = require('./m');", ['missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
+  it.each([
     "eval('exports.load = Store.prototype.load;');",
     'eval(`exports.load = Store.prototype.load;`);',
     "(eval)('exports.load = Store.prototype.load;');",
