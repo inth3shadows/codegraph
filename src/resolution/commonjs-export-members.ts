@@ -4,6 +4,7 @@ interface LexicalToken { type: string; value: string; closed?: boolean }
 interface Property { name: string | null; next: number }
 
 const TRIVIA = new Set(['WhiteSpace', 'LineTerminatorSequence', 'SingleLineComment', 'MultiLineComment', 'HashbangComment']);
+const EXPRESSION_PREFIX_WORDS = new Set(['return', 'throw', 'case', 'delete', 'void', 'typeof', 'new', 'in', 'instanceof', 'else', 'do', 'await', 'yield']);
 
 /** Syntactic CommonJS writes, without interpreting their values or executing code. */
 export function readCommonJsExportMembers(source: string, jsx = false): { members: ReadonlySet<string>; uncertain: boolean } {
@@ -21,6 +22,14 @@ export function readCommonJsExportMembers(source: string, jsx = false): { member
       before--;
       after++;
     }
+    const prefix = tokens[before];
+    // wrap(eval)(code) passes eval as an argument; its parentheses do not
+    // group the callee. The same applies after a member access or call.
+    if (after > at + 1 && prefix && (
+      (prefix.type === 'IdentifierName' && !EXPRESSION_PREFIX_WORDS.has(prefix.value)) ||
+      prefix.type.endsWith('Literal') || prefix.type === 'NoSubstitutionTemplate' || prefix.type === 'TemplateTail' ||
+      [')', ']', '?.', '++', '--'].includes(prefix.value)
+    )) return false;
     if (tokens[after]?.value !== '(') return false;
     let argument = after + 1;
     while (tokens[argument]?.value === '(') argument++;

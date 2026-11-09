@@ -36,6 +36,13 @@ describe('CommonJS export member discovery', () => {
     'let value: typeof exports.missing = undefined;',
     'type Loader = typeof require.cache;',
     'class Evaluator { eval(code) {} }',
+    'wrap(eval)("ignored");',
+    'wrap((eval))(("ignored"));',
+    '(makeWrap())(eval)("ignored");',
+    'wrap["call"](eval)("ignored");',
+    'wrap?.(eval)("ignored");',
+    'wrap`tag`(eval)("ignored");',
+    'if (eval) ("ignored");',
   ])('ignores non-export text: %s', (source) => {
     const result = readCommonJsExportMembers(source);
     expect([...result.members]).toEqual([]);
@@ -54,6 +61,7 @@ describe('CommonJS export member discovery', () => {
     'eval(`exports.load = ${Store.prototype.load};`);',
     "(eval)('exports.load = Store.prototype.load;');",
     "((eval))(('exports.load = Store.prototype.load;'));",
+    "function setup() { return (eval)('exports.load = Store.prototype.load;'); }",
     'require.cache[__filename].exports = new Store();',
     "const Module = require('node:module');",
     "import { Module } from 'node:module';",
