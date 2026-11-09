@@ -267,6 +267,37 @@ describe('a member read through a default binding', () => {
     expect(callsOf(cg, 'run')).toEqual([]);
   });
 
+  it.each([
+    '// exports.missing = fake;',
+    '/* exports.missing = fake; */',
+    'const text = "exports.missing = fake;";',
+    'const text = `exports.missing = fake;`;',
+    'const pattern = /exports.missing = fake/;',
+    'function setup(holder) { holder.exports.missing = 42; }',
+    'function setup(holder) { holder . exports . missing = 42; }',
+    'function setup(holder) { holder.module.exports.missing = 42; }',
+  ])('does not treat non-export text as a member: %s', async (extra) => {
+    const cg = await indexProject({
+      'm.js': `exports.known = function known() {};\n${extra}\n`,
+      'decoy.js': 'export class Decoy { missing() {} }\n',
+      'use.js': CALLER("const named = require('./m');", ['missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
+  it.each([
+    "eval('exports.load = Store.prototype.load;');",
+    'eval(`exports.load = Store.prototype.load;`);',
+    "(eval)('exports.load = Store.prototype.load;');",
+    'require.cache[__filename].exports = new Store();',
+  ])('keeps uncertain runtime export APIs: %s', async (mutation) => {
+    const cg = await indexProject({
+      'm.js': `class Store { load() {} }\n${mutation}\n`,
+      'use.js': CALLER("const named = require('./m');", ['load']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+  });
+
   it('links the member a sync brings, and drops the one it takes away', async () => {
     const cg = await indexProject({
       'm.js': 'exports.first = function () {};\n',
