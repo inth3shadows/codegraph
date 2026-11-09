@@ -200,6 +200,73 @@ describe('a member read through a default binding', () => {
     expect(callsOf(cg, 'run')).toEqual(['3 m.js:main', '4 m.js:extra']);
   });
 
+  it.each([
+    ['./m', 'named'], ['./index', 'named'],
+    ['./m', 'Store'], ['./index', 'Store'],
+  ])('rechecks calls through %s as %s when it changes between a value and a namespace', async (specifier, alias) => {
+    const value = 'class Store { load() {} }\nmodule.exports = new Store();\n';
+    const namespace = 'class Store { load() {} }\nexports.known = function known() {};\n';
+    const files = {
+      'm.js': value,
+      'index.js': "module.exports = require('./m');\n",
+      'use.js': CALLER(`const named = require('${specifier}');`, ['load']).replace(/\bnamed\b/g, alias),
+    };
+    const cg = await indexProject(files);
+    const moduleFile = path.join(roots[roots.length - 1]!, 'm.js');
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+    for (const source of [namespace, value, namespace]) {
+      fs.writeFileSync(moduleFile, source);
+      await cg.sync();
+      const fresh = await indexProject({ ...files, 'm.js': source });
+      expect(callsOf(cg, 'run')).toEqual(callsOf(fresh, 'run'));
+      expect(callsOf(cg, 'run')).toEqual(source === value ? ['3 m.js:Store::load'] : []);
+    }
+  });
+
+  it.each(['exports.load', 'module.exports.load', "exports['load']", "module.exports['load']"])(
+    'keeps the callable alias in %s without borrowing an absent member', async (assignment) => {
+      const cg = await indexProject({
+        'm.js': `class Store { load() {} }\n${assignment} = Store.prototype.load;\n`,
+        'decoy.js': 'export class Decoy { missing() {} }\n',
+        'use.js': CALLER("const named = require('./m');", ['load', 'missing']),
+      });
+      expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+    }
+  );
+
+  it('drops an exported callable alias when sync removes only the assignment', async () => {
+    const cg = await indexProject({
+      'm.js': 'class Store { load() {} }\nexports.load = Store.prototype.load;\n',
+      'use.js': CALLER("const named = require('./m');", ['load']),
+    });
+    const moduleFile = path.join(roots[roots.length - 1]!, 'm.js');
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+    fs.writeFileSync(moduleFile, 'class Store { load() {} }\nexports.known = function known() {};\n');
+    await cg.sync();
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
+  it.each([
+    "const named = require('./m');",
+    "import named from './m';",
+    "import * as named from './m';",
+  ])('sees a block-local class only inside its block after %s', async (binding) => {
+    const cg = await indexProject({
+      'm.ts': 'export function known() {}\n',
+      'use.ts': `${binding}\nexport function run() {\n  if (true) {\n    class named { static missing() {} }\n    function inside() { named.missing(); }\n  }\n  named.missing();\n}\n`,
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+    expect(callsOf(cg, 'inside')).toEqual(['5 use.ts:run::named::missing']);
+  });
+
+  it('does not mistake a class inside a TypeScript namespace for an import shadow', async () => {
+    const cg = await indexProject({
+      'm.ts': 'export function known() {}\n',
+      'use.ts': "import named from './m';\nnamespace Parent {\n  export class named { static missing() {} }\n}\nexport function run() { named.missing(); }\n",
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
   it('links the member a sync brings, and drops the one it takes away', async () => {
     const cg = await indexProject({
       'm.js': 'exports.first = function () {};\n',
