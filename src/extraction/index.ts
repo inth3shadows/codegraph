@@ -3653,16 +3653,15 @@ export class ExtractionOrchestrator {
 
   /**
    * Re-open resolution edges whose answer was READ from a file this sync
-   * touched, although neither end of the edge changed: a python attribute typed
-   * through a factory or a base class in another file records those files as
-   * `metadata.typeFrom`. The definition delta cannot see these — editing what a
-   * factory returns, or what a base `__init__` assigns, adds or removes no
-   * definition — so without this a synced index keeps the old type forever.
+   * touched, although neither end of the edge changed: a Python attribute type
+   * or a JS/TS default import's namespace ownership records those files as
+   * `metadata.typeFrom`. The definition delta cannot see a factory body or an
+   * export assignment changing, so a synced index would keep the old answer.
    * The edges go back to pending refs; returns the files they come from, whose
    * pending rows the caller resolves.
    */
   resurrectTypeDependentEdges(touchedPaths: string[], changedFilePaths: string[]): string[] {
-    const touched = new Set(touchedPaths.filter((p) => /\.pyi?$/.test(p)));
+    const touched = new Set(touchedPaths.filter((p) => /\.(?:pyi?|[cm]?[jt]sx?)$/.test(p)));
     if (touched.size === 0) return [];
     const alreadyFresh = new Set(changedFilePaths);
 

@@ -24942,7 +24942,7 @@ export function matchMethodCall(
   // A namespace binding, including a default/require of a module with no
   // value default, must not borrow a member from an unrelated class.
   // Stop before class-name matching too: the class may share the import alias.
-  if (ref.referenceKind === 'calls' && JS_FAMILY.has(ref.language) && isImportedModuleReceiver(objectOrClass!, ref, context)) {
+  if (ref.referenceKind === 'calls' && JS_FAMILY.has(ref.language) && isImportedModuleReceiver(objectOrClass!, methodName!, ref, context)) {
     return null;
   }
 
@@ -25385,7 +25385,7 @@ export function matchMethodCall(
  * from outside the repo? A require of `exports.x = …` is a default binding,
  * but its absent members are no unrelated class's methods.
  */
-function isImportedModuleReceiver(receiver: string, ref: UnresolvedRef, context: ResolutionContext): boolean {
+function isImportedModuleReceiver(receiver: string, member: string, ref: UnresolvedRef, context: ResolutionContext): boolean {
   const root = receiver.split('.')[0]!;
   const binding = context.getImportMappings?.(ref.filePath, ref.language)?.find((m) => m.localName === root);
   if (!binding) return false;
@@ -25393,21 +25393,34 @@ function isImportedModuleReceiver(receiver: string, ref: UnresolvedRef, context:
   // still gets the direct class lookup below; an unrelated file's class does not.
   const locals = context.getNodesInFileNamed?.(ref.filePath, root) ??
     context.getNodesInFile(ref.filePath).filter((n) => n.name === root);
-  if (locals.some((n) => n.kind === 'class' && isLexicallyReachable(n, ref, context))) return false;
+  if (locals.some((n) => n.kind === 'class' && isLexicallyReachable(n, ref, context) &&
+      holderScopeAt(n, ref, false, context) !== null)) return false;
+  const module = binding.isDefault ? defaultModuleNamespace(binding.source, ref.filePath, ref.language, context) : null;
+  const firstMember = receiver.includes('.') ? receiver.slice(root.length + 1).split('.')[0]! : member;
   return binding.isNamespace ||
-    (binding.isDefault && isDefaultModuleNamespace(binding.source, ref.filePath, ref.language, context)) ||
+    (module?.namespace === true && !module.members.has(firstMember)) ||
     context.isOutOfRepoImport?.(binding.source, ref.filePath, ref.language) === true;
 }
 
-const JS_MODULE_NAMESPACES = new WeakMap<ResolutionContext, Map<string, boolean>>();
+interface ModuleNamespaceInfo {
+  namespace: boolean;
+  members: ReadonlySet<string>;
+  files: ReadonlySet<string>;
+  truncated?: boolean;
+}
+
+const JS_MODULE_NAMESPACES = new WeakMap<ResolutionContext, Map<string, ModuleNamespaceInfo>>();
 
 /** Only a known namespace, never a module's stated or uncertain default value.
  * Conservative raw checks also exclude comments/text mentioning a default:
  * uncertainty must preserve existing value resolution, not invent its type.
  */
-function isDefaultModuleNamespace(source: string, from: string, language: Language, context: ResolutionContext, seen = new Set<string>()): boolean {
+function defaultModuleNamespace(source: string, from: string, language: Language, context: ResolutionContext, seen = new Set<string>()): ModuleNamespaceInfo {
   const file = context.resolveModuleFile?.(source, from, language);
-  if (!file || !/\.[cm]?[jt]sx?$/.test(file) || seen.has(file) || seen.size >= 8) return false;
+  const files = new Set(file ? [file] : []);
+  const members = new Set<string>();
+  if (!file || !/\.[cm]?[jt]sx?$/.test(file)) return { namespace: false, members, files };
+  if (seen.has(file) || seen.size >= 8) return { namespace: false, members, files, truncated: true };
   seen.add(file);
   let memo = JS_MODULE_NAMESPACES.get(context);
   if (!memo) JS_MODULE_NAMESPACES.set(context, (memo = new Map()));
@@ -25415,19 +25428,31 @@ function isDefaultModuleNamespace(source: string, from: string, language: Langua
   const cached = memo.get(key);
   if (cached !== undefined) return cached;
   const code = context.readFile(file);
-  let namespace = false;
+  let info: ModuleNamespaceInfo = { namespace: false, members, files };
   if (code !== null && !/\bdefault\b|\bexport\s*=/.test(code)) {
     // Follow only a whole-file forwarder; extra assignments or other code
     // make the effective default uncertain. Named module.exports.x writes
     // still describe the namespace, whereas any other use of module may
     // replace it (including computed writes or assignment through an alias).
     const forwarded = /^\s*(?:['"]use strict['"];\s*)?(?:exports\s*=\s*)?module\.exports\s*=\s*(?:exports\s*=\s*)?require\(\s*['"]([^'"]+)['"]\s*\)\s*;?\s*$/.exec(code);
-    namespace = forwarded
-      ? isDefaultModuleNamespace(forwarded[1]!, file, language, context, seen)
-      : !/\bmodule\b(?!\s*\.\s*exports\s*[.\[])/.test(code);
+    if (forwarded) {
+      const next = defaultModuleNamespace(forwarded[1]!, file, language, context, seen);
+      info = { ...next, files: new Set([...files, ...next.files]) };
+    } else {
+      // An explicit member may be a callable alias the import resolver cannot
+      // follow yet. Its presence is not evidence that the member is absent.
+      for (const m of code.matchAll(/\b(?:module\s*\.\s*)?exports\s*(?:\.\s*([A-Za-z_$][\w$]*)|\[\s*(['"])([^'"]+)\2\s*\])\s*=(?![=>])/g)) {
+        members.add(m[1] ?? m[3]!);
+      }
+      const uncertain = /\bmodule\b(?!\s*\.\s*exports\s*[.\[])/.test(code) ||
+        /\bexports\b(?!\s*[.\[])/.test(code) ||
+        /\bexports\s*\[(?!\s*(['"])[^'"]+\1\s*\])/.test(code) || members.has('__proto__');
+      info = { namespace: !uncertain, members, files };
+    }
   }
-  memo.set(key, namespace);
-  return namespace;
+  // A depth/cycle cutoff says nothing about a shorter lookup of this file.
+  if (!info.truncated) memo.set(key, info);
+  return info;
 }
 
 const JS_ASSIGNED_MEMBERS = new WeakMap<ResolutionContext, Map<string, ReadonlySet<string>>>();
@@ -32186,7 +32211,20 @@ export function matchReference(
   // basicRequest.get(…).response(asStringAlways)` is a request's `response`.
   if (result && result.targetNodeId === ref.fromNodeId && ref.referenceKind === 'calls' &&
       VALUE_KINDS.has(context.getNodeById?.(ref.fromNodeId)?.kind ?? '')) return null;
-  return result ? retargetSelfOverload(result, ref, context) : result;
+  const target = result ? retargetSelfOverload(result, ref, context) : result;
+  // Class-name matches also depend on imported namespace ownership, even
+  // though they do not carry the method-name strategy's byName marker.
+  if (target && ref.referenceKind === 'calls' && JS_FAMILY.has(ref.language)) {
+    const root = /^([A-Za-z_$][\w$]*)\./.exec(ref.referenceName)?.[1];
+    const binding = root && context.getImportMappings?.(ref.filePath, ref.language)?.find((m) => m.isDefault && m.localName === root);
+    if (binding) {
+      const module = defaultModuleNamespace(binding.source, ref.filePath, ref.language, context);
+      const previous = Array.isArray(target.metadata?.typeFrom) ? target.metadata.typeFrom.filter((f): f is string => typeof f === 'string') : [];
+      const files = new Set([...previous, ...module.files]);
+      if (files.size) return { ...target, metadata: { ...target.metadata, typeFrom: [...files].sort() } };
+    }
+  }
+  return target;
 }
 
 /**

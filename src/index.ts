@@ -1767,22 +1767,22 @@ export class CodeGraph {
           result.pendingRefsUnresolved = recovery.stats.unresolved;
         }
 
-        // Python attribute types read from OTHER files — a factory's return, a
-        // base class's `__init__` — change with a body-only edit the definition
-        // delta above cannot see. Re-open the edges whose answer was read from a
-        // touched file, and retry the failed attribute calls in files that
-        // import one; both resolve right here. After the orphan sweep, so the
+        // Python attribute types and JS/TS imported-receiver ownership read
+        // other files whose body/export changes the definition delta cannot
+        // see. Re-open those edges and retry failed Python attribute calls in
+        // files that import one; both resolve here. After the orphan sweep, so the
         // import edges this sync created (a caller whose `from f import make`
         // only now resolves) are there to find the importers by.
         if (process.env.CODEGRAPH_NO_REBIND !== '1') {
           const touched = [...(result.changedFilePaths ?? []), ...(result.removedFilePaths ?? [])];
           const touchedPy = touched.filter((p) => /\.pyi?$/.test(p));
-          if (touchedPy.length > 0) {
+          const touchedTypes = touched.filter((p) => /\.(?:pyi?|[cm]?[jt]sx?)$/.test(p));
+          if (touchedTypes.length > 0) {
             const tTypes = Date.now();
-            const reopenedFiles = this.orchestrator.resurrectTypeDependentEdges(touchedPy, result.changedFilePaths ?? []);
+            const reopenedFiles = this.orchestrator.resurrectTypeDependentEdges(touchedTypes, result.changedFilePaths ?? []);
             // CODEGRAPH_PY_ATTR_RETRY_CEILING overrides the candidate ceiling (tests).
             const ceiling = Number(process.env.CODEGRAPH_PY_ATTR_RETRY_CEILING ?? '') || 2000;
-            const failed = this.resolver.pythonAttrRetryCandidates(touchedPy, ceiling);
+            const failed = touchedPy.length ? this.resolver.pythonAttrRetryCandidates(touchedPy, ceiling) : [];
             const retry = [...this.queries.getUnresolvedReferencesByFiles(reopenedFiles), ...(failed ?? [])];
             if (retry.length > 0) await this.resolver.resolveAndPersistListYielding(retry);
             if (process.env.CODEGRAPH_SYNTH_TIMINGS) {
