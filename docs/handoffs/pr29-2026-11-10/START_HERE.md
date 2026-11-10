@@ -6,7 +6,15 @@ The user requested that all task notes be committed for continuation in Claude. 
 
 ## Update 2026-11-10 (Claude): #2499 fix
 
-The full suite (first run on this revision) found that PR29 broke `js-class-expressions` #2499. Class expressions such as `module.exports = class R { static make() {} }` were built without their static members or prototype, so they were wrongly reported as absent. Fixed in `src/resolution/commonjs-export-evidence.ts`, with 5 regression tests in `__tests__/commonjs-export-evidence.test.ts`. Both are uncommitted. `implementation/source-sha256.json` and `implementation/working-tree.patch.gz` include the fix; the patch reconstructs all 30 paths from 87576a8d. The fix's own checks ran in an isolated copy: replay identical, 5 corpora SAME, full suite green apart from load-sensitive timing tests. The harness results below predate the fix. Profiling notes: `~/.claude/plans/pr29-indexing-perf.md`, local to the WSL machine.
+The full suite (first run on this revision) found that PR29 broke `js-class-expressions` #2499. Class expressions such as `module.exports = class R { static make() {} }` were built without their static members or prototype, so they were wrongly reported as absent. Fixed in `src/resolution/commonjs-export-evidence.ts`, with 5 regression tests in `__tests__/commonjs-export-evidence.test.ts`. Both are uncommitted. `implementation/source-sha256.json` and `implementation/working-tree.patch.gz` include the fix; the patch reconstructs all 30 paths from 87576a8d. The harness was rerun on a build copy of this checkout with the fix (`/tmp/codegraph-pr29-harness-6fevujfy/fix`, all 30 manifest hashes matched; outputs in `/tmp/codegraph-pr29-harness-fix-20261110/`). Every stage matches the pre-fix candidate run below:
+
+- Replay exit 0, with identical fixture verdicts and canaries.
+- Graphs against the candidate are SAME on all 5 corpora. Against baseline it is the same Express −64 edges / +64 unresolved as before.
+- Shadow: 17 SAME and 6 CHANGED, identical per question. All 99 mode comparisons are identical.
+- Metamorphic: all 219 rows are identical, including the same 17 baseline-identical DIFF rows.
+- Full suite: 10983 pass. 2 speed-sensitive UI tests (`ui-server-api` busiest symbol, `ui-trails` FIFO) failed at host load 26–57 and passed on an isolated rerun.
+
+CPU-time indexing at load 15–27 puts the fix within noise of the candidate. Express is still about +40% over baseline, so the indexing regression remains open. Profiling found it is the per-file TypeScript parse and checker in `collectCommonJsExportEvidence` on the main thread. An exact ESM short-circuit gave only about 130 ms on Ky and was not applied. Notes are in `~/.claude/plans/pr29-indexing-perf.md`, local to the WSL machine.
 
 ## Read next
 
