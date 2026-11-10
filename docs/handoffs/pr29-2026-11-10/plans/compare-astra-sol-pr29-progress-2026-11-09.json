@@ -1,0 +1,27 @@
+{
+  "status": "completed",
+  "user_request": "astra vs sol come up with diff plan?",
+  "scope": "independent read-only design proposals, no implementation",
+  "review_completed": 11,
+  "open_findings": [
+    "F14",
+    "F15"
+  ],
+  "lanes": [
+    {
+      "agent": "plan_astra_pr29",
+      "model": "gpt-6-astra",
+      "plan": "/home/ericm/.codex/plans/plan-astra-pr29-export-contract-2026-11-09.md"
+    },
+    {
+      "agent": "plan_sol_pr29",
+      "model": "gpt-6.1-sol",
+      "plan": "/home/ericm/.codex/plans/plan-sol-pr29-export-contract-2026-11-09.md"
+    }
+  ],
+  "source_frozen": true,
+  "source_hashes_match": true,
+  "conclusion": "Both converge on binding-owned values/property slots and independent callable identity; recommend Sol contract + Astra stop/uncertainty rules",
+  "comparison": "/home/ericm/.codex/plans/compare-astra-sol-pr29-export-contract-2026-11-09.md",
+  "next": "User decision; no implementation approved"
+}

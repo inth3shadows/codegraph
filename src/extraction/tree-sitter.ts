@@ -39,6 +39,7 @@ import { MyBatisExtractor } from './mybatis-extractor';
 import { CfmlExtractor } from './cfml-extractor';
 import { tryKernelExtract, takeDeferredPreParse } from './kernel';
 import { commonJsRequireRefs } from './commonjs-requires';
+import { commonJsEvalCallFromSource, hasCommonJsEvalCall, isCommonJsEvalLanguage } from './commonjs-eval';
 import { frameworks } from './lazy-frameworks';
 
 // Re-export for backward compatibility
@@ -978,6 +979,7 @@ export class TreeSitterExtractor {
    */
   extract(): ExtractionResult {
     const startTime = Date.now();
+    let commonJsEvalCall: boolean | null | undefined;
 
     if (!isLanguageSupported(this.language)) {
       return {
@@ -1029,6 +1031,9 @@ export class TreeSitterExtractor {
       this.tree = parser.parse(this.source) ?? null;
       if (!this.tree) {
         throw new Error('Parser returned null tree');
+      }
+      if (isCommonJsEvalLanguage(this.language) && this.source.includes('eval')) {
+        commonJsEvalCall = hasCommonJsEvalCall(this.tree.rootNode);
       }
       if (this.language === 'cpp' && this.tree.rootNode.hasError) {
         this.cppBraceScopes = scanCppBraceScopes(this.source);
@@ -1129,6 +1134,7 @@ export class TreeSitterExtractor {
       unresolvedReferences: this.unresolvedReferences,
       errors: this.errors,
       durationMs: Date.now() - startTime,
+      ...(commonJsEvalCall !== undefined ? { commonJsEvalCall } : {}),
     };
   }
 
@@ -10040,6 +10046,8 @@ export function extractFromSource(
     const kernelResult = tryKernelExtract(filePath, source, detectedLanguage);
     if (kernelResult) {
       result = kernelResult;
+      const fact = commonJsEvalCallFromSource(source, detectedLanguage);
+      if (fact !== undefined) result.commonJsEvalCall = fact;
     } else {
       // A kernel-deferred file already paid the (offset-preserving) preParse
       // at the route point — reuse those bytes instead of blanking again.

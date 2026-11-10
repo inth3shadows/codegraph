@@ -2680,7 +2680,7 @@ export class ExtractionOrchestrator {
             filePath,
             language,
             buffers: result.kernelBuffers,
-            file: this.buildFileRecord(filePath, content, language, stats, nodeCount, result.errors),
+            file: this.buildFileRecord(filePath, content, language, stats, nodeCount, result.errors, result.commonJsEvalCall),
             ...(result.unresolvedReferences.length > 0 ? { extraRefs: result.unresolvedReferences } : {}),
           });
         } else {
@@ -3442,6 +3442,7 @@ export class ExtractionOrchestrator {
             nodeCount: result.nodes.length,
             errors: result.errors.length > 0 ? result.errors : undefined,
             generated,
+            commonJsEvalCall: result.commonJsEvalCall,
           },
         });
         // On a fresh bulk index crossFileIncomingEdges is [].
@@ -3511,6 +3512,7 @@ export class ExtractionOrchestrator {
       nodeCount: result.nodes.length,
       errors: result.errors.length > 0 ? result.errors : undefined,
       generated,
+      commonJsEvalCall: result.commonJsEvalCall,
     };
     this.queries.upsertFile(fileRecord);
   }
@@ -3527,7 +3529,8 @@ export class ExtractionOrchestrator {
     language: Language,
     stats: fs.Stats,
     nodeCount: number,
-    resultErrors: ExtractionResult['errors']
+    resultErrors: ExtractionResult['errors'],
+    commonJsEvalCall?: boolean | null
   ): FileRecord {
     return {
       path: filePath,
@@ -3542,6 +3545,7 @@ export class ExtractionOrchestrator {
       // query time (#1500). The header scan short-circuits on a single
       // substring test for ~every hand-written file.
       generated: detectGeneratedFile(filePath, content),
+      commonJsEvalCall,
     };
   }
 
@@ -3556,7 +3560,7 @@ export class ExtractionOrchestrator {
       result,
       filePath,
       language,
-      this.buildFileRecord(filePath, content, language, stats, result.nodes.length, result.errors)
+      this.buildFileRecord(filePath, content, language, stats, result.nodes.length, result.errors, result.commonJsEvalCall)
     );
   }
 

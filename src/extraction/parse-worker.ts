@@ -15,6 +15,7 @@ import { extractFromSource } from './tree-sitter';
 import { detectLanguage, loadGrammarsForLanguages, resetParser } from './grammars';
 import { tryKernelExtractRaw } from './kernel';
 import { commonJsRequireRefs } from './commonjs-requires';
+import { commonJsEvalCallFromSource } from './commonjs-eval';
 import { frameworks } from './lazy-frameworks';
 import { mayDefineCppMacroMethods } from './languages/cpp-macro-methods';
 import type { Language, ExtractionResult } from '../types';
@@ -101,6 +102,7 @@ parentPort!.on('message', async (msg: { type: string; id?: number; filePath?: st
       if (!frameworksNeedDecode && !(language === 'cpp' && mayDefineCppMacroMethods(content!))) {
         const raw = tryKernelExtractRaw(filePath!, content!, language);
         if (raw) {
+          const commonJsEvalCall = commonJsEvalCallFromSource(content!, language);
           result = {
             nodes: [],
             edges: [],
@@ -110,6 +112,7 @@ parentPort!.on('message', async (msg: { type: string; id?: number; filePath?: st
             durationMs: 0,
             kernelBuffers: raw.buffers,
             kernelCounts: raw.counts,
+            ...(commonJsEvalCall !== undefined ? { commonJsEvalCall } : {}),
           };
         }
       }

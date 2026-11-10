@@ -26,6 +26,7 @@ import { extractImportMappings, extractReExports, pythonModulePath, REEXPORT_MAX
 import { resurrectRefFromDroppedEdge } from './resurrect-ref';
 import { defaultExportBinding, extractLocalExportAliases } from './alias-binding';
 import { isDeclarationFile, scanAmbientModules } from './ambient-modules';
+import { collectCommonJsExportEvidence, type CommonJsExportEvidence } from './commonjs-export-evidence';
 import { moduleReferenceKeys } from '../db/reference-tail';
 
 /**
@@ -79,6 +80,8 @@ export interface ImportReader {
   mappings(file: string, language: Language): ImportMapping[];
   /** Its ES-module `export … from` statements, which have no import mapping. */
   reExports(file: string, language: Language): ReExport[];
+  /** Binding-aware CommonJS ownership, optional for minimal readers. */
+  commonJs?(file: string, language: Language): boolean;
   /** The modules a Python file star-imports, which have no import mapping. */
   starImports(file: string, language: Language): string[];
   /**
@@ -91,7 +94,7 @@ export interface ImportReader {
 }
 
 export function createImportReader(rootDir: string): ImportReader {
-  const memo = new Map<string, { content: string; mappings: ImportMapping[]; reExports: ReExport[]; starImports: string[]; exported?: Map<string, string[]> }>();
+  const memo = new Map<string, { content: string; mappings: ImportMapping[]; reExports: ReExport[]; starImports: string[]; exported?: Map<string, string[]>; commonJs?: CommonJsExportEvidence }>();
   const read = (file: string, language: Language) => {
     let entry = memo.get(file);
     if (!entry) {
@@ -110,6 +113,11 @@ export function createImportReader(rootDir: string): ImportReader {
       memo.set(file, entry);
     }
     return entry;
+  };
+  const commonJs = (file: string, language: Language): CommonJsExportEvidence | undefined => {
+    if (!/\.[cm]?[jt]sx?$/.test(file) || isDeclarationFile(file)) return undefined;
+    const entry = read(file, language);
+    return entry.commonJs ??= collectCommonJsExportEvidence(entry.content, file);
   };
   const exportsOf = (file: string, language: Language): Map<string, string[]> => {
     const entry = read(file, language);
@@ -133,7 +141,15 @@ export function createImportReader(rootDir: string): ImportReader {
   };
   return {
     mappings: (file, language) => read(file, language).mappings,
-    reExports: (file, language) => read(file, language).reExports,
+    reExports: (file, language) => {
+      const exports = read(file, language).reExports;
+      if (exports.length) return exports;
+      const record = commonJs(file, language);
+      const value = record?.exported;
+      const source = value?.kind === 'identity' ? record!.graph.objects.get(value.id)?.source : undefined;
+      return source ? [{ kind: 'wildcard', source }] : exports;
+    },
+    commonJs: (file, language) => commonJs(file, language)?.commonJs === true,
     starImports: (file, language) => read(file, language).starImports,
     exportedAs: (file, language) => exportsOf(file, language),
   };
@@ -459,6 +475,22 @@ export function reopenReferencesThroughRetargetedModules(
   if (members.length === 0) return reopened;
   reopened += reopenEdgeList(queries, queries.getResolutionEdgesInto(members).filter((e) => bindings.has(e.sourceFilePath)));
   return reopened;
+}
+
+/** Failed CommonJS reads have no edge on which to retain typeFrom dependencies.
+ * Follow the existing bounded importer/barrel walk so a data-to-callable edit
+ * retries them even when no declaration name changed. Positive edges already
+ * use typeFrom; leave their resurrection to that path.
+ */
+export function reopenFailedReferencesThroughCommonJs(
+  queries: QueryBuilder, reader: ImportReader,
+  modules: ReadonlyArray<{ path: string; language: Language }>,
+): number {
+  const changed = modules.filter(module => reader.commonJs?.(module.path, module.language));
+  if (!changed.length) return 0;
+  const bindings = bindingsOf(importersOf(queries, changed, reader), reader);
+  const failed = [...bindings].flatMap(([file, { modules: named, names }]) => queries.getFailedReferencesThrough(file, named, names));
+  return queries.reopenFailedReferences(failed);
 }
 
 /** An import's module edge into a file that an added file now outranks. */

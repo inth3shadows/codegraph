@@ -11,6 +11,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { runInNewContext } from 'node:vm';
 import { CodeGraph } from '../src';
 
 const roots: string[] = [];
@@ -48,7 +49,64 @@ function callsOf(cg: CodeGraph, fn: string): string[] {
 const CALLER = (binding: string, members: string[]): string =>
   `${binding}\nfunction run() {\n${members.map((m) => `  named.${m}();`).join('\n')}\n}\nmodule.exports.run = run;\n`;
 
+const EVAL_CASES = [
+  ['absent', 'wrap(eval)("ignored");'],
+  ['present', "eval('module.exports.load = Store.prototype.load;');"],
+  ['unknown', 'yield?.(eval)("ignored");'],
+] as const;
+const EXPORT_CASES = [
+  ['namespace', 'exports.known = function known() {};'],
+  ['alias', 'exports.load = Store.prototype.load;'],
+  ['object', 'module.exports = { load: Store.prototype.load };'],
+  ['instance', 'module.exports = new Store();'],
+] as const;
+const EXPORT_BASE = 'class Store { load() { return 42; } }\nfunction wrap(value) { return function ignored() {}; }\nfunction yield(value) { return function ignored() {}; }\n';
+const WRAPPER_FOR_EVIDENCE = 'function yield(value) { return function ignored() {}; }\nyield?.(eval)("ignored");';
+
 describe('a member read through a default binding', () => {
+  describe.each(['./m', './index'])('binding-aware export evidence via %s', (specifier) => {
+    it.each([
+      '(module.exports) = new Store();',
+      '(module.exports) = { load: Store.prototype.load };',
+      'module.exports &&= new Store();',
+    ])('reaches the owned method for %s', async (assignment) => {
+      const source = `class Store { load() { return 42; } }\n${assignment}\n${WRAPPER_FOR_EVIDENCE}`;
+      const runtime = { exports: {} as { load(): number } };
+      runInNewContext(source, { module: runtime, exports: runtime.exports });
+      expect(runtime.exports.load()).toBe(42);
+      const cg = await indexProject({
+        'm.js': source,
+        'index.js': "module.exports = require('./m');",
+        'decoy.js': 'class Decoy { load() {} missing() {} }',
+        'use.js': CALLER(`const named = require('${specifier}');`, ['load', 'missing']),
+      });
+      expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+    });
+
+    it.each([
+      'function pretend(module) { module.exports = {}; } pretend({});',
+      'const pretend = module => { module.exports = {}; }; pretend({});',
+      '{ const module = {}; module.exports = {}; }',
+    ])('does not authorize a target through a shadowed binding: %s', async (shadow) => {
+      const cg = await indexProject({
+        'm.js': `exports.known = function known() {};\n${shadow}\n${WRAPPER_FOR_EVIDENCE}`,
+        'index.js': "module.exports = require('./m');",
+        'decoy.js': 'class Decoy { missing() {} }',
+        'use.js': CALLER(`const named = require('${specifier}');`, ['missing']),
+      });
+      expect(callsOf(cg, 'run')).toEqual([]);
+    });
+
+    it('keeps a literal eval relationship in generator scope beside unrelated methods', async () => {
+      const cg = await indexProject({
+        'm.js': "class Store { load() { return 42; } }\nfunction* setup() { const obj = { [yield (eval)('exports.load = Store.prototype.load;')]() {} }; }\nsetup().next();",
+        'index.js': "module.exports = require('./m');",
+        'decoy.js': 'class Decoy { load() {} }',
+        'use.js': CALLER(`const named = require('${specifier}');`, ['load']),
+      });
+      expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+    });
+  });
   it.each([
     ['anonymous functions', 'exports.first = function () {};\nexports.second = function () {};\n', 'm.js:second'],
     ['named functions', 'exports.first = function first() {};\nexports.second = function second() {};\n', 'm.js:second'],
@@ -286,6 +344,18 @@ describe('a member read through a default binding', () => {
   });
 
   it.each([
+    'wrap(eval)("ignored");',
+    'wrap((eval))(("ignored"));',
+  ])('does not mistake a wrapped eval argument for a direct eval call: %s', async (call) => {
+    const cg = await indexProject({
+      'm.js': `exports.known = function known() {};\nfunction wrap(value) { return function ignore(code) {}; }\n${call}\n`,
+      'decoy.js': 'export class Decoy { missing() {} }\n',
+      'use.js': CALLER("const named = require('./m');", ['missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
+  it.each([
     "eval('exports.load = Store.prototype.load;');",
     'eval(`exports.load = Store.prototype.load;`);',
     "(eval)('exports.load = Store.prototype.load;');",
@@ -296,6 +366,160 @@ describe('a member read through a default binding', () => {
       'use.js': CALLER("const named = require('./m');", ['load']),
     });
     expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+  });
+
+  it.each([
+    "if (true) (eval)('exports.load = Store.prototype.load;');",
+    'if (true) (eval)(`exports.load = Store.prototype.load;`);',
+    "for (let i = 0; i < 1; i++) ((eval))(('exports.load = Store.prototype.load;'));",
+  ])('keeps direct eval in an unbraced control body: %s', async (mutation) => {
+    const cg = await indexProject({
+      'm.js': `class Store { load() {} }\n${mutation}\n`,
+      'use.js': CALLER("const named = require('./m');", ['load']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+  });
+
+  it.each(['await', 'yield'])('does not mistake the CommonJS wrapper %s for a keyword', async (name) => {
+    const cg = await indexProject({
+      'm.js': `exports.known = function known() {};\nfunction ${name}(value) { return function ignore(code) {}; }\n${name}(eval)("ignored");\n`,
+      'decoy.js': 'export class Decoy { missing() {} }\n',
+      'use.js': CALLER("const named = require('./m');", ['missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
+  it.each([
+    'yield?.(eval)("ignored");',
+    'const obj = { *[yield(eval)("ignored")]() {} };',
+  ])('does not guess a call through an inconclusive or outer-scope wrapper: %s', async (call) => {
+    const cg = await indexProject({
+      'm.js': `exports.known = function known() {};\nfunction yield(value) { return function ignore(code) { return 'x'; }; }\n${call}\n`,
+      'decoy.js': 'export class Decoy { missing() {} }\n',
+      'use.js': CALLER("const named = require('./m');", ['missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
+  it('preserves an eval in a computed method name within an enclosing generator', async () => {
+    const cg = await indexProject({
+      'm.js': "class Store { load() { return 42; } }\nfunction* setup() { const obj = { [yield (eval)('exports.load = Store.prototype.load;')]() {} }; }\nsetup().next();\n",
+      'use.js': CALLER("const named = require('./m');", ['load']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+  });
+
+  it('preserves an explicit callable alias when an eval parse fact is inconclusive', async () => {
+    const cg = await indexProject({
+      'm.js': 'class Store { load() {} }\nexports.load = Store.prototype.load;\nfunction yield(value) { return function ignore(code) {}; }\nyield?.(eval)("ignored");\n',
+      'use.js': CALLER("const named = require('./m');", ['load']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+  });
+
+  it.each([
+    'module.exports = { load: Store.prototype.load };',
+    'module.exports = new Store();',
+  ])('preserves the stated value %s with an inconclusive eval fact', async (assignment) => {
+    const source = `class Store { load() { return 42; } }\n${assignment}\nfunction yield(value) { return function ignored() {}; }\nyield?.(eval)("ignored");\n`;
+    const runtime = { exports: {} as { load(): number } };
+    runInNewContext(source, { module: runtime, exports: runtime.exports });
+    expect(runtime.exports.load()).toBe(42);
+    const cg = await indexProject({
+      'm.js': source,
+      'use.js': CALLER("const named = require('./m');", ['load']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+  });
+
+  it.each([
+    'module["exports"] = { load: Store.prototype.load };',
+    'module["exports"] = new Store();',
+    'exports.known = function known() {}; module.exports = new Store();',
+    'module.exports = new Store(); module.exports.extra = function extra() {};',
+  ])('keeps a stated value with bracket or mixed assignments: %s', async (assignment) => {
+    const source = `${EXPORT_BASE}${assignment}\nyield?.(eval)("ignored");\n`;
+    const runtime = { exports: {} as { load(): number } };
+    runInNewContext(source, { module: runtime, exports: runtime.exports });
+    expect(runtime.exports.load()).toBe(42);
+    const cg = await indexProject({
+      'm.js': source,
+      'use.js': CALLER("const named = require('./m');", ['load']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+  });
+
+  describe.each(['./m', './index'])('export evidence through %s', (specifier) => {
+    describe.each(EXPORT_CASES)('%s', (form, assignment) => {
+      it.each(EVAL_CASES)('resolves the runtime export with eval %s', async (state, mutation) => {
+        const source = `${EXPORT_BASE}${assignment}\n${mutation}\n`;
+        const hasLoad = form !== 'namespace' || state === 'present';
+        const runtime = { exports: {} as { load?: () => number } };
+        runInNewContext(source, { module: runtime, exports: runtime.exports });
+        expect(runtime.exports.load?.()).toBe(hasLoad ? 42 : undefined);
+        const cg = await indexProject({
+          'm.js': source,
+          'index.js': "module.exports = require('./m');\n",
+          'use.js': CALLER(`const named = require('${specifier}');`, ['load']),
+        });
+        expect(callsOf(cg, 'run')).toEqual(hasLoad ? ['3 m.js:Store::load'] : []);
+        if (hasLoad) {
+          const run = cg.getNodesByName('run').find((n) => n.kind === 'function')!;
+          const call = cg.getOutgoingEdges(run.id).find((e) => e.kind === 'calls')!;
+          expect(call.metadata?.typeFrom).toEqual(expect.arrayContaining(
+            specifier === './index' ? ['index.js', 'm.js'] : ['m.js'],
+          ));
+        }
+      });
+    });
+
+    it('refreshes export form and eval certainty consistently with a fresh index', async () => {
+      const initial = `${EXPORT_BASE}${EXPORT_CASES[0][1]}\n${EVAL_CASES[0][1]}\n`;
+      const files = {
+        'm.js': initial,
+        'index.js': "module.exports = require('./m');\n",
+        'use.js': CALLER(`const named = require('${specifier}');`, ['load']),
+      };
+      const cg = await indexProject(files);
+      const modulePath = path.join(roots[roots.length - 1]!, 'm.js');
+      expect(callsOf(cg, 'run')).toEqual([]);
+      for (const [form, state] of [
+        [0, 1], [0, 2], [2, 2], [3, 2], [1, 2], [0, 2], [2, 0], [0, 0], [3, 1],
+      ] as const) {
+        files['m.js'] = `${EXPORT_BASE}${EXPORT_CASES[form][1]}\n${EVAL_CASES[state][1]}\n`;
+        fs.writeFileSync(modulePath, files['m.js']);
+        await cg.sync();
+        const expected = form !== 0 || state === 1 ? ['3 m.js:Store::load'] : [];
+        expect(callsOf(cg, 'run'), `${form}/${state}`).toEqual(expected);
+        const fresh = await indexProject(files);
+        expect(callsOf(cg, 'run')).toEqual(callsOf(fresh, 'run'));
+      }
+    });
+  });
+
+  it('keeps eval facts current through wrapper-to-eval and eval-to-wrapper syncs', async () => {
+    const base = 'exports.known = function known() {};\nclass Store { load() {} }\nfunction wrap(value) { return function ignore(code) {}; }\nfunction yield(value) { return function ignore(code) {}; }\n';
+    const files = {
+      'm.js': `${base}wrap(eval)("ignored");\n`,
+      'use.js': CALLER("const named = require('./m');", ['load']),
+    };
+    const cg = await indexProject(files);
+    const modulePath = path.join(roots[roots.length - 1]!, 'm.js');
+    expect(callsOf(cg, 'run')).toEqual([]);
+    for (const [mutation, expected] of [
+      ["if (true) (eval)('exports.load = Store.prototype.load;');", ['3 m.js:Store::load']],
+      ['yield(eval)("ignored");', []],
+      ['yield?.(eval)("ignored");', []],
+      ["for (let i = 0; i < 1; i++) (eval)('exports.load = Store.prototype.load;');", ['3 m.js:Store::load']],
+      ['wrap(eval)("ignored");', []],
+    ] as const) {
+      files['m.js'] = `${base}${mutation}\n`;
+      fs.writeFileSync(modulePath, files['m.js']);
+      await cg.sync();
+      expect(callsOf(cg, 'run'), mutation).toEqual(expected);
+      const fresh = await indexProject(files);
+      expect(callsOf(cg, 'run'), mutation).toEqual(callsOf(fresh, 'run'));
+    }
   });
 
   it('links the member a sync brings, and drops the one it takes away', async () => {

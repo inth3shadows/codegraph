@@ -41,6 +41,9 @@ import {
   retargetSelfOverload,
 } from './name-matcher';
 import { JS_ARRAY_METHODS } from './js-builtins';
+import type { CommonJsIntent } from './commonjs-value-graph';
+import { readLexicalCommonJsExportMembers } from './commonjs-export-members';
+import { type CommonJsOutsideLookup, commonJsExportEvidence, commonJsExportNode, commonJsEvidenceFiles, commonJsImportShadowed } from './commonjs-export-evidence';
 
 /**
  * Extension resolution order by language
@@ -274,6 +277,17 @@ const COMMONJS_DEFAULT_EXPORT =
 
 function commonJsDefaultExport(filePath: string, context: ResolutionContext): { source?: string; name?: string } | null {
   if (!JS_FAMILY_FILE.test(filePath)) return null;
+  const record = commonJsExportEvidence(filePath, context);
+  // A file outside the value model keeps the pre-model lexical reading.
+  if (!record?.commonJs) return lexicalCommonJsDefaultExport(filePath, context);
+  const exported = record.exported;
+  const source = exported.kind === 'identity' ? record.graph.objects.get(exported.id)?.source : undefined;
+  if (source) return { source };
+  const node = commonJsExportNode(filePath, null, context);
+  return node ? { name: node.name } : null;
+}
+
+function lexicalCommonJsDefaultExport(filePath: string, context: ResolutionContext): { source?: string; name?: string } | null {
   if (context.fileContains && !context.fileContains(filePath, 'module.exports')) return null;
   const idx = getFileExportIndex(filePath, context);
   if (idx.commonJsDefault !== undefined) return idx.commonJsDefault;
@@ -3422,6 +3436,21 @@ export function resolveViaImport(
           : null;
         const want = { isDefault: imp.isDefault, isNamespace: imp.isNamespace, exportedName, memberName };
 
+        if (resolvedPath && commonJsExportEvidence(resolvedPath, context)?.commonJs &&
+            commonJsImportShadowed(ref.filePath, imp.localName, ref.line, ref.column, context)) continue;
+
+        // Select the value actually used by this reference, including a member
+        // of a named object import. Calling api.load does not call api itself.
+        if (resolvedPath && commonJsExportEvidence(resolvedPath, context)?.commonJs) {
+          const suffix = ref.referenceName.startsWith(imp.localName + '.') ? ref.referenceName.slice(imp.localName.length + 1) : null;
+          const member = imp.isDefault || imp.isNamespace ? suffix : [imp.exportedName, suffix].filter(Boolean).join('.');
+          const node = commonJsExportNode(resolvedPath, member, context, ref.referenceKind === 'calls' ? 'callable' : ref.referenceKind === 'instantiates' ? 'constructible' : 'reference',
+            undefined, outsideModel(ref.language, context, new Set()));
+          if (node) return { original: ref, targetNodeId: node.id, confidence: 0.9, resolvedBy: 'import',
+            metadata: { typeFrom: [...commonJsEvidenceFiles(resolvedPath, context)].sort() } };
+          continue;
+        }
+
         const targetNode = findImportedExport(imp.source, resolvedPath, want, ref, context);
         const memberRead = !imp.isNamespace && ref.referenceName.startsWith(imp.localName + '.');
 
@@ -3567,7 +3596,7 @@ function findImportedExport(
   ref: UnresolvedRef,
   context: ResolutionContext
 ): Node | undefined {
-  const inFile = (): Node | undefined => (file ? findExportedSymbol(file, want, ref.language, context, new Set()) : undefined);
+  const inFile = (): Node | undefined => (file ? findExportedSymbol(file, { ...want, intent: ref.referenceKind === 'calls' ? 'callable' : ref.referenceKind === 'instantiates' ? 'constructible' : 'reference' }, ref.language, context, new Set()) : undefined);
   const declared = isBareModuleSpecifier(source, ref.language) ? findAmbientModuleExport(source, want, ref, context) : undefined;
   if (!declared) return inFile();
   return (isRepositoryModule(source, file, ref, context) ? inFile() : undefined) ?? declared;
@@ -4255,6 +4284,26 @@ export const REEXPORT_MAX_DEPTH = 8;
  * nothing — the existing code only looked for declarations IN the
  * resolved file, not declarations the file forwarded.
  */
+/** A forwarded member in a file outside the CommonJS model: that file's ordinary export lookup. */
+function outsideModel(language: Language, context: ResolutionContext, visited: Set<string>, depth = 0): CommonJsOutsideLookup {
+  return (file, member, intent) => findExportedSymbol(file, { isDefault: member === null, isNamespace: false, exportedName: member ?? 'default', memberName: null, intent },
+    language, context, visited, depth) ?? (member === null ? undefined : uniqueTopLevel(file, member, intent, context));
+}
+
+/**
+ * The one top-level declaration named `member` in a CommonJS file outside the
+ * model that writes `exports.member` (per the pre-model lexical reader), which
+ * the ordinary export index does not list. Several candidates, or none, answer nothing.
+ */
+function uniqueTopLevel(file: string, member: string, intent: CommonJsIntent | undefined, context: ResolutionContext): Node | undefined {
+  const source = context.readFile(file);
+  if (source === null || !readLexicalCommonJsExportMembers(source, /\.(?:[cm]?js|[jt]sx)$/.test(file)).members.has(member)) return undefined;
+  const kinds = intent === 'callable' ? ['function'] : intent === 'constructible' ? ['class', 'function'] : ['function', 'class', 'variable', 'constant'];
+  const named = (context.getNodesInFileNamed?.(file, member) ?? context.getNodesInFile(file).filter(n => n.name === member))
+    .filter(n => kinds.includes(n.kind) && n.qualifiedName === member);
+  return named.length === 1 ? named[0] : undefined;
+}
+
 function findExportedSymbol(
   filePath: string,
   want: {
@@ -4262,6 +4311,7 @@ function findExportedSymbol(
     isNamespace: boolean;
     exportedName: string;
     memberName: string | null;
+    intent?: CommonJsIntent;
   },
   language: Language,
   context: ResolutionContext,
@@ -4279,7 +4329,7 @@ function findExportedSymbol(
       memo = new Map();
       exportedSymbolMemos.set(context, memo);
     }
-    const key = `${filePath}\0${want.isDefault ? 1 : 0}${want.isNamespace ? 1 : 0}\0${want.exportedName}\0${want.memberName ?? ''}\0${language}`;
+    const key = `${filePath}\0${want.isDefault ? 1 : 0}${want.isNamespace ? 1 : 0}\0${want.exportedName}\0${want.memberName ?? ''}\0${language}\0${want.intent ?? 'reference'}`;
     if (memo.has(key)) return memo.get(key);
     const result = findExportedSymbolWalk(filePath, want, language, context, visited, depth);
     memo.set(key, result);
@@ -4295,6 +4345,7 @@ function findExportedSymbolWalk(
     isNamespace: boolean;
     exportedName: string;
     memberName: string | null;
+    intent?: CommonJsIntent;
   },
   language: Language,
   context: ResolutionContext,
@@ -4304,6 +4355,11 @@ function findExportedSymbolWalk(
   if (depth > REEXPORT_MAX_DEPTH) return undefined;
   if (visited.has(filePath)) return undefined;
   visited.add(filePath);
+
+  if (commonJsExportEvidence(filePath, context)?.commonJs) {
+    return commonJsExportNode(filePath, want.isDefault ? null : want.memberName ?? want.exportedName, context, want.intent,
+      undefined, outsideModel(language, context, visited, depth + 1));
+  }
 
   const exportIndex = getFileExportIndex(filePath, context);
 
@@ -4383,6 +4439,7 @@ function findExportedSymbolWalk(
           isNamespace: false,
           exportedName: rex.originalName,
           memberName: null,
+          intent: want.intent,
         },
         language,
         context,

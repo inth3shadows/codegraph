@@ -1,0 +1,194 @@
+[
+  {
+    "name": "pr29-01-f14-object",
+    "label": "F14 object",
+    "status": "positive",
+    "selector": "m.js:Store::load"
+  },
+  {
+    "name": "pr29-02-f14-class",
+    "label": "F14 class",
+    "status": "positive",
+    "selector": "m.js:Store::load"
+  },
+  {
+    "name": "pr29-03-f14-function",
+    "label": "F14 function",
+    "status": "positive",
+    "selector": "m.js:Store::load"
+  },
+  {
+    "name": "pr29-04-f15-number",
+    "label": "F15 number",
+    "status": "non-callable",
+    "selector": null
+  },
+  {
+    "name": "pr29-05-f15-string",
+    "label": "F15 string",
+    "status": "non-callable",
+    "selector": null
+  },
+  {
+    "name": "pr29-06-f15-assigned-callable",
+    "label": "F15 assigned callable",
+    "status": "positive",
+    "selector": "m.js:real"
+  },
+  {
+    "name": "pr29-07-f10-optional-wrapper",
+    "label": "F10 optional wrapper",
+    "status": "absent",
+    "selector": null
+  },
+  {
+    "name": "pr29-08-f11-generator-eval",
+    "label": "F11 generator eval",
+    "status": "positive",
+    "selector": "m.js:Store::load"
+  },
+  {
+    "name": "pr29-09-f11-generator-key-outside-generator",
+    "label": "F11 generator key outside generator",
+    "status": "absent",
+    "selector": null
+  },
+  {
+    "name": "pr29-10-f12-root-object",
+    "label": "F12 root object",
+    "status": "positive",
+    "selector": "m.js:Store::load"
+  },
+  {
+    "name": "pr29-11-f12-parenthesized-instance",
+    "label": "F12 parenthesized instance",
+    "status": "positive",
+    "selector": "m.js:Store::load"
+  },
+  {
+    "name": "pr29-12-f12-logical-instance",
+    "label": "F12 logical instance",
+    "status": "positive",
+    "selector": "m.js:Store::load"
+  },
+  {
+    "name": "pr29-13-f13-parameter",
+    "label": "F13 parameter",
+    "status": "absent",
+    "selector": null
+  },
+  {
+    "name": "pr29-14-f13-arrow",
+    "label": "F13 arrow",
+    "status": "absent",
+    "selector": null
+  },
+  {
+    "name": "pr29-15-f13-block",
+    "label": "F13 block",
+    "status": "absent",
+    "selector": null
+  },
+  {
+    "name": "pr29-16-alias-property-mutation",
+    "label": "alias property mutation",
+    "status": "positive",
+    "selector": "m.js:Store::load"
+  },
+  {
+    "name": "pr29-17-alias-rebind",
+    "label": "alias rebind",
+    "status": "absent",
+    "selector": null
+  },
+  {
+    "name": "pr29-18-property-overwrite",
+    "label": "property overwrite",
+    "status": "non-callable",
+    "selector": null
+  },
+  {
+    "name": "pr29-19-binding-overwrite",
+    "label": "binding overwrite",
+    "status": "absent",
+    "selector": null
+  },
+  {
+    "name": "pr29-20-post-export-write",
+    "label": "post-export write",
+    "status": "positive",
+    "selector": "m.js:Store::load"
+  },
+  {
+    "name": "pr29-21-old-exports-alias",
+    "label": "old exports alias",
+    "status": "absent",
+    "selector": null
+  },
+  {
+    "name": "pr29-22-ambiguous-branch",
+    "label": "ambiguous branch",
+    "status": "unknown",
+    "selector": null
+  },
+  {
+    "name": "pr29-23-agreeing-branch",
+    "label": "agreeing branch",
+    "status": "positive",
+    "selector": "m.js:Store::load"
+  },
+  {
+    "name": "pr29-24-opaque-escape",
+    "label": "opaque escape",
+    "status": "unknown",
+    "selector": null
+  },
+  {
+    "name": "pr29-25-unknown-dynamic-key",
+    "label": "unknown dynamic key",
+    "status": "unknown",
+    "selector": null
+  },
+  {
+    "name": "pr29-26-local-eval",
+    "label": "local eval",
+    "status": "absent",
+    "selector": null
+  },
+  {
+    "name": "pr29-27-literal-eval",
+    "label": "literal eval",
+    "status": "positive",
+    "selector": "m.js:Store::load"
+  },
+  {
+    "name": "pr29-28-eval-property-on-local-identity",
+    "label": "eval property on local identity",
+    "status": "positive",
+    "selector": "m.js:Store::load"
+  },
+  {
+    "name": "pr29-29-uncertain-receiver-alias",
+    "label": "uncertain receiver alias",
+    "status": "unknown",
+    "selector": null
+  },
+  {
+    "name": "pr29-30-data-overwrite-after-literal-eval",
+    "label": "data overwrite after literal eval",
+    "status": "non-callable",
+    "selector": null
+  },
+  {
+    "name": "pr29-31-missing-read-exported-as-undefined-data",
+    "label": "missing read exported as undefined data",
+    "status": "non-callable",
+    "selector": null
+  },
+  {
+    "name": "pr29-32-logical-member-initialization",
+    "label": "logical member initialization",
+    "status": "positive",
+    "selector": "m.js:Store::load"
+  }
+]

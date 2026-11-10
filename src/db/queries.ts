@@ -4073,6 +4073,16 @@ export class QueryBuilder {
       // edit must lose the flag on the next sync, not keep a stale 1.
       generated: file.generated ? 1 : 0,
     });
+    if (file.commonJsEvalCall !== undefined) {
+      this.setMetadata(`commonjs_eval:${file.path}`, JSON.stringify({ contentHash: file.contentHash, value: file.commonJsEvalCall }));
+    }
+  }
+
+  /** Only a fact from the exact source can prove an eval call absent. */
+  getCommonJsEvalCall(filePath: string, contentHash: string): boolean | null {
+    const raw = this.getMetadata(`commonjs_eval:${filePath}`);
+    const fact = raw === null ? null : safeJsonParse(raw, null) as { contentHash?: unknown; value?: unknown } | null;
+    return fact?.contentHash === contentHash && typeof fact.value === 'boolean' ? fact.value : null;
   }
 
   /**
@@ -4262,6 +4272,7 @@ export class QueryBuilder {
         this.stmts.deleteFile = this.db.prepare('DELETE FROM files WHERE path = ?');
       }
       this.stmts.deleteFile.run(filePath);
+      this.db.prepare('DELETE FROM project_metadata WHERE key = ?').run(`commonjs_eval:${filePath}`);
     })();
   }
 

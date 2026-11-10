@@ -1,0 +1,807 @@
+{
+  "created": "2026-11-10T12:20:35.410641+00:00",
+  "implementationBase": "87576a8d9ff0d8aba235db5535f5f4429f14b037",
+  "files": [
+    {
+      "source": "/home/ericm/.codex/plans/codegraph-commonjs-fix-2026-11-08.md",
+      "file": "plans/codegraph-commonjs-fix-2026-11-08.md",
+      "group": "session plans and handoffs",
+      "sha256": "7096f7e61b3a7bb8a04736ed78e154a148b3b3e649dbf32c3c3359990e2e6e05"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/codegraph-commonjs-review-corrections-2026-11-09.md",
+      "file": "plans/codegraph-commonjs-review-corrections-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "9bc8601105243c2ae0e868b04b97a2f795fff293bcc1030c5d10867f44614b28"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/compare-astra-sol-pr29-export-contract-2026-11-09.md",
+      "file": "plans/compare-astra-sol-pr29-export-contract-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "d48a4ae960f1428523136836139fd0c546148d1ccf6e2af40d0a4ee9dbf91f79"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/compare-astra-sol-pr29-progress-2026-11-09.json",
+      "file": "plans/compare-astra-sol-pr29-progress-2026-11-09.json",
+      "group": "session plans and handoffs",
+      "sha256": "bd2762cdc4f01daf9bfd72cbde09608a602e1671799ad52c4308f9627d88bf58"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/explore-pr29-export-evidence-boundary-2026-11-09.md",
+      "file": "plans/explore-pr29-export-evidence-boundary-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "ba624120f010bafc3e09b563d72ffe5e5c367fc0af8f479dfc59b107d0acd4bf"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/explore-pr29-positive-export-evidence-2026-11-09.md",
+      "file": "plans/explore-pr29-positive-export-evidence-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "3a7bdd7bd22a6fb82eda4b03cd69a3ae2dc71a3d03f5763032d5b51256021406"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-commonjs-corrected-review-pending-2026-11-09.md",
+      "file": "plans/handoff-codegraph-commonjs-corrected-review-pending-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "fd602e86ac29d2eba1d816f91d742aecb98c6cd2158922609103dab0cce6c031"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-commonjs-corrections-running-2026-11-09.md",
+      "file": "plans/handoff-codegraph-commonjs-corrections-running-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "8d8f68aa88d8f56eb18b6b0f7333318e90af4798641b3bd243c0c9535b3d8290"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-commonjs-final-review-f8-2026-11-09.md",
+      "file": "plans/handoff-codegraph-commonjs-final-review-f8-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "8b58124b4421b918194a0db60b68cf688f5d559babf3d6bb85b8b19cac99a7d4"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-commonjs-final-verification-running-2026-11-09.md",
+      "file": "plans/handoff-codegraph-commonjs-final-verification-running-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "15dc862e97d0aca4b797e114bb6ca945c4a8ac55e3ecad8e0d69a2ea4c7212be"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-commonjs-fix-running-2026-11-08.md",
+      "file": "plans/handoff-codegraph-commonjs-fix-running-2026-11-08.md",
+      "group": "session plans and handoffs",
+      "sha256": "3b2d804007afdb2a66c24380aa55da7fa639e86c1c9e831ba1cb96afa439c605"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-commonjs-investigation-2026-11-08.md",
+      "file": "plans/handoff-codegraph-commonjs-investigation-2026-11-08.md",
+      "group": "session plans and handoffs",
+      "sha256": "becfb98694668c70b8a2035355573079d3cb16013d531533e8e007f8466426c2"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-commonjs-modular-eval-2026-11-09.md",
+      "file": "plans/handoff-codegraph-commonjs-modular-eval-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "c94474809d1da4160e5e6b89f7a766415d99dfe547ae762a6e57395caad6f387"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-commonjs-namespace-fix-2026-11-08.md",
+      "file": "plans/handoff-codegraph-commonjs-namespace-fix-2026-11-08.md",
+      "group": "session plans and handoffs",
+      "sha256": "58b139a8586da738ed973f3b7fc6ca27645b76e9ffc12e9c9e7c95681880c098"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-commonjs-review-blocked-2026-11-09.md",
+      "file": "plans/handoff-codegraph-commonjs-review-blocked-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "39ab1843d98d4bb56767e7d183a862fcbe2c161bb88f605eb6351a319c7b19f2"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-commonjs-tested-review-pending-2026-11-08.md",
+      "file": "plans/handoff-codegraph-commonjs-tested-review-pending-2026-11-08.md",
+      "group": "session plans and handoffs",
+      "sha256": "583d53c4f93649a9a46f54f2d609145a53dcddce794b6ce3dfd1c892321bfe00"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-commonjs-tracked-2026-11-08.md",
+      "file": "plans/handoff-codegraph-commonjs-tracked-2026-11-08.md",
+      "group": "session plans and handoffs",
+      "sha256": "e6a55abbcfa05cab301d0c5756b56d96c16a1b5bbe2af283c6c0c471ea1a0c33",
+      "sourceSha256": "b174076d9ef10d75149cbbf5f155bee3bbff9fdc353037f20df7d4ae3f9153a9",
+      "normalization": "removed extra blank line at EOF; original retained at source"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-commonjs-two-draft-prs-testing-2026-11-09.md",
+      "file": "plans/handoff-codegraph-commonjs-two-draft-prs-testing-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "bef5d4b348d9b6a2a959456617ba6cfe1d93189bd6478091d980af103382cf9a"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-commonjs-two-draft-prs-verified-2026-11-09.md",
+      "file": "plans/handoff-codegraph-commonjs-two-draft-prs-verified-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "f6467e7e675e3c2601dc554c1a0c7e4622b5c97cba42f7c447dc4d980a31a752"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-ast-integrated-review8-running-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-ast-integrated-review8-running-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "a44852c9c86085e9901cdd0dae6cf0d5d7d228cd0beda010b8c11ff3f391a9e6"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-ast-redesign-started-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-ast-redesign-started-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "b3d215530c3db763fb30ffd4e0a123fd36e9658d668c5d240f992668cade205d"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-ast-review8-two-findings-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-ast-review8-two-findings-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "9053bcecb8f42d75c7e622171becd47f21175d7a9fdc744796b809ada0f7fb95"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-dual-review-two-findings-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-dual-review-two-findings-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "daee776e8b3f92dfae06d993122553f1f73c120db45077ef891816854c307a7a"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-evidence-prototype-complete-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-evidence-prototype-complete-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "9b044463f0aefb6468a3c56285872e5309fd3587d2d53a50deb317ca10cc9a2a"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-evidence-prototype-progress-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-evidence-prototype-progress-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "dcefc8ad25c7de659867d2e863c2ec4d1b57c0bb7a8e5da0e933e6f89035fe81",
+      "sourceSha256": "23b39ad7a6f83779323c8b07f7fb657b37769ab9a7f2994d2380d78cc2d224f4",
+      "normalization": "Rephrased binding API as binding interface; test-result token and every other word unchanged; original note retained."
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-export-evidence-integrated-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-export-evidence-integrated-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "306dace3f3520484729a61a4dd07b0f9322deccf45cd0931c664f4d885c9d55d"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-f10-f11-corrected-review-pending-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-f10-f11-corrected-review-pending-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "44f8105295709f96f0bb4a5dfc01addf03742a30b0693024f57fb1cbf5fad71e"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-f12-focused-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-f12-focused-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "a0b7cd5edcfa1ef71508651892e0cf6b1975f6db421d3b087076c5e34788184a"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-harness-complete-2026-11-10.md",
+      "file": "plans/handoff-codegraph-pr29-harness-complete-2026-11-10.md",
+      "group": "session plans and handoffs",
+      "sha256": "f1c096c73ea43bcd2b906e5056c719f44f2b7fadaed8416c6448daaf1bacdb1a"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-review10-two-findings-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-review10-two-findings-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "e8bdb347715071204adfa70455b3d569c6be3327e2131d153760d64017c73603"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-review11-two-findings-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-review11-two-findings-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "11240d7d4616f7a014b10ac788d69275fe086e003e861c1f0f39944d151c708b"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-review9-root-export-regression-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-review9-root-export-regression-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "b2194fd6fcae4d4b2561f687d30b79df0c8f47d32ca89a1364d2f39bd70801d2"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-session-end-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-session-end-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "5ebaabf9e7e80a9ba7b1aa519e163ab074063432e9c8d6b41cc655df45054452"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-value-contract-complete-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-value-contract-complete-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "b2cff6f81ef062da3b385cbac16164f11a534814722050668929dabb2f88d472"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-value-contract-progress-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-value-contract-progress-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "21614cb668e8871685b8f11789a8eb25294f5449f44cc92d110eccad111c6a05"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/handoff-codegraph-pr29-value-model-integrated-2026-11-09.md",
+      "file": "plans/handoff-codegraph-pr29-value-model-integrated-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "35b6582cda55528478eb3425719feec3596748d42f37f4fd9337d9700daec3f6"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/plan-astra-pr29-export-contract-2026-11-09.md",
+      "file": "plans/plan-astra-pr29-export-contract-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "2a6bc886d25e0b5a881cedc7cfb762bcc52b83b28e62ecc4d7e69b55a7308226"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/plan-codegraph-pr29-evidence-prototype-2026-11-09.md",
+      "file": "plans/plan-codegraph-pr29-evidence-prototype-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "b94528cf839072bc819807d074cf9d93b088695216e14302772953c45b9b55f3"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/plan-codegraph-pr29-export-evidence-integration-2026-11-09.md",
+      "file": "plans/plan-codegraph-pr29-export-evidence-integration-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "2d542abde5bf892b11d3bae28a74925bbd6b1e3e37059885e66d182664dbb7cb"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/plan-codegraph-pr29-f12-2026-11-09.md",
+      "file": "plans/plan-codegraph-pr29-f12-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "8b4541c1c20db6fbc8c2bbd4c1bae928d80cfa8ce34d8130ec9a35aedca24a18"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/plan-codegraph-pr29-harness-2026-11-09.md",
+      "file": "plans/plan-codegraph-pr29-harness-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "84b7c845b99824f5d985c516033534ab75923935e716877e142ee330242a49d7"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/plan-codegraph-pr29-value-contract-spike-2026-11-09.md",
+      "file": "plans/plan-codegraph-pr29-value-contract-spike-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "3ea01debf0439af87d4d1d6ac23bc2dd7bef647cbd69cb6a1c43c28edb62412a"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/plan-codegraph-pr29-value-model-integration-2026-11-09.md",
+      "file": "plans/plan-codegraph-pr29-value-model-integration-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "23eaa2c832ac8262c50c1788a381e98af72f11daa097b573f2a8b75f5a965740"
+    },
+    {
+      "source": "/home/ericm/.codex/plans/plan-sol-pr29-export-contract-2026-11-09.md",
+      "file": "plans/plan-sol-pr29-export-contract-2026-11-09.md",
+      "group": "session plans and handoffs",
+      "sha256": "e548ff642e44a9d64d20c8b1e23880dfef75ff953ce745f16384e1d4a9f9eb75"
+    },
+    {
+      "source": "/tmp/codegraph-cjs-missing-fix-20261108/.review/checkpoint-corrected-review-pending-2026-11-09.md",
+      "file": "ledgers/checkpoint-corrected-review-pending-2026-11-09.md",
+      "group": "checkout review ledger",
+      "sha256": "fd602e86ac29d2eba1d816f91d742aecb98c6cd2158922609103dab0cce6c031"
+    },
+    {
+      "source": "/tmp/codegraph-cjs-missing-fix-20261108/.review/checkpoint-corrections-running-2026-11-09.md",
+      "file": "ledgers/checkpoint-corrections-running-2026-11-09.md",
+      "group": "checkout review ledger",
+      "sha256": "8d8f68aa88d8f56eb18b6b0f7333318e90af4798641b3bd243c0c9535b3d8290"
+    },
+    {
+      "source": "/tmp/codegraph-cjs-missing-fix-20261108/.review/checkpoint-namespace-redesign.md",
+      "file": "ledgers/checkpoint-namespace-redesign.md",
+      "group": "checkout review ledger",
+      "sha256": "58b139a8586da738ed973f3b7fc6ca27645b76e9ffc12e9c9e7c95681880c098"
+    },
+    {
+      "source": "/tmp/codegraph-cjs-missing-fix-20261108/.review/checkpoint-tested-review-pending.md",
+      "file": "ledgers/checkpoint-tested-review-pending.md",
+      "group": "checkout review ledger",
+      "sha256": "583d53c4f93649a9a46f54f2d609145a53dcddce794b6ce3dfd1c892321bfe00"
+    },
+    {
+      "source": "/tmp/codegraph-cjs-missing-fix-20261108/.review/checkpoint-third-review-blocked-2026-11-09.md",
+      "file": "ledgers/checkpoint-third-review-blocked-2026-11-09.md",
+      "group": "checkout review ledger",
+      "sha256": "39ab1843d98d4bb56767e7d183a862fcbe2c161bb88f605eb6351a319c7b19f2"
+    },
+    {
+      "source": "/tmp/codegraph-cjs-missing-fix-20261108/.review/checkpoint-verify2-running.md",
+      "file": "ledgers/checkpoint-verify2-running.md",
+      "group": "checkout review ledger",
+      "sha256": "3b2d804007afdb2a66c24380aa55da7fa639e86c1c9e831ba1cb96afa439c605"
+    },
+    {
+      "source": "/tmp/codegraph-cjs-missing-fix-20261108/.review/commonjs-eval-callee-context.md",
+      "file": "ledgers/commonjs-eval-callee-context.md",
+      "group": "checkout review ledger",
+      "sha256": "f6c6082e48e440842439c63af886448a2796bafc472bfffa7c275ad96e684055"
+    },
+    {
+      "source": "/tmp/codegraph-cjs-missing-fix-20261108/.review/commonjs-missing-member.md",
+      "file": "ledgers/commonjs-missing-member.md",
+      "group": "checkout review ledger",
+      "sha256": "727333dbbb83a90b22a7af83a853333a785e4f230749d66d19eb4428cf31ca97"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/ast-f10-f11-corrected-2026-11-09/commonjs-eval-callee-context.md",
+      "file": "history/ast-f10-f11-corrected-2026-11-09/commonjs-eval-callee-context.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "0aaa7467f0a3f47522f5c669df5098a140d13a394100c910c7f4fead303c5975"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/ast-f10-f11-corrected-2026-11-09/commonjs-missing-member.md",
+      "file": "history/ast-f10-f11-corrected-2026-11-09/commonjs-missing-member.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "41c9ac2b703a1d07efbb14eaa830fb94081a896fa762f7ecbc980b09dda3cea9"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/ast-integrated-review8-2026-11-09/commonjs-eval-callee-context.md",
+      "file": "history/ast-integrated-review8-2026-11-09/commonjs-eval-callee-context.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "c7ba6c7888a82149c5d54bfc6d2cde0f20e6c5fdfd89c30649083fd313dd1964"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/ast-integrated-review8-2026-11-09/commonjs-missing-member.md",
+      "file": "history/ast-integrated-review8-2026-11-09/commonjs-missing-member.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "dc9ea001528a96e63db9a2e8190e441e262c3d39833eeda9f071efe26e60e39f"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/ast-integrated-review8-2026-11-09/merged-review.md",
+      "file": "history/ast-integrated-review8-2026-11-09/merged-review.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "ae263b15e67998eea1783cf9399d90020ba1a3b3535e8067ccee1ca8fb7e14e5"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/ast-integrated-review8-2026-11-09/review-ledger.md",
+      "file": "history/ast-integrated-review8-2026-11-09/review-ledger.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "b4ccea21a852cbec766494cf4ad40e4fdc7eb083854d9eee7067c8730a47ce52"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/ast-redesign-started-2026-11-09/commonjs-eval-callee-context.md",
+      "file": "history/ast-redesign-started-2026-11-09/commonjs-eval-callee-context.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "b0f723271921f35a949255ea4f377261a9e4afdfcf0815d748f477c7d1907c96"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/ast-redesign-started-2026-11-09/commonjs-missing-member.md",
+      "file": "history/ast-redesign-started-2026-11-09/commonjs-missing-member.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "7b190870e9db4857794441b4b118b53eafec82b60f800ddcce3ae56f0cbeefe9"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/corrections-2026-11-09/handoff.md",
+      "file": "history/corrections-2026-11-09/handoff.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "fd602e86ac29d2eba1d816f91d742aecb98c6cd2158922609103dab0cce6c031"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/corrections-2026-11-09/review-ledger.md",
+      "file": "history/corrections-2026-11-09/review-ledger.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "466bbc29c01840902ecf40102c9c9847f27b8f8d5f2492bc042f5e96443cdd32"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/final-verification-2026-11-09/commonjs-missing-member.md",
+      "file": "history/final-verification-2026-11-09/commonjs-missing-member.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "31e6bb0bd09bf5fb3355e6b43e2a0dd9ea91cc4ea9c37e27867aefd649ae0c46"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-evidence-prototype-2026-11-09/README.md",
+      "file": "history/pr29-evidence-prototype-2026-11-09/README.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "8e3a60901e8335d483967fb24a0791e6063ff3caf895d3bfec21b84a364e8886"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-evidence-prototype-2026-11-09/handoff-codegraph-pr29-evidence-prototype-complete-2026-11-09.md",
+      "file": "history/pr29-evidence-prototype-2026-11-09/handoff-codegraph-pr29-evidence-prototype-complete-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "9b044463f0aefb6468a3c56285872e5309fd3587d2d53a50deb317ca10cc9a2a"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-evidence-prototype-2026-11-09/plan-codegraph-pr29-evidence-prototype-2026-11-09.md",
+      "file": "history/pr29-evidence-prototype-2026-11-09/plan-codegraph-pr29-evidence-prototype-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "b94528cf839072bc819807d074cf9d93b088695216e14302772953c45b9b55f3"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-export-evidence-integration-2026-11-09/commonjs-eval-callee-context.md",
+      "file": "history/pr29-export-evidence-integration-2026-11-09/commonjs-eval-callee-context.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "0e7ff75ee55256fe575acc05f374a1913ec4a6d658cde3b4b488c72325ebda85"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-export-evidence-integration-2026-11-09/handoff-codegraph-pr29-export-evidence-integrated-2026-11-09.md",
+      "file": "history/pr29-export-evidence-integration-2026-11-09/handoff-codegraph-pr29-export-evidence-integrated-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "306dace3f3520484729a61a4dd07b0f9322deccf45cd0931c664f4d885c9d55d"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-export-evidence-integration-2026-11-09/plan-codegraph-pr29-export-evidence-integration-2026-11-09.md",
+      "file": "history/pr29-export-evidence-integration-2026-11-09/plan-codegraph-pr29-export-evidence-integration-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "2d542abde5bf892b11d3bae28a74925bbd6b1e3e37059885e66d182664dbb7cb"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-f12-2026-11-09/commonjs-eval-callee-context.md",
+      "file": "history/pr29-f12-2026-11-09/commonjs-eval-callee-context.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "984a6fb49f82564f7b9029dc06966a157366ed0d8da41b1aaa039f227fcccf7b"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-f12-2026-11-09/handoff-codegraph-pr29-f12-focused-2026-11-09.md",
+      "file": "history/pr29-f12-2026-11-09/handoff-codegraph-pr29-f12-focused-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "a0b7cd5edcfa1ef71508651892e0cf6b1975f6db421d3b087076c5e34788184a"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-f12-2026-11-09/plan-codegraph-pr29-f12-2026-11-09.md",
+      "file": "history/pr29-f12-2026-11-09/plan-codegraph-pr29-f12-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "8b4541c1c20db6fbc8c2bbd4c1bae928d80cfa8ce34d8130ec9a35aedca24a18"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/build-diff.md",
+      "file": "history/pr29-harness-20261110T013135Z/build-diff.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "a6b9b913b94d7bfc749071fca0da9e89d42ee6924b7cc88424083fcf16e11a3d"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/handoff-codegraph-pr29-harness-complete-2026-11-10.md",
+      "file": "history/pr29-harness-20261110T013135Z/handoff-codegraph-pr29-harness-complete-2026-11-10.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "f1c096c73ea43bcd2b906e5056c719f44f2b7fadaed8416c6448daaf1bacdb1a"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/report.md",
+      "file": "history/pr29-harness-20261110T013135Z/report.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "5d4fe80521531c4aa6325cc061a7615996cefe80e7923bffb290da1a93f38723"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review-round7-2026-11-09/commonjs-eval-callee-context.md",
+      "file": "history/pr29-review-round7-2026-11-09/commonjs-eval-callee-context.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "9174676d7154a6abdf209b8f5b3725bf9557a7a639dbf5aac0b81b36475e382d"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review-round7-2026-11-09/commonjs-missing-member.md",
+      "file": "history/pr29-review-round7-2026-11-09/commonjs-missing-member.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "9dc7b7555179e9eb6e18e427270deadaf4b720d68affaddcab34b267f100e6c9"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review-round7-2026-11-09/merged-review.md",
+      "file": "history/pr29-review-round7-2026-11-09/merged-review.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "e8f7ffb119f1bb60d7cceb423837dcf7b34ec688869d4a38e537926623c84a52"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review10-2026-11-09/adversarial-report.md",
+      "file": "history/pr29-review10-2026-11-09/adversarial-report.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "c883b73283c712cbcdd29ae88cd8b6ff628899068b2b18c4339815b0b741bdd0"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review10-2026-11-09/broad-report.md",
+      "file": "history/pr29-review10-2026-11-09/broad-report.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "17536e02029d2468cc6220e6d09ca939e730001098b4ce2dfafe6e87422bf660"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review10-2026-11-09/commonjs-eval-callee-context.md",
+      "file": "history/pr29-review10-2026-11-09/commonjs-eval-callee-context.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "d417b843b9a7a83369938f2a6504a1ccd51de924750f84dcf2a1b7a69c468892"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review10-2026-11-09/handoff-codegraph-pr29-review10-two-findings-2026-11-09.md",
+      "file": "history/pr29-review10-2026-11-09/handoff-codegraph-pr29-review10-two-findings-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "e8bdb347715071204adfa70455b3d569c6be3327e2131d153760d64017c73603"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review10-2026-11-09/merged-review.md",
+      "file": "history/pr29-review10-2026-11-09/merged-review.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "47368ef7b4bb277edf77606bec466b596519a8f9e23940a1efd3b5c88b19a0c6"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review11-2026-11-09/adversarial-artifacts/cg-a11-final-report.md",
+      "file": "history/pr29-review11-2026-11-09/adversarial-artifacts/cg-a11-final-report.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "5b2620c7ae99653796f3e28d180ed48358f50297f5ee92e438385a7d643e733e"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review11-2026-11-09/adversarial-report.md",
+      "file": "history/pr29-review11-2026-11-09/adversarial-report.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "5b2620c7ae99653796f3e28d180ed48358f50297f5ee92e438385a7d643e733e"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review11-2026-11-09/broad-report.md",
+      "file": "history/pr29-review11-2026-11-09/broad-report.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "c10747af4824cd94cec7fd27174bb35afe166509db2fbc1ffc2884c993772409"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review11-2026-11-09/commonjs-eval-callee-context.md",
+      "file": "history/pr29-review11-2026-11-09/commonjs-eval-callee-context.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "281ae45fdc51f84b6d1937f10ed1870dd0514706ff2f7b6be6e428af9b1fe7b0"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review11-2026-11-09/compare-astra-sol-pr29-export-contract-2026-11-09.md",
+      "file": "history/pr29-review11-2026-11-09/compare-astra-sol-pr29-export-contract-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "d48a4ae960f1428523136836139fd0c546148d1ccf6e2af40d0a4ee9dbf91f79"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review11-2026-11-09/handoff-codegraph-pr29-review11-two-findings-2026-11-09.md",
+      "file": "history/pr29-review11-2026-11-09/handoff-codegraph-pr29-review11-two-findings-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "11240d7d4616f7a014b10ac788d69275fe086e003e861c1f0f39944d151c708b"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review11-2026-11-09/merged-review.md",
+      "file": "history/pr29-review11-2026-11-09/merged-review.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "216b78496fee14774c03c4f7065f2c23c8c191d9cca44f0978b9323ee247ca87"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review11-2026-11-09/plan-astra-pr29-export-contract-2026-11-09.md",
+      "file": "history/pr29-review11-2026-11-09/plan-astra-pr29-export-contract-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "2a6bc886d25e0b5a881cedc7cfb762bcc52b83b28e62ecc4d7e69b55a7308226"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review11-2026-11-09/plan-sol-pr29-export-contract-2026-11-09.md",
+      "file": "history/pr29-review11-2026-11-09/plan-sol-pr29-export-contract-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "e548ff642e44a9d64d20c8b1e23880dfef75ff953ce745f16384e1d4a9f9eb75"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review9-2026-11-09/commonjs-eval-callee-context.md",
+      "file": "history/pr29-review9-2026-11-09/commonjs-eval-callee-context.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "3be44c0d1f58d49fa29e89c20955f2358ca90a1f03c590adf3f024581552f341"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review9-2026-11-09/commonjs-missing-member.md",
+      "file": "history/pr29-review9-2026-11-09/commonjs-missing-member.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "727333dbbb83a90b22a7af83a853333a785e4f230749d66d19eb4428cf31ca97"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-review9-2026-11-09/merged-review.md",
+      "file": "history/pr29-review9-2026-11-09/merged-review.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "13c439af3fa583f2153527d90429c60572997f2d34734a642ef129f325a48c8b"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-value-contract-spike-2026-11-09/README.md",
+      "file": "history/pr29-value-contract-spike-2026-11-09/README.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "b365b414e23fff3d96ea29ad8b16d9769a5d3686e78edd19eb81b6d7f57d984d"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-value-contract-spike-2026-11-09/handoff-codegraph-pr29-value-contract-complete-2026-11-09.md",
+      "file": "history/pr29-value-contract-spike-2026-11-09/handoff-codegraph-pr29-value-contract-complete-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "b2cff6f81ef062da3b385cbac16164f11a534814722050668929dabb2f88d472"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-value-contract-spike-2026-11-09/plan-codegraph-pr29-value-contract-spike-2026-11-09.md",
+      "file": "history/pr29-value-contract-spike-2026-11-09/plan-codegraph-pr29-value-contract-spike-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "3ea01debf0439af87d4d1d6ac23bc2dd7bef647cbd69cb6a1c43c28edb62412a"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-value-model-integration-2026-11-09/handoff-codegraph-pr29-value-model-integrated-2026-11-09.md",
+      "file": "history/pr29-value-model-integration-2026-11-09/handoff-codegraph-pr29-value-model-integrated-2026-11-09.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "35b6582cda55528478eb3425719feec3596748d42f37f4fd9337d9700daec3f6"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-value-model-integration-2026-11-09/milestone1/status.md",
+      "file": "history/pr29-value-model-integration-2026-11-09/milestone1/status.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "c64eaea8e37dc3aaed3bd73ffcdaf0ae92cd01261d7e00f07c70b587a14c0c35"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-value-model-integration-2026-11-09/milestone2/status.md",
+      "file": "history/pr29-value-model-integration-2026-11-09/milestone2/status.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "5aebba7dc18d3d11901ee9bd4b78f079d0f2486a8787a4f3893e93d4c8352642"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/review-ledger-before-third-round.md",
+      "file": "history/review-ledger-before-third-round.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "e364fc07c233132e8c2516c6f6557a635b8368afb918399252d91447ff31d837"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/review-ledger-tested-pending.md",
+      "file": "history/review-ledger-tested-pending.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "4bc1af5ddc9bc0c68662a2ddeb3b783f45a64b20fb105c1830124d71e6be0d33"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/session-end-2026-11-09/exploration.md",
+      "file": "history/session-end-2026-11-09/exploration.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "ba624120f010bafc3e09b563d72ffe5e5c367fc0af8f479dfc59b107d0acd4bf"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/session-end-2026-11-09/handoff.md",
+      "file": "history/session-end-2026-11-09/handoff.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "5ebaabf9e7e80a9ba7b1aa519e163ab074063432e9c8d6b41cc655df45054452"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/third-review-2026-11-09/handoff.md",
+      "file": "history/third-review-2026-11-09/handoff.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "39ab1843d98d4bb56767e7d183a862fcbe2c161bb88f605eb6351a319c7b19f2"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/third-review-2026-11-09/review-ledger.md",
+      "file": "history/third-review-2026-11-09/review-ledger.md",
+      "group": "archived review and checkpoint notes",
+      "sha256": "1645be5d2b5d892e40817a9b22ade2e9949bf9918bb545f06201bcf03eab8017"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/results.json",
+      "file": "harness/results.json",
+      "group": "complete harness result data",
+      "sha256": "4c56caab4d63aa59fbda75ec243f8c61961d455c1402c74b86cb5f4559746670"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/execution.json",
+      "file": "harness/execution.json",
+      "group": "complete harness result data",
+      "sha256": "3d336dafb0cf98d4f442f2c76e493ea98f168173348a11246602c23e62c2730f"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/manifest.json",
+      "file": "harness/manifest.json",
+      "group": "complete harness result data",
+      "sha256": "36810595131c7789546539e9210b516acb668a096f434e1ca7a4d2d801780eb7",
+      "sourceSha256": "b6498a856c6c0a2f9c543bbe41d1a743cc1dde245ff78659634fa922cf2f718d",
+      "normalization": "Represented independently recomputed SHA256 path-to-digest map as checksum/path records; values unchanged."
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/preservation-audit.json",
+      "file": "harness/preservation-audit.json",
+      "group": "complete harness result data",
+      "sha256": "a362fed978891599515c1a36bfbf8b1e37b3d8dfa9dc2dca37bc99aae4a7136f"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/metamorphic-comparison.json",
+      "file": "harness/metamorphic-comparison.json",
+      "group": "complete harness result data",
+      "sha256": "e620500a4a3d0fb6e9adb76250bff03fde07c1db86771b5dee10aff47e1b7a5c"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/timing-summary.json",
+      "file": "harness/timing-summary.json",
+      "group": "complete harness result data",
+      "sha256": "35842bef49019acda40e53b555a1ca38122778bc3fa22ec17438a8cc8bf76647"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/timings.json",
+      "file": "harness/timings.json",
+      "group": "complete harness result data",
+      "sha256": "50edfde5ec226edbe8c0ba8cf5572c75938522c4bdf081c83224936854ce5454"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/build-diff.json",
+      "file": "harness/build-diff.json",
+      "group": "complete harness result data",
+      "sha256": "1a09fbbc5f4ef86130cc7ff7b6db36c1f599cb6e2ca9c32d14b7bd0e7524114f"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/shadow.json",
+      "file": "harness/shadow.json",
+      "group": "complete harness result data",
+      "sha256": "8e1f8be6550f8e7a3190837bbbb18583334e860fd5a0309ae37262d6ab0c66b6"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/replay-baseline.json",
+      "file": "harness/replay-baseline.json",
+      "group": "complete harness result data",
+      "sha256": "b4b7431e72393b44f666352cbf099be776102de4725938764cda6267163c2a3e"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/replay-candidate.json",
+      "file": "harness/replay-candidate.json",
+      "group": "complete harness result data",
+      "sha256": "9664223b89c9491e871cbcdbb487ebad84d1057a5dc1eab8217374d071068972"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/modes-baseline.json",
+      "file": "harness/modes-baseline.json",
+      "group": "complete harness result data",
+      "sha256": "955947137d27fb29f6ae4c1da14fdd5bf2b7c21b6a7f5696c948e17b1677ba57"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/modes-candidate.json",
+      "file": "harness/modes-candidate.json",
+      "group": "complete harness result data",
+      "sha256": "c24b849fd6368dcfef9804b2ead2bfb2a6aad731110b4942011095c4afeba73b"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/metamorphic-baseline.json",
+      "file": "harness/metamorphic-baseline.json",
+      "group": "complete harness result data",
+      "sha256": "94e6261d587cb0fbfacf625aa2c69a0fa96e9d2ee98fd2a11722936d1000aae9"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/metamorphic-candidate.json",
+      "file": "harness/metamorphic-candidate.json",
+      "group": "complete harness result data",
+      "sha256": "e7e3470deecd4740783bba5131a1067ebc4e79635bc3634af8d57e57a3664010"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/express-classification.json",
+      "file": "harness/express-classification.json",
+      "group": "complete harness result data",
+      "sha256": "1107c6c47cffb1cc195c1b020addc773968e45348b948d73480591b8e16a4ecc"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/pr29-fixtures.json",
+      "file": "harness/pr29-fixtures.json",
+      "group": "complete harness result data",
+      "sha256": "9b820ba0c0a4e0f83b161b23a0e3c4e6c3b6f07c12985436f02f094ec00e9517"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/mode-seeds.json",
+      "file": "harness/mode-seeds.json",
+      "group": "complete harness result data",
+      "sha256": "d44acdc701885d3a5baa4595ff3b85c63d0f930c4c32c99b86e967dfd6a6506d"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/questions.json",
+      "file": "harness/questions.json",
+      "group": "complete harness result data",
+      "sha256": "ac2cb867d1df8eb22a94d5a9caa1399cd66fcaa20ef2cb038e48cdac7ef184c7"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/qa-input-sha256.json",
+      "file": "harness/qa-input-sha256.json",
+      "group": "complete harness result data",
+      "sha256": "176a1d62e5913d3ae7dd8a442b329e51a5fab2900fbf3894f1519967129fca79",
+      "sourceSha256": "07b6a54a9796c6156ac8460e242c8e242363a034b585aee63a445a6c666f7a2c",
+      "normalization": "Represented independently recomputed SHA256 path-to-digest map as checksum/path records; values unchanged."
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-value-model-integration-2026-11-09/results.json",
+      "file": "implementation/results.json",
+      "group": "focused-tested implementation snapshot",
+      "sha256": "4a6d3c15c4730b0da1a134cbb6810917b3d201162831099368fe79f25e4ddb8c"
+    },
+    {
+      "source": "generated from the PR29 checkout working tree, 2026-11-10",
+      "file": "implementation/source-sha256.json",
+      "group": "current implementation snapshot",
+      "sha256": "5f82d8dd0b11185859d19159c2522d067b8a0930248bb15fed09b86cc1ec9c11",
+      "updated": "2026-11-10: includes the #2499 class-expression fix; previous sha256 42b64bf6283c88c2d130c230b4a4a804998eda6046ab9e2638a094e7693ea27a"
+    },
+    {
+      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-value-model-integration-2026-11-09/integration-from-round11.patch",
+      "file": "implementation/integration-from-round11.patch.gz",
+      "group": "focused-tested implementation snapshot",
+      "sha256": "069511008964f53864175e29540b572a73b4e5386ed95fc4350a961faaa7fd2a",
+      "sourceSha256": "8775d01ce7a7b3635e107a442876ab3c6cbcf62c49baf95fd356e1decb783bcd",
+      "encoding": "gzip"
+    },
+    {
+      "source": "git diff --binary 87576a8d -- <30 manifest paths>, PR29 checkout, 2026-11-10",
+      "file": "implementation/working-tree.patch.gz",
+      "group": "pending implementation backup",
+      "sha256": "ac2e0fd955aec5bddd35a7271349a12b05646126db22a8e653e2b8b00fbdca9d",
+      "sourceSha256": "d33e5ed82c21384fbbe9036f6f27966e57101e9d517c7ac45047845918affa1a",
+      "encoding": "gzip",
+      "updated": "2026-11-10: includes the #2499 class-expression fix; previous sha256 47898e69e9ef76f56458ed17757839a1ab07f5ebf6258a4ceccce18a28233b75 (source 00807ba2f472296c7a9ab273d0900cc988033f749c77fdb8ed4f5202899379d3)"
+    }
+  ],
+  "notes": "Copies of task-specific notes and result data; original files retained. Historical instructions describe earlier states and are superseded by START_HERE.md. Build archives, dependency trees, raw logs and source snapshots remain in the documented private evidence directories."
+}

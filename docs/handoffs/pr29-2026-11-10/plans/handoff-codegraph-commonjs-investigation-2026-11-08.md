@@ -1,0 +1,15 @@
+# CommonJS missing-export investigation — complete, filing approval pending
+
+User approved investigating the second CommonJS bug candidate only. No engine fix, new issue, PR/report push, deployment or merge performed. Prepared a concrete report draft for review before requesting the next step.
+
+Confirmed: const utils=require('./utils'); utils.missing() falsely binds to an unimported exported class Decoy::missing even though utils.js exports only known(). Ref retains utils.missing; edge resolvedBy instance-method, provenance null. This is different from tracked inth3shadows/codegraph26 (external import/missing dependency metadata): this receiver is a real relative CommonJS module.
+
+Six reduced cases across three actual subjects,18 fresh indexes successful. em40 5e0664891af0e87e6fd18bbfa16cab39237570f5 and pristine upstream main f72c9d2efb14454ff4f9fd7b8460abd82f19a287 have identical case/edge records:5 pass,1 missing-method-decoy failure. Pristine upstream v1.6.2 /6560052a6f856855d3f71eee838fd66ccfa4285d also fails that case; it has4 pass/2 fail because the real-export control also fails there. Do not claim all six cases match across all versions. Previous independently built upstream checkouts reused, source trees remain pristine. Kernel0/WASM, Node22.22.2; no native/package binaries tested.
+
+Controls: no decoy, same-name free function decoy, different-name method, actual exported method and ESM namespace syntax. Latest/main resolve actual exports and ESM namespace correctly, while CJS missing export + class method decoy fails. The common source explains it: import-resolver2194-2207 represents require as isDefault true/isNamespace false; name-matcher25029-25037 + isImportedModuleReceiver25387-25392 guard namespaces or external packages, so local require bypasses it. Generic method-by-name25152+ picks the unique unimported class method around25253-25280. Proposed correction must preserve actual module exports and legitimate stated default class/object/instance APIs; no broad ban on all require defaults.
+
+Related upstream2952 closed,3162 closed fix addressed first-export fallback. This is a remaining method-fallback variant, not a novelty claim or assertion that3162 did nothing. Only the missing-member part is investigated, not factory-produced etag recovery.
+
+Durable draft/repro/results/snapshots/checksums: /home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-missing-export-2026-11-08/. bug-report.md is the reviewable report; reproduce.mjs uses relative QA lib imports and arguments BUILD LABEL NEW_OUT. Repro script syntax checked. Experimental source and logs /tmp/cgqa-commonjs-investigation-20261108. Independent upstream builds remain /tmp/cgqa-pristine-upstream-sr9mi8mh/{main,release}. All original T0 source untouched/stopped.
+
+Next: ask user whether to create a separate tracking issue in personal fork for conditional Tuesday review/upstream submission. Do not file automatically from this handoff. Existing first issue https://github.com/inth3shadows/codegraph/issues/26 and QA evidence PR27 are unchanged. No external comments/issues created for this second investigation.

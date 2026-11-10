@@ -1,0 +1,11 @@
+# Value contract experiment — milestone1 saved
+
+User approved combined Astra/Sol isolated contract experiment, not production integration. Workspace /home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-value-contract-spike-2026-11-09. Production22source hashes unchanged. Core value-graph.cjs separates reference/call/construct capabilities; binding/property slots share object identities; supports strong overwrites, localized unknown, escape invalidation and branch joins.21IRtests red baseline then21PASS. Snapshot milestone1-source/ and actual logs durable. Next bounded source-to-facts adapter reuses existing compiler binder and lexical eval expansion; no arbitrary calls/generator execution. F10-F15 mandatory, runtime controlled fixtures, in-memory edits=fresh (not real CodeGraph sync). Save each stage; stop if requires general interpreter.
+
+## Semantic gate saved
+89testsPASS(23core+66source), with F10–F15 direct+forwarded, data/reference/call/constructor distinctions, reassigned callables, aliases/overwrites/post-export writes, branch conflict/agreement, weak uncertain-receiver writes, escape/dynamic-key unknown, literal/generator eval and indirect rejection. Callables carry source identity separately from display name. Source lowering executes no functions/generators; eval payloads contribute static relationships. Actual checkpoints include55PASS4FAIL from property-name/reference effect confusion, generic correction plus weak-write and same-label identity red/green checks. Snapshot semantic-gate-source/; production22hashes unchanged at gate.
+
+This phase remains the isolated contract experiment as announced. No production integration occurred; further integration/review/publication require a subsequent user decision. Representative coverage/performance is still required before claiming readiness.
+
+## Experiment complete
+Superseded by handoff-codegraph-pr29-value-contract-complete-2026-11-09.md.99testsPASS/7syntaxchecksPASS; all22productionhashesunchanged. Semantic gate passes but3realCommanderfilesreturnunknownfromdestructuredinitialization, so do not promote standaloneadapter. Use validatedrepresentation/corpus to adapt existing collector; productionF14/F15stillopen.

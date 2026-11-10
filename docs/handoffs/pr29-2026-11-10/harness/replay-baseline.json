@@ -1,0 +1,2025 @@
+{
+ "subject": "codegraph",
+ "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae",
+ "build": "/tmp/codegraph-pr29-harness-6fevujfy/baseline/dist/bin/codegraph.js",
+ "results": [
+  {
+   "name": "a",
+   "issue": 3034,
+   "verdict": "BROKEN",
+   "detail": "Handler::run -calls-> lib.ts:find",
+   "canary": {
+    "marker": "CGQA_CANARY_848ec8f2411b9e2cc3e399a93312dcd3",
+    "files": [
+     "handler.ts",
+     "lib.ts"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "b",
+   "issue": 3035,
+   "verdict": "BROKEN",
+   "detail": "take -calls-> session.ts:Session::snapshot",
+   "canary": {
+    "marker": "CGQA_CANARY_6f5cc81c43ce68632abb432d166ef250",
+    "files": [
+     "queries.ts",
+     "session.ts"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "c",
+   "issue": 3036,
+   "verdict": "BROKEN",
+   "detail": "Orchestrator::check -calls-> cache.ts:Cache::has",
+   "canary": {
+    "marker": "CGQA_CANARY_693845abfd12606104ed231a161583bc",
+    "files": [
+     "cache.ts",
+     "orch.ts"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "g1-go-new-receiver",
+   "issue": 3237,
+   "verdict": "BROKEN",
+   "detail": "viaNew -calls-> a_router.go:Router::Host",
+   "canary": {
+    "marker": "CGQA_CANARY_993953a867628045f18c0ce508207d76",
+    "files": [
+     "a_router.go",
+     "b_route.go",
+     "use.go"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2944",
+   "issue": 2944,
+   "verdict": "BROKEN",
+   "detail": "a.test.ts -calls-> a.test.ts:setup@26",
+   "canary": {
+    "marker": "CGQA_CANARY_86ae861c2465293893f82a1446bd5c53",
+    "files": [
+     "a.test.ts",
+     "decl.d.ts"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2946",
+   "issue": 2946,
+   "verdict": "BROKEN",
+   "detail": "run -calls-> writer.ts:StoreWriter::close",
+   "canary": {
+    "marker": "CGQA_CANARY_1b1807e99aae359f4ae71a9286de1332",
+    "files": [
+     "db.ts",
+     "use.ts",
+     "writer.ts"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2947",
+   "issue": 2947,
+   "verdict": "BROKEN",
+   "detail": "a -calls-> app.ts:App::render; b -calls-> app.ts:App::close; c -calls-> app.ts:App::close; d -calls-> app.ts:App::translate",
+   "canary": {
+    "marker": "CGQA_CANARY_9b3f5158cbd5fcf4e44b97c5c9aab5fa",
+    "files": [
+     "app.ts",
+     "use.ts"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2948",
+   "issue": 2948,
+   "verdict": "BROKEN",
+   "detail": "Scene::a -calls-> heap.ts:BinaryHeap::push; Scene::b -calls-> heap.ts:Conf::includes",
+   "canary": {
+    "marker": "CGQA_CANARY_5ea918c6965f7a28c4a23755c84f7138",
+    "files": [
+     "heap.ts",
+     "use.ts"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2949",
+   "issue": 2949,
+   "verdict": "BROKEN",
+   "detail": "scanD::skipValue -calls-> lib.ts:skipString; scanE::skipValue -calls-> lib.ts:skipString",
+   "canary": {
+    "marker": "CGQA_CANARY_d39dea268ae5931e1034483612fc3a81",
+    "files": [
+     "lib.ts",
+     "use.ts"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2951",
+   "issue": 2951,
+   "verdict": "BROKEN",
+   "detail": "useA -calls-> schemas.ts:ZodString::ipv4; useC -calls-> schemas.ts:ZodString::ipv4; useD -calls-> schemas.ts:ZodString::ipv4",
+   "canary": {
+    "marker": "CGQA_CANARY_6f978f0614887078c73c44de4e35a6cf",
+    "files": [
+     "a.ts",
+     "b.ts",
+     "c.ts",
+     "d.ts",
+     "external.ts",
+     "index.ts",
+     "index2.ts",
+     "index3.ts",
+     "schemas.ts"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2952",
+   "issue": 2952,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_0549dc6165d7af69b01bdc63adc89951",
+    "files": [
+     "lib/utils.js",
+     "test/utils.js"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2953",
+   "issue": 2953,
+   "verdict": "BROKEN",
+   "detail": "handlerC -calls-> streaming.ts:stream; localConst -calls-> streaming.ts:stream",
+   "canary": {
+    "marker": "CGQA_CANARY_be5b38f5d4c8e0c1386b8d44878ec295",
+    "files": [
+     "app.ts",
+     "cjsapp.js",
+     "lib/reply.js",
+     "streaming.ts"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2954",
+   "issue": 2954,
+   "verdict": "BROKEN",
+   "detail": "Tools::run -calls-> lib.ts:findAll; Tools::size -calls-> lib.ts:getFactor",
+   "canary": {
+    "marker": "CGQA_CANARY_58f0b444ebc9c68901b0fd92ff68c99c",
+    "files": [
+     "lib.ts",
+     "tools.ts"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2957",
+   "issue": 2957,
+   "verdict": "BROKEN",
+   "detail": "attr_named_client -calls-> pkg/_client.py:Client::fetch; with_named_client -calls-> pkg/_client.py:Client::fetch",
+   "canary": {
+    "marker": "CGQA_CANARY_700c38a4080f0535522d2014a952153c",
+    "files": [
+     "pkg/__init__.py",
+     "pkg/_client.py",
+     "use.py"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2958",
+   "issue": 2958,
+   "verdict": "BROKEN",
+   "detail": "ScriptInfo::load_app -calls-> examples/factory.py:create_app",
+   "canary": {
+    "marker": "CGQA_CANARY_2a5c49f877445af0612784a2d7e0d2a2",
+    "files": [
+     "examples/factory.py",
+     "pkg/cli.py"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2962",
+   "issue": 2962,
+   "verdict": "BROKEN",
+   "detail": "objSpread -calls-> auth.ts:register; jsxSpread -calls-> auth.ts:register; jsxSpreadNested -calls-> auth.ts:register",
+   "canary": {
+    "marker": "CGQA_CANARY_586334d1029da893915bfc2e0cf8af61",
+    "files": [
+     "auth.ts",
+     "use.tsx"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2963",
+   "issue": 2963,
+   "verdict": "BROKEN",
+   "detail": "run -calls-> pkg/deco.py:command@5; run -calls-> pkg/deco.py:Prompt::ask@23",
+   "canary": {
+    "marker": "CGQA_CANARY_e0082576aa14d8f0cf1d694775e1ad3d",
+    "files": [
+     "pkg/__init__.py",
+     "pkg/deco.py",
+     "use.py"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2964",
+   "issue": 2964,
+   "verdict": "BROKEN",
+   "detail": "t -calls-> test/a.test.js:Srv; t -calls-> test/a.test.js:Srv2; u -calls-> b.js:inner",
+   "canary": {
+    "marker": "CGQA_CANARY_5a4d6057f4fb6737becc39ec3a0feb2a",
+    "files": [
+     "b.js",
+     "lib/index.js",
+     "lib/inner/entry.js",
+     "srv.js",
+     "test/a.test.js"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2966",
+   "issue": 2966,
+   "verdict": "BROKEN",
+   "detail": "lib/hooks.js -calls-> lib/validation.js:validate; lib/reply.js -calls-> lib/types.d.ts:FastifyReply::getHeader; lib/context.js -calls-> lib/application.js:Application::toJSON; init -calls-> lib/other.js:Cast::insertMany",
+   "canary": {
+    "marker": "CGQA_CANARY_55c52b4854e81dce8c56330b31badb9d",
+    "files": [
+     "lib/application.js",
+     "lib/context.js",
+     "lib/hooks.js",
+     "lib/model.js",
+     "lib/other.js",
+     "lib/reply.js",
+     "lib/types.d.ts",
+     "lib/validation.js",
+     "test/model.test.js"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2967",
+   "issue": 2967,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_2ec561e0802571485714650dbf7d0746",
+    "files": [
+     "mod.js",
+     "mod.ts",
+     "page.tsx",
+     "use.js",
+     "use.ts",
+     "use.tsx"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2973",
+   "issue": 2973,
+   "verdict": "GUESSED",
+   "detail": "guessed saveProfile -calls-> src/a_cart.js:handleSave",
+   "canary": {
+    "marker": "CGQA_CANARY_ae56e5a576e9883eedea3fb0c80408bf",
+    "files": [
+     "src/a_cart.js",
+     "src/b_profile.js"
+    ],
+    "verdict": "GUESSED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2974",
+   "issue": 2974,
+   "verdict": "GUESSED",
+   "detail": "guessed loadGithubProfile -calls-> src/server.js:src/server.js::GET:/users/:id",
+   "canary": {
+    "marker": "CGQA_CANARY_107206d28b104138ed930b813ac233f4",
+    "files": [
+     "src/client.js",
+     "src/server.js"
+    ],
+    "verdict": "GUESSED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2975",
+   "issue": 2975,
+   "verdict": "BROKEN",
+   "detail": "routes/api.php::route:/admin/users/{id} -references-> app/Http/Controllers/UserController.php:App\\Http\\Controllers::UserController::show",
+   "canary": {
+    "marker": "CGQA_CANARY_bc7ee71520de5a4267f352a0a894decd",
+    "files": [
+     "app/Http/Controllers/Admin/UserController.php",
+     "app/Http/Controllers/UserController.php",
+     "routes/api.php"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "issue-2976",
+   "issue": 2976,
+   "verdict": "BROKEN",
+   "detail": "com.x.m::Main::go -calls-> src/com/x/a/Util.java:com.x.a::Util::log",
+   "canary": {
+    "marker": "CGQA_CANARY_6a4f96da0bdbfdce53dfb14bf4fca099",
+    "files": [
+     "src/com/x/a/Util.java",
+     "src/com/x/b/Util.java",
+     "src/com/x/m/Main.java"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "j1-java-overload",
+   "issue": 3040,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_82f7c78c9fd8c9a933566a29ee8fa107",
+    "files": [
+     "src/p/App.java",
+     "src/p/Parser.java",
+     "src/p/Util.java"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "kmp-22",
+   "issue": 3033,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_1712209927c85024cb0bc6135ca7f29d",
+    "files": [
+     "app/src/main/java/b/App.java"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "m1-py-super",
+   "issue": 3218,
+   "verdict": "BROKEN",
+   "detail": "missing Child::__init__ -calls-> base.py:Base::__init__; Child::greet -calls-> base.py:Base::greet; LocalChild::run -calls-> child.py:Local::run",
+   "canary": {
+    "marker": "CGQA_CANARY_8656a72f5276606bf2cd6e37ded447f6",
+    "files": [
+     "base.py",
+     "child.py"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "m2-py-method-return-local",
+   "issue": 3240,
+   "verdict": "BROKEN",
+   "detail": "missing via_method -calls-> t.py:Stager::add; via_param_method -calls-> t.py:Stager::add",
+   "canary": {
+    "marker": "CGQA_CANARY_4ec22c11d3e06ef5cc32dd412218209e",
+    "files": [
+     "t.py"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "n1-py-local-import",
+   "issue": 3229,
+   "verdict": "BROKEN",
+   "detail": "test_one -calls-> pkg/core.py:reverts",
+   "canary": {
+    "marker": "CGQA_CANARY_2916a70ddacdb3108870a568bc2a2e9a",
+    "files": [
+     "pkg/__init__.py",
+     "pkg/core.py",
+     "t_local_import.py"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "n2-py-comprehension",
+   "issue": 3230,
+   "verdict": "BROKEN",
+   "detail": "comp -calls-> other/far.py:p",
+   "canary": {
+    "marker": "CGQA_CANARY_498a0a4687d17ee636b7c0f289249ba4",
+    "files": [
+     "other/__init__.py",
+     "other/far.py",
+     "t.py"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "n3-py-enclosing-local",
+   "issue": 3231,
+   "verdict": "BROKEN",
+   "detail": "closure::inner -calls-> other/far.py:evaluate",
+   "canary": {
+    "marker": "CGQA_CANARY_f8554c503c0d6b85ffa71fad349cec70",
+    "files": [
+     "other/__init__.py",
+     "other/far.py",
+     "t.py"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "n4-py-builtin",
+   "issue": 3232,
+   "verdict": "BROKEN",
+   "detail": "run -instantiates-> other/far.py:TimeoutError",
+   "canary": {
+    "marker": "CGQA_CANARY_a2c32ba5e3267d5caaf74fa80a4c79cd",
+    "files": [
+     "other/__init__.py",
+     "other/far.py",
+     "t.py"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "n5-ts-barrel-member",
+   "issue": 3233,
+   "verdict": "BROKEN",
+   "detail": "useNamed -calls-> fx/deaf.ts:DEAF::mark; useNs -calls-> fx/deaf.ts:DEAF::mark",
+   "canary": {
+    "marker": "CGQA_CANARY_a762a6349406106b5c02542fc3f99d9f",
+    "files": [
+     "b.ts",
+     "c.ts",
+     "fx/deaf.ts",
+     "fx/index.ts",
+     "fx/mark.ts"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "p1",
+   "issue": 3037,
+   "verdict": "BROKEN",
+   "detail": "test_one -calls-> t.py:flat",
+   "canary": {
+    "marker": "CGQA_CANARY_eaf6ddd0575d0913040a9fcb026dfe13",
+    "files": [
+     "t.py"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "p3",
+   "issue": 3038,
+   "verdict": "BROKEN",
+   "detail": "size_of_made -calls-> arm.py:Arm::stat",
+   "canary": {
+    "marker": "CGQA_CANARY_0eae1593fc55939cc87a20c44b63648b",
+    "files": [
+     "arm.py",
+     "use.py"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "p4",
+   "issue": 3039,
+   "verdict": "BROKEN",
+   "detail": "MLP::forward -calls-> other/features.py:out",
+   "canary": {
+    "marker": "CGQA_CANARY_5c76a7ddca62f8b6882de5b5208dbb80",
+    "files": [
+     "lab/model.py",
+     "other/features.py"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "p5-py-stdlib-import",
+   "issue": 3239,
+   "verdict": "BROKEN",
+   "detail": "use.py -imports-> clock.py:time",
+   "canary": {
+    "marker": "CGQA_CANARY_6a67c61bde144e96c6a60a685d5e1b60",
+    "files": [
+     "clock.py",
+     "use.py"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-01-f14-object",
+   "issue": 29,
+   "verdict": "CHANGED",
+   "detail": "missing run -calls-> m.js:Store::load",
+   "canary": {
+    "marker": "CGQA_CANARY_5bdb3ec89680151682eb606620ebb7c4",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "CHANGED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-02-f14-class",
+   "issue": 29,
+   "verdict": "CHANGED",
+   "detail": "missing run -calls-> m.js:Store::load",
+   "canary": {
+    "marker": "CGQA_CANARY_2f6c091cff3d9a31362f29ac11436031",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "CHANGED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-03-f14-function",
+   "issue": 29,
+   "verdict": "CHANGED",
+   "detail": "missing run -calls-> m.js:Store::load",
+   "canary": {
+    "marker": "CGQA_CANARY_8c7a94df4899f49e8b6e9f7592073f38",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "CHANGED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-04-f15-number",
+   "issue": 29,
+   "verdict": "BROKEN",
+   "detail": "run -calls-> decoy.js:Decoy::load",
+   "canary": {
+    "marker": "CGQA_CANARY_7b16f1ca0beed3ca2bfd42bf589a3e05",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-05-f15-string",
+   "issue": 29,
+   "verdict": "BROKEN",
+   "detail": "run -calls-> decoy.js:Decoy::load",
+   "canary": {
+    "marker": "CGQA_CANARY_2f7522e333593acc110327175c20e4e9",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-06-f15-assigned-callable",
+   "issue": 29,
+   "verdict": "BROKEN",
+   "detail": "run -calls-> decoy.js:Decoy::load",
+   "canary": {
+    "marker": "CGQA_CANARY_05cf0990292be564154a11421344a331",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-07-f10-optional-wrapper",
+   "issue": 29,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_1b27943f6f356460ffe8780a878c755c",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "FAIL"
+   }
+  },
+  {
+   "name": "pr29-08-f11-generator-eval",
+   "issue": 29,
+   "verdict": "CHANGED",
+   "detail": "missing run -calls-> m.js:Store::load",
+   "canary": {
+    "marker": "CGQA_CANARY_683a5781283b95be92ef5cc013ec5e4c",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "CHANGED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-09-f11-generator-key-outside-generator",
+   "issue": 29,
+   "verdict": "BROKEN",
+   "detail": "run -calls-> decoy.js:Decoy::load",
+   "canary": {
+    "marker": "CGQA_CANARY_793850beb0ed6643cbf423006f8ea2f5",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-10-f12-root-object",
+   "issue": 29,
+   "verdict": "CHANGED",
+   "detail": "missing run -calls-> m.js:Store::load",
+   "canary": {
+    "marker": "CGQA_CANARY_171a4dac9e3befef6ad9333f5d2ff5f3",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "CHANGED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-11-f12-parenthesized-instance",
+   "issue": 29,
+   "verdict": "CHANGED",
+   "detail": "missing run -calls-> m.js:Store::load",
+   "canary": {
+    "marker": "CGQA_CANARY_6ee54c2f944b461be89ee51f3f2abdd5",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "CHANGED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-12-f12-logical-instance",
+   "issue": 29,
+   "verdict": "CHANGED",
+   "detail": "missing run -calls-> m.js:Store::load",
+   "canary": {
+    "marker": "CGQA_CANARY_240db09cbf3569bda925ca39a4cbbcb4",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "CHANGED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-13-f13-parameter",
+   "issue": 29,
+   "verdict": "BROKEN",
+   "detail": "run -calls-> decoy.js:Decoy::load",
+   "canary": {
+    "marker": "CGQA_CANARY_92d8c70708e4d6bc736ba6f6faa48d0f",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-14-f13-arrow",
+   "issue": 29,
+   "verdict": "BROKEN",
+   "detail": "run -calls-> decoy.js:Decoy::load",
+   "canary": {
+    "marker": "CGQA_CANARY_f96628d6fac154164234c0e615fe99e3",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-15-f13-block",
+   "issue": 29,
+   "verdict": "BROKEN",
+   "detail": "run -calls-> decoy.js:Decoy::load",
+   "canary": {
+    "marker": "CGQA_CANARY_fffd8bbd892cb1c80d880115d3a918b3",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-16-alias-property-mutation",
+   "issue": 29,
+   "verdict": "CHANGED",
+   "detail": "missing run -calls-> m.js:Store::load",
+   "canary": {
+    "marker": "CGQA_CANARY_4553e96d5749d55bf81f86accfb5ed77",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "CHANGED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-17-alias-rebind",
+   "issue": 29,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_11c589adbfe260372fb16242a01ebe84",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-18-property-overwrite",
+   "issue": 29,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_2bcfb566e38b509ab52acdc37b74cc2d",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-19-binding-overwrite",
+   "issue": 29,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_e604ca09bab79a6570af0fdb0bac4ab8",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-20-post-export-write",
+   "issue": 29,
+   "verdict": "CHANGED",
+   "detail": "missing run -calls-> m.js:Store::load",
+   "canary": {
+    "marker": "CGQA_CANARY_342ea164c9b9a8df09fd55a0c5327d09",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "CHANGED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-21-old-exports-alias",
+   "issue": 29,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_2649fa08cf5dc7ac26650c5eeecc7039",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-22-ambiguous-branch",
+   "issue": 29,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_9f264fa36376578c236ab737ecd25117",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-23-agreeing-branch",
+   "issue": 29,
+   "verdict": "CHANGED",
+   "detail": "missing run -calls-> m.js:Store::load",
+   "canary": {
+    "marker": "CGQA_CANARY_2855c5947d9bdd97033cb543fd69dacd",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "CHANGED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-24-opaque-escape",
+   "issue": 29,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_eb6263fbab3209997695c07c46328bc0",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-25-unknown-dynamic-key",
+   "issue": 29,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_e3fbd733edb7bd599aabd9dd6907c9d6",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-26-local-eval",
+   "issue": 29,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_a1d8dad97c26e8e22a36d185fff60c74",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-27-literal-eval",
+   "issue": 29,
+   "verdict": "CHANGED",
+   "detail": "missing run -calls-> m.js:Store::load",
+   "canary": {
+    "marker": "CGQA_CANARY_024836eefd61a271e1a81792b7858de8",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "CHANGED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-28-eval-property-on-local-identity",
+   "issue": 29,
+   "verdict": "CHANGED",
+   "detail": "missing run -calls-> m.js:Store::load",
+   "canary": {
+    "marker": "CGQA_CANARY_206007f86bcb155a7951adae1b994591",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "CHANGED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-29-uncertain-receiver-alias",
+   "issue": 29,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_958d1bf1e783577323f3601eb25816d1",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-30-data-overwrite-after-literal-eval",
+   "issue": 29,
+   "verdict": "FIXED",
+   "detail": "",
+   "canary": {
+    "marker": "CGQA_CANARY_5eefb6a645f6a54b21700c1833102833",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "FIXED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-31-missing-read-exported-as-undefined-data",
+   "issue": 29,
+   "verdict": "BROKEN",
+   "detail": "run -calls-> decoy.js:Decoy::load",
+   "canary": {
+    "marker": "CGQA_CANARY_f326a00770b73aa649696feb37785185",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "pr29-32-logical-member-initialization",
+   "issue": 29,
+   "verdict": "CHANGED",
+   "detail": "missing run -calls-> m.js:Store::load",
+   "canary": {
+    "marker": "CGQA_CANARY_80543097ac47ed4bc940fe5dcbda55b3",
+    "files": [
+     "decoy.js",
+     "index.js",
+     "m.js",
+     "use.js"
+    ],
+    "verdict": "CHANGED",
+    "leaks": [],
+    "status": "PASS"
+   }
+  },
+  {
+   "name": "t1-ts-global-builtin",
+   "issue": 3238,
+   "verdict": "BROKEN",
+   "detail": "parse -calls-> lib/other.ts:parseInt; reply -instantiates-> lib/other.ts:Response",
+   "canary": {
+    "marker": "CGQA_CANARY_fd66031a97226f4eab6ae1e1f57c0316",
+    "files": [
+     "lib/other.ts",
+     "use.ts"
+    ],
+    "verdict": "BROKEN",
+    "leaks": [],
+    "status": "PASS"
+   }
+  }
+ ],
+ "canaries": {
+  "a": {
+   "marker": "CGQA_CANARY_848ec8f2411b9e2cc3e399a93312dcd3",
+   "files": [
+    "handler.ts",
+    "lib.ts"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "b": {
+   "marker": "CGQA_CANARY_6f5cc81c43ce68632abb432d166ef250",
+   "files": [
+    "queries.ts",
+    "session.ts"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "c": {
+   "marker": "CGQA_CANARY_693845abfd12606104ed231a161583bc",
+   "files": [
+    "cache.ts",
+    "orch.ts"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "g1-go-new-receiver": {
+   "marker": "CGQA_CANARY_993953a867628045f18c0ce508207d76",
+   "files": [
+    "a_router.go",
+    "b_route.go",
+    "use.go"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2944": {
+   "marker": "CGQA_CANARY_86ae861c2465293893f82a1446bd5c53",
+   "files": [
+    "a.test.ts",
+    "decl.d.ts"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2946": {
+   "marker": "CGQA_CANARY_1b1807e99aae359f4ae71a9286de1332",
+   "files": [
+    "db.ts",
+    "use.ts",
+    "writer.ts"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2947": {
+   "marker": "CGQA_CANARY_9b3f5158cbd5fcf4e44b97c5c9aab5fa",
+   "files": [
+    "app.ts",
+    "use.ts"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2948": {
+   "marker": "CGQA_CANARY_5ea918c6965f7a28c4a23755c84f7138",
+   "files": [
+    "heap.ts",
+    "use.ts"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2949": {
+   "marker": "CGQA_CANARY_d39dea268ae5931e1034483612fc3a81",
+   "files": [
+    "lib.ts",
+    "use.ts"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2951": {
+   "marker": "CGQA_CANARY_6f978f0614887078c73c44de4e35a6cf",
+   "files": [
+    "a.ts",
+    "b.ts",
+    "c.ts",
+    "d.ts",
+    "external.ts",
+    "index.ts",
+    "index2.ts",
+    "index3.ts",
+    "schemas.ts"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2952": {
+   "marker": "CGQA_CANARY_0549dc6165d7af69b01bdc63adc89951",
+   "files": [
+    "lib/utils.js",
+    "test/utils.js"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2953": {
+   "marker": "CGQA_CANARY_be5b38f5d4c8e0c1386b8d44878ec295",
+   "files": [
+    "app.ts",
+    "cjsapp.js",
+    "lib/reply.js",
+    "streaming.ts"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2954": {
+   "marker": "CGQA_CANARY_58f0b444ebc9c68901b0fd92ff68c99c",
+   "files": [
+    "lib.ts",
+    "tools.ts"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2957": {
+   "marker": "CGQA_CANARY_700c38a4080f0535522d2014a952153c",
+   "files": [
+    "pkg/__init__.py",
+    "pkg/_client.py",
+    "use.py"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2958": {
+   "marker": "CGQA_CANARY_2a5c49f877445af0612784a2d7e0d2a2",
+   "files": [
+    "examples/factory.py",
+    "pkg/cli.py"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2962": {
+   "marker": "CGQA_CANARY_586334d1029da893915bfc2e0cf8af61",
+   "files": [
+    "auth.ts",
+    "use.tsx"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2963": {
+   "marker": "CGQA_CANARY_e0082576aa14d8f0cf1d694775e1ad3d",
+   "files": [
+    "pkg/__init__.py",
+    "pkg/deco.py",
+    "use.py"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2964": {
+   "marker": "CGQA_CANARY_5a4d6057f4fb6737becc39ec3a0feb2a",
+   "files": [
+    "b.js",
+    "lib/index.js",
+    "lib/inner/entry.js",
+    "srv.js",
+    "test/a.test.js"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2966": {
+   "marker": "CGQA_CANARY_55c52b4854e81dce8c56330b31badb9d",
+   "files": [
+    "lib/application.js",
+    "lib/context.js",
+    "lib/hooks.js",
+    "lib/model.js",
+    "lib/other.js",
+    "lib/reply.js",
+    "lib/types.d.ts",
+    "lib/validation.js",
+    "test/model.test.js"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2967": {
+   "marker": "CGQA_CANARY_2ec561e0802571485714650dbf7d0746",
+   "files": [
+    "mod.js",
+    "mod.ts",
+    "page.tsx",
+    "use.js",
+    "use.ts",
+    "use.tsx"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2973": {
+   "marker": "CGQA_CANARY_ae56e5a576e9883eedea3fb0c80408bf",
+   "files": [
+    "src/a_cart.js",
+    "src/b_profile.js"
+   ],
+   "verdict": "GUESSED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2974": {
+   "marker": "CGQA_CANARY_107206d28b104138ed930b813ac233f4",
+   "files": [
+    "src/client.js",
+    "src/server.js"
+   ],
+   "verdict": "GUESSED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2975": {
+   "marker": "CGQA_CANARY_bc7ee71520de5a4267f352a0a894decd",
+   "files": [
+    "app/Http/Controllers/Admin/UserController.php",
+    "app/Http/Controllers/UserController.php",
+    "routes/api.php"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "issue-2976": {
+   "marker": "CGQA_CANARY_6a4f96da0bdbfdce53dfb14bf4fca099",
+   "files": [
+    "src/com/x/a/Util.java",
+    "src/com/x/b/Util.java",
+    "src/com/x/m/Main.java"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "j1-java-overload": {
+   "marker": "CGQA_CANARY_82f7c78c9fd8c9a933566a29ee8fa107",
+   "files": [
+    "src/p/App.java",
+    "src/p/Parser.java",
+    "src/p/Util.java"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "kmp-22": {
+   "marker": "CGQA_CANARY_1712209927c85024cb0bc6135ca7f29d",
+   "files": [
+    "app/src/main/java/b/App.java"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "m1-py-super": {
+   "marker": "CGQA_CANARY_8656a72f5276606bf2cd6e37ded447f6",
+   "files": [
+    "base.py",
+    "child.py"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "m2-py-method-return-local": {
+   "marker": "CGQA_CANARY_4ec22c11d3e06ef5cc32dd412218209e",
+   "files": [
+    "t.py"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "n1-py-local-import": {
+   "marker": "CGQA_CANARY_2916a70ddacdb3108870a568bc2a2e9a",
+   "files": [
+    "pkg/__init__.py",
+    "pkg/core.py",
+    "t_local_import.py"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "n2-py-comprehension": {
+   "marker": "CGQA_CANARY_498a0a4687d17ee636b7c0f289249ba4",
+   "files": [
+    "other/__init__.py",
+    "other/far.py",
+    "t.py"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "n3-py-enclosing-local": {
+   "marker": "CGQA_CANARY_f8554c503c0d6b85ffa71fad349cec70",
+   "files": [
+    "other/__init__.py",
+    "other/far.py",
+    "t.py"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "n4-py-builtin": {
+   "marker": "CGQA_CANARY_a2c32ba5e3267d5caaf74fa80a4c79cd",
+   "files": [
+    "other/__init__.py",
+    "other/far.py",
+    "t.py"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "n5-ts-barrel-member": {
+   "marker": "CGQA_CANARY_a762a6349406106b5c02542fc3f99d9f",
+   "files": [
+    "b.ts",
+    "c.ts",
+    "fx/deaf.ts",
+    "fx/index.ts",
+    "fx/mark.ts"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "p1": {
+   "marker": "CGQA_CANARY_eaf6ddd0575d0913040a9fcb026dfe13",
+   "files": [
+    "t.py"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "p3": {
+   "marker": "CGQA_CANARY_0eae1593fc55939cc87a20c44b63648b",
+   "files": [
+    "arm.py",
+    "use.py"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "p4": {
+   "marker": "CGQA_CANARY_5c76a7ddca62f8b6882de5b5208dbb80",
+   "files": [
+    "lab/model.py",
+    "other/features.py"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "p5-py-stdlib-import": {
+   "marker": "CGQA_CANARY_6a67c61bde144e96c6a60a685d5e1b60",
+   "files": [
+    "clock.py",
+    "use.py"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-01-f14-object": {
+   "marker": "CGQA_CANARY_5bdb3ec89680151682eb606620ebb7c4",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "CHANGED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-02-f14-class": {
+   "marker": "CGQA_CANARY_2f6c091cff3d9a31362f29ac11436031",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "CHANGED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-03-f14-function": {
+   "marker": "CGQA_CANARY_8c7a94df4899f49e8b6e9f7592073f38",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "CHANGED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-04-f15-number": {
+   "marker": "CGQA_CANARY_7b16f1ca0beed3ca2bfd42bf589a3e05",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-05-f15-string": {
+   "marker": "CGQA_CANARY_2f7522e333593acc110327175c20e4e9",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-06-f15-assigned-callable": {
+   "marker": "CGQA_CANARY_05cf0990292be564154a11421344a331",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-07-f10-optional-wrapper": {
+   "marker": "CGQA_CANARY_1b27943f6f356460ffe8780a878c755c",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "FAIL"
+  },
+  "pr29-08-f11-generator-eval": {
+   "marker": "CGQA_CANARY_683a5781283b95be92ef5cc013ec5e4c",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "CHANGED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-09-f11-generator-key-outside-generator": {
+   "marker": "CGQA_CANARY_793850beb0ed6643cbf423006f8ea2f5",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-10-f12-root-object": {
+   "marker": "CGQA_CANARY_171a4dac9e3befef6ad9333f5d2ff5f3",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "CHANGED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-11-f12-parenthesized-instance": {
+   "marker": "CGQA_CANARY_6ee54c2f944b461be89ee51f3f2abdd5",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "CHANGED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-12-f12-logical-instance": {
+   "marker": "CGQA_CANARY_240db09cbf3569bda925ca39a4cbbcb4",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "CHANGED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-13-f13-parameter": {
+   "marker": "CGQA_CANARY_92d8c70708e4d6bc736ba6f6faa48d0f",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-14-f13-arrow": {
+   "marker": "CGQA_CANARY_f96628d6fac154164234c0e615fe99e3",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-15-f13-block": {
+   "marker": "CGQA_CANARY_fffd8bbd892cb1c80d880115d3a918b3",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-16-alias-property-mutation": {
+   "marker": "CGQA_CANARY_4553e96d5749d55bf81f86accfb5ed77",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "CHANGED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-17-alias-rebind": {
+   "marker": "CGQA_CANARY_11c589adbfe260372fb16242a01ebe84",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-18-property-overwrite": {
+   "marker": "CGQA_CANARY_2bcfb566e38b509ab52acdc37b74cc2d",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-19-binding-overwrite": {
+   "marker": "CGQA_CANARY_e604ca09bab79a6570af0fdb0bac4ab8",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-20-post-export-write": {
+   "marker": "CGQA_CANARY_342ea164c9b9a8df09fd55a0c5327d09",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "CHANGED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-21-old-exports-alias": {
+   "marker": "CGQA_CANARY_2649fa08cf5dc7ac26650c5eeecc7039",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-22-ambiguous-branch": {
+   "marker": "CGQA_CANARY_9f264fa36376578c236ab737ecd25117",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-23-agreeing-branch": {
+   "marker": "CGQA_CANARY_2855c5947d9bdd97033cb543fd69dacd",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "CHANGED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-24-opaque-escape": {
+   "marker": "CGQA_CANARY_eb6263fbab3209997695c07c46328bc0",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-25-unknown-dynamic-key": {
+   "marker": "CGQA_CANARY_e3fbd733edb7bd599aabd9dd6907c9d6",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-26-local-eval": {
+   "marker": "CGQA_CANARY_a1d8dad97c26e8e22a36d185fff60c74",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-27-literal-eval": {
+   "marker": "CGQA_CANARY_024836eefd61a271e1a81792b7858de8",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "CHANGED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-28-eval-property-on-local-identity": {
+   "marker": "CGQA_CANARY_206007f86bcb155a7951adae1b994591",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "CHANGED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-29-uncertain-receiver-alias": {
+   "marker": "CGQA_CANARY_958d1bf1e783577323f3601eb25816d1",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-30-data-overwrite-after-literal-eval": {
+   "marker": "CGQA_CANARY_5eefb6a645f6a54b21700c1833102833",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "FIXED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-31-missing-read-exported-as-undefined-data": {
+   "marker": "CGQA_CANARY_f326a00770b73aa649696feb37785185",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "pr29-32-logical-member-initialization": {
+   "marker": "CGQA_CANARY_80543097ac47ed4bc940fe5dcbda55b3",
+   "files": [
+    "decoy.js",
+    "index.js",
+    "m.js",
+    "use.js"
+   ],
+   "verdict": "CHANGED",
+   "leaks": [],
+   "status": "PASS"
+  },
+  "t1-ts-global-builtin": {
+   "marker": "CGQA_CANARY_fd66031a97226f4eab6ae1e1f57c0316",
+   "files": [
+    "lib/other.ts",
+    "use.ts"
+   ],
+   "verdict": "BROKEN",
+   "leaks": [],
+   "status": "PASS"
+  }
+ }
+}

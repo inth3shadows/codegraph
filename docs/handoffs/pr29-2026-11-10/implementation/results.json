@@ -1,0 +1,54 @@
+{
+  "status": "implemented and focused-tested; awaiting user decision on fresh dual review",
+  "head": "87576a8d9ff0d8aba235db5535f5f4429f14b037",
+  "branch": "fix/commonjs-eval-callee-context",
+  "sourcePaths": 30,
+  "previousDirtyPathsPreservedByteForByte": [
+    "__tests__/commonjs-eval-facts.test.ts",
+    "__tests__/commonjs-eval.test.ts",
+    "__tests__/commonjs-export-members.test.ts",
+    "__tests__/js-default-binding-members.test.ts",
+    "__tests__/lazy-engine.test.ts",
+    "package-lock.json",
+    "package.json",
+    "src/db/queries.ts",
+    "src/extraction/commonjs-eval.ts",
+    "src/extraction/index.ts",
+    "src/extraction/kernel/index.ts",
+    "src/extraction/parse-worker.ts",
+    "src/extraction/tree-sitter.ts",
+    "src/resolution/commonjs-export-members.ts",
+    "src/resolution/index.ts",
+    "src/resolution/types.ts",
+    "src/types.ts"
+  ],
+  "previousDirtyPathsIntentionallyExtended": [
+    "__tests__/commonjs-export-evidence-integration.test.ts",
+    "__tests__/commonjs-export-evidence.test.ts",
+    "src/resolution/commonjs-export-evidence.ts",
+    "src/resolution/import-resolver.ts",
+    "src/resolution/name-matcher.ts"
+  ],
+  "focused": {
+    "files": 25,
+    "pass": 812,
+    "skip": 1,
+    "log": "codegraph-pr29-value-verification.log"
+  },
+  "lazy": {
+    "files": 1,
+    "pass": 7,
+    "log": "codegraph-pr29-value-lazy.log",
+    "execution": "outside sandbox for previously demonstrated child-process pipe restriction"
+  },
+  "distinctPass": 819,
+  "nativeParity": "not executed; native binary absent",
+  "typecheck": "node node_modules/typescript/bin/tsc --noEmit passed",
+  "whitespace": "git diff --check passed",
+  "normalBuildAndFullSuite": "deferred until stable independent review, per existing boundary",
+  "completedReviewRounds": 11,
+  "newReviewStarted": false,
+  "commitsPushMergeDeploy": false,
+  "stagedContent": "",
+  "packageScreen": "codegraph-pr29-value-package-screen.json; analyzer source coverage/warm timing only, no integration-performance claim"
+}

@@ -1,0 +1,1 @@
+Production value graph and intent wiring implemented. Initial real-boundary run:40pass1fail (static class type query), corrected using getTypeOfSymbolAtLocation;16new F14/F15cases passed. Expanded preservation and production contract tests currently running. No final green claim. No commits/reviews/publication.

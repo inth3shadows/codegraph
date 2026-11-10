@@ -300,6 +300,7 @@ export function materializeKernelResult(
     language
   );
   decoded.durationMs = result.durationMs;
+  if (result.commonJsEvalCall !== undefined) decoded.commonJsEvalCall = result.commonJsEvalCall;
   // References read beside the tables (a CommonJS `require`) ride on the transport.
   if (result.unresolvedReferences.length > 0) decoded.unresolvedReferences.push(...result.unresolvedReferences);
   return decoded;

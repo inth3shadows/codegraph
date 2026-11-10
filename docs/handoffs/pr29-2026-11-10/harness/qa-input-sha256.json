@@ -1,0 +1,1836 @@
+{
+  "files": [
+    {
+      "sha256": "6b4faee7cbdb1494396111cc3e96a67114a0e28d8249fe50dfb9eb6a9f8fe8e1",
+      "path": "bin/cgqa"
+    },
+    {
+      "sha256": "3692cc0ac001ce2b88fb78746fbbfdddc0de9ac722c4ce1b1320c5cd7ec87ed3",
+      "path": "metamorphic/relations.mjs"
+    },
+    {
+      "sha256": "61c36ac885780a1d0ed396bbc3363f091ec4dd2f92b25a478c2c8b9ed4315ecb",
+      "path": "metamorphic/run.mjs"
+    },
+    {
+      "sha256": "4bc03d739287d5fbc251ab02fc963e33ff81deb0ea599a41345600c76f9e8c5a",
+      "path": "lib/scores-test.mjs"
+    },
+    {
+      "sha256": "de1bc933b9c4856f9e235d054e0dfd7595c4ed7bffc78594174488ee53eb9924",
+      "path": "lib/anti-gaming-test.mjs"
+    },
+    {
+      "sha256": "ae36e0142cbc7899a2ae41083387fa879f42686db28d25bd8e8e4c299158b359",
+      "path": "lib/fixture.mjs"
+    },
+    {
+      "sha256": "30cce70cf048cbac961d845375c622af3f34b389ef6e04023ae65556cc206a26",
+      "path": "lib/snapshot.mjs"
+    },
+    {
+      "sha256": "2e4b2328dceb4994b9733e64cd3e75751e1ba843f34f9d31345c11aab1722c73",
+      "path": "lib/conformance.mjs"
+    },
+    {
+      "sha256": "4bac861cbf636fc134ba72317247e144601ffe62d8c4bf2bfde798686d9932c0",
+      "path": "lib/expect.mjs"
+    },
+    {
+      "sha256": "bb19968325f3ca5360e70c87720648eb96606edb70437b296d1cf1a5a9eb457d",
+      "path": "lib/provenance.mjs"
+    },
+    {
+      "sha256": "499d692bae5ea5028d2f299f87fdd7e5a5f05bf013818860a5cd5d8adfda4ead",
+      "path": "lib/manifest.mjs"
+    },
+    {
+      "sha256": "f287639d22f91a169eb8a854862af745a45e43da703ee07658e6cf7ca2855d95",
+      "path": "lib/config.mjs"
+    },
+    {
+      "sha256": "9a4a2c0be2af5b539b4e7037ee84b7d1fcf3a854c4e35efef15e5395f182a2ff",
+      "path": "lib/scores.mjs"
+    },
+    {
+      "sha256": "340242976dcef5573a8c5eb4b565047c16376d1938cb6c60807637554c2f00b1",
+      "path": "lib/scip.mjs"
+    },
+    {
+      "sha256": "1529a2c1c7d3727bff3e98eda250eee401daa67f88f3df9b0cbe00e03381e47f",
+      "path": "fixtures/replay.mjs"
+    },
+    {
+      "sha256": "486afcfd5d6fa4a9acaa7f976b55e34f8f7588a29829fdeb5665f45c382655b8",
+      "path": "differential/questions.json"
+    },
+    {
+      "sha256": "18ffb861ffbbcaa823f42b56a19ea7e2c105a23bb575779829151a772c33d20d",
+      "path": "differential/modes.mjs"
+    },
+    {
+      "sha256": "82c2971a79dee37c22e4d9fdc40e49ae580260b9beb901f0dfecf52989370915",
+      "path": "differential/builds.mjs"
+    },
+    {
+      "sha256": "dd1d13e73a3cbee4bc7f588b7a6eeaa0dfe2c766ecc900bc05df82b7d210a89d",
+      "path": "differential/shadow.mjs"
+    },
+    {
+      "sha256": "4476b1caae91cfe702011b960812b92f9fe2befe1656970a6fdd7e7b862b04ae",
+      "path": "differential/test.mjs"
+    },
+    {
+      "sha256": "7ed3c61549a2cfd3bbf78cba6266b20ae9e9d52afd096fb2464960e0116481bb",
+      "path": "corpus/v1.txt"
+    },
+    {
+      "sha256": "e6aa7e0d6c81c1d04435958ea610058b998c670da8d9954306bd65cbc940ad22",
+      "path": "corpus/v2.txt"
+    },
+    {
+      "sha256": "5fb6ea6bafcd92bab76950464409b396e02197d0017c5dc7f14a1012b78e0633",
+      "path": "schema/questions.v1.json"
+    },
+    {
+      "sha256": "565a8b9580fee9606ea81af6bcb2ba616555dec542aa9ae54160aa877b8a8b20",
+      "path": "schema/expect.v1.json"
+    },
+    {
+      "sha256": "0c46e4efb1dcd7bf91675c3caa3fb1069459e593584e192bcc371454f371e049",
+      "path": "schema/snapshot.v1.json"
+    },
+    {
+      "sha256": "b4b9225a687440498b963a50fe6b2d6229586f1923e7ae2acc787e279b9fc68a",
+      "path": "oracle/oracle.mjs"
+    },
+    {
+      "sha256": "3a11985108f1eb46a8eebb292811952a7ea6adad5238b78880f33b714b93ec58",
+      "path": "oracle/scip-java.sh"
+    },
+    {
+      "sha256": "6388f3f27f865589f39e7db53f3f8f28cd46210c88933da5deedce3281016098",
+      "path": "oracle/targets.txt"
+    },
+    {
+      "sha256": "e3bf0a21b4d4c48954de844737e3aef52748f7079892d8da96c6baf320292043",
+      "path": "oracle/baseline.mjs"
+    },
+    {
+      "sha256": "5f714ee1083e4132e7fd513332c10d04370b3625fa460dee5fac6d5c47be5688",
+      "path": "oracle/site.mjs"
+    },
+    {
+      "sha256": "a82e5eace691c5a9444779b2fb6bc756bcc0e94972d51d28899bcbd0466f7ec7",
+      "path": "oracle/scip-python.sh"
+    },
+    {
+      "sha256": "b7299fcd5326b72f5e5196722a24408d74949d1f1f1eafc6946d5514c1e17e1a",
+      "path": "oracle/run.sh"
+    },
+    {
+      "sha256": "918a011f6b642050add4d7cfb720962910dd2df35a0159cfc29b8f9c8e46d828",
+      "path": "oracle/run-all.sh"
+    },
+    {
+      "sha256": "2793723074234e7e74aa9165f9012a4b82876a72b1f5dbba46887914e50d56c6",
+      "path": "oracle/site-test.mjs"
+    },
+    {
+      "sha256": "5f7696ee9b5741c9a58507b574153c22e9e045fc19cafb02e457c2328fc84cd7",
+      "path": "oracle/test/regen.mjs"
+    },
+    {
+      "sha256": "10b0e3dba0c464dc1a2e8e403e3d8c7d677a1965aa1d28d64f8db49a43c5c3be",
+      "path": "oracle/test/run.mjs"
+    },
+    {
+      "sha256": "3d8c14cc02fd5be543a52c2e43847412c3af079fd839ce13bed9fa5e6aecb127",
+      "path": "oracle/test/js-missing/case.json"
+    },
+    {
+      "sha256": "d5479ea82e1d2058415b15962855fe639068165e53831c48f8d23fbe991c7224",
+      "path": "oracle/test/js-missing/index.scip.json"
+    },
+    {
+      "sha256": "9fdb81ad750da09eceb3becca3b2a1ab46692f5420f7d951cd6ecec482aa173f",
+      "path": "oracle/test/js-missing/lib.js"
+    },
+    {
+      "sha256": "4e80bbba261ca5f24d171832cb171755b6087232fe8f4ff2630cc50a6815d380",
+      "path": "oracle/test/js-missing/use.js"
+    },
+    {
+      "sha256": "a91b396ec0382577526190026523f560ed9ba811ccaa2eff152456e2b9bf5055",
+      "path": "oracle/test/js-missing/snapshot.json"
+    },
+    {
+      "sha256": "1819aa6268f637cd42eb7e88b50ad53703e872f839405ef99d0d4bb84f6c5c86",
+      "path": "oracle/test/py-forward/closure.py"
+    },
+    {
+      "sha256": "f13c97e3621f055b793aa8013649cd4cd16e31ffb5520d4afb1537b749bf5d81",
+      "path": "oracle/test/py-forward/shadow.py"
+    },
+    {
+      "sha256": "c283dab55a7a5e93fd0db00aa0f685968d904d598d1b47e52006f73ec8ef0866",
+      "path": "oracle/test/py-forward/case.json"
+    },
+    {
+      "sha256": "9faab3a2eaec3f83d6a8496ded312b8b12215b25cb255247db9275452d817f3e",
+      "path": "oracle/test/py-forward/imported.py"
+    },
+    {
+      "sha256": "b5245e36a3abf8cfa742ece91c3b405ab6a11c7da68547a9b2b30ca6a2d0ea7f",
+      "path": "oracle/test/py-forward/raiser.py"
+    },
+    {
+      "sha256": "a5c4ee17ea50dd6633b428e7f47ef67f07f2360205be41cac8b47edd3ea2150f",
+      "path": "oracle/test/py-forward/twice.py"
+    },
+    {
+      "sha256": "170b2d2b78d87f56d485a43142c5dab20a8b3f4cf2ff4a16c593353a93059aa7",
+      "path": "oracle/test/py-forward/test_fix.py"
+    },
+    {
+      "sha256": "f5ccc600161d44272c15524bd4498fe4bdecdf956bda29bf81e5fdc4c7fcfd9a",
+      "path": "oracle/test/py-forward/index.scip.json"
+    },
+    {
+      "sha256": "1519363cefdc3b99aaa2d1802933137e8774138b36d5495e7e401819caa39f95",
+      "path": "oracle/test/py-forward/snapshot.json"
+    },
+    {
+      "sha256": "a1a60eb305bc026e880dce8b3ac6a73bf13d1ea124f50c98218cd58bf681786f",
+      "path": "oracle/test/ts-forward/api.ts"
+    },
+    {
+      "sha256": "8588114d305b603c5222ff516ba3e6216eaea8587da130c8cb3562859ac2f383",
+      "path": "oracle/test/ts-forward/db.ts"
+    },
+    {
+      "sha256": "53b6333bd2ff6b52d0865702d5a2ed2adda2f8d9bdb0e1912201b03be7654eec",
+      "path": "oracle/test/ts-forward/widget.ts"
+    },
+    {
+      "sha256": "f025b3438417820a352be8be4927eeb4a22208c7ca8bb8ffbc7a9b706632b322",
+      "path": "oracle/test/ts-forward/heap.ts"
+    },
+    {
+      "sha256": "b3efef6ef5896a9e9eb4c53d4b215ac29213d5928486d39e18d9e1b8f08b85ee",
+      "path": "oracle/test/ts-forward/tsconfig.json"
+    },
+    {
+      "sha256": "bd45fcd16fc2227b397345ffc0e5e7b4c5f07f5061157af50b1c4a833339f72c",
+      "path": "oracle/test/ts-forward/case.json"
+    },
+    {
+      "sha256": "c2471844a7ba8931d847a6d0fdee13da649fa50a450c6c5d43c0f55b63c696b4",
+      "path": "oracle/test/ts-forward/scene.ts"
+    },
+    {
+      "sha256": "6cffe8884ba774d32d3f22422eeb058827d20ffe81e61b28b591d605d41dcad4",
+      "path": "oracle/test/ts-forward/package.json"
+    },
+    {
+      "sha256": "effd182ec8e8fb2529f793118f57a2bea5bfcc8abf9fa45d043944bd156e5c65",
+      "path": "oracle/test/ts-forward/dyn.ts"
+    },
+    {
+      "sha256": "840d4bcc25722ca40660a5b56ff946b2f4e49db772cdc47bbcac439a2322a89b",
+      "path": "oracle/test/ts-forward/helper.mjs"
+    },
+    {
+      "sha256": "db2d681977adb2e57d64f5e825e35fbdca705b5135f9f5fde292eb5bb31800da",
+      "path": "oracle/test/ts-forward/lib.ts"
+    },
+    {
+      "sha256": "c404d811e91409a42a6fc0f726fdaa867cf889a958af38e9ee7c7fece8005efe",
+      "path": "oracle/test/ts-forward/index.scip.json"
+    },
+    {
+      "sha256": "382940f8129ef52632b18fecd01f1e4a07c6f4d478f4a422fc90d35ae5522da6",
+      "path": "oracle/test/ts-forward/conf.ts"
+    },
+    {
+      "sha256": "1b607244f56bd3a8742844f8b99129bd2dd604784c8327eb4bf5a56fdd954aa6",
+      "path": "oracle/test/ts-forward/outside.ts"
+    },
+    {
+      "sha256": "066fd9802bf0478aad6d8ef3e471c145402102ca2aad63a16f7f73e6a5a713be",
+      "path": "oracle/test/ts-forward/store.ts"
+    },
+    {
+      "sha256": "9c8a335db772c04044695516ded69ddf3c86afd843652bda1333980d4365a1a2",
+      "path": "oracle/test/ts-forward/snapshot.json"
+    },
+    {
+      "sha256": "cea271c0cac40dd2fa179a6ffcddd03793219a102a2c1c70a0e07f37c8929947",
+      "path": "oracle/test/py-missing/base.py"
+    },
+    {
+      "sha256": "ce6b949bc89bcf024f007cbdadec805c3008db22630f22bb801aadf13fcdafce",
+      "path": "oracle/test/py-missing/case.json"
+    },
+    {
+      "sha256": "a5892c4b3e084df90c94f2043fa9909b926abb11e2c02871ca11f04c566f469a",
+      "path": "oracle/test/py-missing/index.scip.json"
+    },
+    {
+      "sha256": "bb8c5bc3da5f40a6da07c05b794115e9e9a8ed7cd725d3fe26ff10aa306429d1",
+      "path": "oracle/test/py-missing/snapshot.json"
+    },
+    {
+      "sha256": "eac96a79e4507b4642c7b64104fe1c8f49765ef62f939a30a06c09f1cd9bf003",
+      "path": "oracle/test/py-overload/case.json"
+    },
+    {
+      "sha256": "dc4c5f32d0ee773de6bef3a75f4151919f3a754da1cc93edb04b707e1dc7f472",
+      "path": "oracle/test/py-overload/use.py"
+    },
+    {
+      "sha256": "9af0e87823a830210c0bda8bf64c6bf38cccc873edbe7b2ae1c49b4c509ecaf6",
+      "path": "oracle/test/py-overload/index.scip.json"
+    },
+    {
+      "sha256": "1f0c076a7c5cc1dbc4bea7c2c7b892e0f82b866538361c8bfa3192cbc341d5a5",
+      "path": "oracle/test/py-overload/ctx.py"
+    },
+    {
+      "sha256": "b845b43f379b96e3ed57324a8a9ff56f34b1c3a8470764e7b0be551549b70f0d",
+      "path": "oracle/test/py-overload/snapshot.json"
+    },
+    {
+      "sha256": "5ffb2b6bd36870fb903b08316b074e417779a60aa4d06eac544dc9a27c6eb869",
+      "path": "oracle/test/ts-missing/shapes.ts"
+    },
+    {
+      "sha256": "ed3144839ab14cdd52e668bab481391bbbd7870e09c6d0f01d5c92fe3d7fde47",
+      "path": "oracle/test/ts-missing/tsconfig.json"
+    },
+    {
+      "sha256": "64007ac4cdbbe7eb0217147ccd8972d353873adb91c181dad387ec562c50e5e3",
+      "path": "oracle/test/ts-missing/case.json"
+    },
+    {
+      "sha256": "b19dfd9dcb4bc8190d54e5f7421d4050e44ece61757166b690f3624884eb71f6",
+      "path": "oracle/test/ts-missing/index.scip.json"
+    },
+    {
+      "sha256": "3fa746ac44f74227c75dcf327e6db14c3faaa77dfe2efbf779eda018d4d6f550",
+      "path": "oracle/test/ts-missing/snapshot.json"
+    },
+    {
+      "sha256": "325d25fce6ad0d989235bbd2d491c877643771ad06d7666b83d369ea3ee554a6",
+      "path": "oracle/test/ts-forward/app/page.tsx"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "oracle/test/py-forward/other/__init__.py"
+    },
+    {
+      "sha256": "9bf52028a5d7f3f17bd2c01dcb4ec81d65727930ecea759f4ea8d5a12f808ee9",
+      "path": "oracle/test/py-forward/other/far.py"
+    },
+    {
+      "sha256": "7dfbadcbe4903aac566bdf53e8b9b95c138d6944c36a215608fe9e2cb1e945c3",
+      "path": "oracle/test/py-forward/ex/tsp/evaluator.py"
+    },
+    {
+      "sha256": "76d1e4850e9ad55a6da70d47695fb9c8f2879f126c8a805742a6453c80b713ef",
+      "path": "oracle/test/py-forward/ex/tsp/utils/utils.py"
+    },
+    {
+      "sha256": "2ce51da88e2be7d26e625c8695fcec7a9ec7b566a2b6d55af42ec8b969c5b896",
+      "path": "fixtures/sync-history/H-size-cap-shrink.mjs"
+    },
+    {
+      "sha256": "b262816de11efe9230c25c74b3d5fb9728756075e9c07fa96db0c4d0c2ba741f",
+      "path": "fixtures/sync-history/fx.sh"
+    },
+    {
+      "sha256": "829c5ca1146939d24f0bfd4ae3fc8aff06b5c5045590a111b6075c8b967841ed",
+      "path": "fixtures/sync-history/rp.mjs"
+    },
+    {
+      "sha256": "3b7faae62d19a582b848150175e7268221afbfea6c626266fd7cc620e6061c34",
+      "path": "fixtures/oracle-candidates/p1/expect.json"
+    },
+    {
+      "sha256": "f952a9690ae8f6bc4eaa1b0ea8cbd9cfdc805f863a50639789e90f161b672a09",
+      "path": "fixtures/oracle-candidates/p1/t.py"
+    },
+    {
+      "sha256": "ebb4055c6f1be938a0e03be7bb7957088c44ebaa5f051daa1a1dc899ab08463e",
+      "path": "fixtures/oracle-candidates/pr29-07-f10-optional-wrapper/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-07-f10-optional-wrapper/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-07-f10-optional-wrapper/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-07-f10-optional-wrapper/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-07-f10-optional-wrapper/use.js"
+    },
+    {
+      "sha256": "85b236b4aa3a2473696f398147d8ba9ccafa0b812038aa96e20c30bef20edc1f",
+      "path": "fixtures/oracle-candidates/issue-2954/expect.json"
+    },
+    {
+      "sha256": "66ffde7681621be4c58f3d066afb396accab511938c6f9ac2552e0cd800c2792",
+      "path": "fixtures/oracle-candidates/issue-2954/lib.ts"
+    },
+    {
+      "sha256": "26bb2f8d651d2915401193460814ac36e0f49673b54d8189e4f4c20231ac8c8a",
+      "path": "fixtures/oracle-candidates/issue-2954/tools.ts"
+    },
+    {
+      "sha256": "1e1839dcb8db2911cc49ef8b1973aaea44ba040388403d17957cfb47c229a09f",
+      "path": "fixtures/oracle-candidates/issue-2949/expect.json"
+    },
+    {
+      "sha256": "aa9ee880fd19c7a90cce15848809d0ce3da2b1d3143fdaed5fa8b596a7beac39",
+      "path": "fixtures/oracle-candidates/issue-2949/lib.ts"
+    },
+    {
+      "sha256": "69c3676ce35cd5461b85912d88163093bd90816bbfcfe880179c49cffb383e59",
+      "path": "fixtures/oracle-candidates/issue-2949/use.ts"
+    },
+    {
+      "sha256": "f333e17c664371f1a91f3b401ec79360923f08cf5e29e4bb2d4a11cbd1ddc1ad",
+      "path": "fixtures/oracle-candidates/pr29-21-old-exports-alias/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-21-old-exports-alias/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-21-old-exports-alias/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-21-old-exports-alias/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-21-old-exports-alias/use.js"
+    },
+    {
+      "sha256": "b0daad482806702bbd2d7fc509baabb896ffb801424224be84feef29b12a6c15",
+      "path": "fixtures/oracle-candidates/issue-2948/heap.ts"
+    },
+    {
+      "sha256": "a8264bddb498f480a37e89a1de89fd8020cb5cfbcae31b739666895e3668bad5",
+      "path": "fixtures/oracle-candidates/issue-2948/expect.json"
+    },
+    {
+      "sha256": "46112efe2524e4fd833ad9bf3421184617abc2de6f3395e5b09b0efababb1b83",
+      "path": "fixtures/oracle-candidates/issue-2948/use.ts"
+    },
+    {
+      "sha256": "91e7d67dde88860c783a83817ebdf00412a71a3579903aa81d4d696befeae9d0",
+      "path": "fixtures/oracle-candidates/issue-2967/mod.ts"
+    },
+    {
+      "sha256": "b4ec5093519f31d71a12a3b7a3763698b565b404adae57f11e5277e56772bad9",
+      "path": "fixtures/oracle-candidates/issue-2967/mod.js"
+    },
+    {
+      "sha256": "d37e4ab8679ebb76f24914b8a7521408242ac0e05290c7def708102a4e79c0c7",
+      "path": "fixtures/oracle-candidates/issue-2967/use.tsx"
+    },
+    {
+      "sha256": "f26ace7f9dda3befd5a8adf642e86ecc95f545f9600ded3b65d7908d4242969f",
+      "path": "fixtures/oracle-candidates/issue-2967/expect.json"
+    },
+    {
+      "sha256": "71363223b4ecd53d7e192b10d93b0c09e71d12211fdc1cc96c56ef27e27dac1a",
+      "path": "fixtures/oracle-candidates/issue-2967/page.tsx"
+    },
+    {
+      "sha256": "2fe8f2c7a4dedd0da10df50138cb44fa92b82bd806536990ddd2f9ba00ace071",
+      "path": "fixtures/oracle-candidates/issue-2967/use.ts"
+    },
+    {
+      "sha256": "0e8baaedd38305834af4c80b3720affeda047535bcd95b2d491a139565faaf22",
+      "path": "fixtures/oracle-candidates/issue-2967/use.js"
+    },
+    {
+      "sha256": "1400e76760cde6bb4813bda3f98a72d74b465ac2533c0890387f265754018151",
+      "path": "fixtures/oracle-candidates/p5-py-stdlib-import/expect.json"
+    },
+    {
+      "sha256": "46e28cbb94d4284c88f9cbb5e0f3dc509b68981f1cc8711d894019e0e9050153",
+      "path": "fixtures/oracle-candidates/p5-py-stdlib-import/use.py"
+    },
+    {
+      "sha256": "743fa6c7072a1a850cbcc407981640469d59e83a946ffbdf49f6bbbf3b27a9b0",
+      "path": "fixtures/oracle-candidates/p5-py-stdlib-import/clock.py"
+    },
+    {
+      "sha256": "0acf06d57dbba754e1b17266cdd6fe0858a75dd069ca27066d5cea035115112c",
+      "path": "fixtures/oracle-candidates/pr29-20-post-export-write/m.js"
+    },
+    {
+      "sha256": "0fafb03bd978c9d85cca857293a329daba849d2ea66d9eed3c2d6db9bf3fae6c",
+      "path": "fixtures/oracle-candidates/pr29-20-post-export-write/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-20-post-export-write/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-20-post-export-write/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-20-post-export-write/use.js"
+    },
+    {
+      "sha256": "943ce79856b8df6a5d8a1bbaf6b3a6508649b016fcee36cb050e73ca22dacb46",
+      "path": "fixtures/oracle-candidates/c/orch.ts"
+    },
+    {
+      "sha256": "95f5917e8f3258e18faa4c1bc76da22fd9189d1ebdf8725665bc9e8a442be803",
+      "path": "fixtures/oracle-candidates/c/expect.json"
+    },
+    {
+      "sha256": "c74fc3ad8bd134c612a57012b3df5486b33eed14d97b8d202d977ce03ea8a985",
+      "path": "fixtures/oracle-candidates/c/cache.ts"
+    },
+    {
+      "sha256": "b839557a1c7a0462aec83a2e34f32871dbd95764d32e104e1bdd7080a0690c79",
+      "path": "fixtures/oracle-candidates/issue-2952/expect.json"
+    },
+    {
+      "sha256": "812bddc1e2b9652ae37ff5dc552ea4ef3311e56ab8a845cc1211fe261a0ba2d7",
+      "path": "fixtures/oracle-candidates/pr29-28-eval-property-on-local-identity/m.js"
+    },
+    {
+      "sha256": "0fafb03bd978c9d85cca857293a329daba849d2ea66d9eed3c2d6db9bf3fae6c",
+      "path": "fixtures/oracle-candidates/pr29-28-eval-property-on-local-identity/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-28-eval-property-on-local-identity/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-28-eval-property-on-local-identity/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-28-eval-property-on-local-identity/use.js"
+    },
+    {
+      "sha256": "bbb41f20ed7554a859e89829e126c86fe2c349849cb67f874b1b8b4668c07306",
+      "path": "fixtures/oracle-candidates/pr29-24-opaque-escape/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-24-opaque-escape/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-24-opaque-escape/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-24-opaque-escape/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-24-opaque-escape/use.js"
+    },
+    {
+      "sha256": "5026727d51bac41e02b5cb3bd3ea65f898d761030019af0714cd53cdb2bf3585",
+      "path": "fixtures/oracle-candidates/p3/expect.json"
+    },
+    {
+      "sha256": "614531d59c47f80f9801dfe302f6c07c2485a8072d84175e5630703bb941bd3c",
+      "path": "fixtures/oracle-candidates/p3/use.py"
+    },
+    {
+      "sha256": "355fc11e1231893ab01182dee5133adb99c999368c7e5efe241b9c5984e52ebd",
+      "path": "fixtures/oracle-candidates/p3/arm.py"
+    },
+    {
+      "sha256": "68125fb77a45e7840ec8e796dc037d8bee78bee0b761d2b35e032d8d92b128c9",
+      "path": "fixtures/oracle-candidates/issue-2944/expect.json"
+    },
+    {
+      "sha256": "9a5adb9e66d18b36a5d01fb5abbfff2c9f7976d8bb6e6f5c1da6bea917f282ec",
+      "path": "fixtures/oracle-candidates/issue-2944/decl.d.ts"
+    },
+    {
+      "sha256": "1f5fc69b9e51ab1a59cb96b12d7a29586a0d84fcc34d18e31b3a2de3f1642db5",
+      "path": "fixtures/oracle-candidates/issue-2944/a.test.ts"
+    },
+    {
+      "sha256": "6701650334a24b606e652522e62bac01bab173f9bac37da9023377a129bf2df0",
+      "path": "fixtures/oracle-candidates/pr29-23-agreeing-branch/m.js"
+    },
+    {
+      "sha256": "0fafb03bd978c9d85cca857293a329daba849d2ea66d9eed3c2d6db9bf3fae6c",
+      "path": "fixtures/oracle-candidates/pr29-23-agreeing-branch/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-23-agreeing-branch/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-23-agreeing-branch/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-23-agreeing-branch/use.js"
+    },
+    {
+      "sha256": "f803bd22bdeb496690a9734334e3693e39ce1465ae8f95901c190442b8b4926e",
+      "path": "fixtures/oracle-candidates/pr29-14-f13-arrow/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-14-f13-arrow/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-14-f13-arrow/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-14-f13-arrow/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-14-f13-arrow/use.js"
+    },
+    {
+      "sha256": "719d727c957229c005342581081c50503046fa1bb564d0b0afceae73fa03242f",
+      "path": "fixtures/oracle-candidates/n3-py-enclosing-local/expect.json"
+    },
+    {
+      "sha256": "8e518ff23f77614d52d0f41defe24aa6772a018f8474ef7a86243c2ca4ef6c8d",
+      "path": "fixtures/oracle-candidates/n3-py-enclosing-local/t.py"
+    },
+    {
+      "sha256": "432c80ce5cddcd5c09d8d6da7fad547385a912b9625f3ef317f5e4730eba31f8",
+      "path": "fixtures/oracle-candidates/pr29-10-f12-root-object/m.js"
+    },
+    {
+      "sha256": "0fafb03bd978c9d85cca857293a329daba849d2ea66d9eed3c2d6db9bf3fae6c",
+      "path": "fixtures/oracle-candidates/pr29-10-f12-root-object/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-10-f12-root-object/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-10-f12-root-object/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-10-f12-root-object/use.js"
+    },
+    {
+      "sha256": "1eb7c4b356cde690bb362a74b8fcece5f909bede4113dae104aeb257011707b2",
+      "path": "fixtures/oracle-candidates/pr29-30-data-overwrite-after-literal-eval/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-30-data-overwrite-after-literal-eval/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-30-data-overwrite-after-literal-eval/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-30-data-overwrite-after-literal-eval/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-30-data-overwrite-after-literal-eval/use.js"
+    },
+    {
+      "sha256": "efb61b6b7fb6d1f9c8c1230cec4c1cc07638c6f689583b43916e350e30fc7761",
+      "path": "fixtures/oracle-candidates/issue-2953/cjsapp.js"
+    },
+    {
+      "sha256": "a197a8ea35f9f0f49e1591811e52259d4165064be260ded1d39d8dda5c6f8590",
+      "path": "fixtures/oracle-candidates/issue-2953/expect.json"
+    },
+    {
+      "sha256": "dc2498e6e2a656f6654b4d9ab65b50833ff438c124993aa642efd03db7f78b1e",
+      "path": "fixtures/oracle-candidates/issue-2953/streaming.ts"
+    },
+    {
+      "sha256": "e20037e0139de7af6001560f5eb2a923b746231ee52153762c90759d9692465d",
+      "path": "fixtures/oracle-candidates/issue-2953/app.ts"
+    },
+    {
+      "sha256": "14047bc48f5ecfcf4c320537a989d6899d5f14e73076c827aa4ba6061d8dd089",
+      "path": "fixtures/oracle-candidates/issue-2974/expect.json"
+    },
+    {
+      "sha256": "06f92005a2e61b73fffefc508135792acbbfcdb6c524a9367f4158283f4d1c98",
+      "path": "fixtures/oracle-candidates/issue-2974/package.json"
+    },
+    {
+      "sha256": "97ba5995677220ea34260c6f8949cdbf655f5c350ad8fb7c525c968e7bd88531",
+      "path": "fixtures/oracle-candidates/issue-2957/expect.json"
+    },
+    {
+      "sha256": "b3f122e43d49f3b9afab8d079144e484e6498f4c8afd958699693712b8456b62",
+      "path": "fixtures/oracle-candidates/issue-2957/use.py"
+    },
+    {
+      "sha256": "640ff5ca5dff8106c80626ec645cd082d2ba30d7e4c6e294bb7f6796d95d624f",
+      "path": "fixtures/oracle-candidates/issue-2958/expect.json"
+    },
+    {
+      "sha256": "1ffe7f75849e1d30c2d49af1fb093c9be4aa932672c5b0c536ebc2e64bc01591",
+      "path": "fixtures/oracle-candidates/issue-2964/expect.json"
+    },
+    {
+      "sha256": "8f532ca53b0fe56747672654c2e8b03fadbe3b195a69326bf611eb0c84106f26",
+      "path": "fixtures/oracle-candidates/issue-2964/srv.js"
+    },
+    {
+      "sha256": "39bf1c97f7b867899bda1dbd969bbcf4b74f5f346dc52f5f4de358e038816f57",
+      "path": "fixtures/oracle-candidates/issue-2964/package.json"
+    },
+    {
+      "sha256": "e0c71af287dc63b7de2fd090f513a534e4aa3ea76dfb2df2d7468cabd7305326",
+      "path": "fixtures/oracle-candidates/issue-2964/b.js"
+    },
+    {
+      "sha256": "ff961ef54fd43a3a57b40974520ed471c6f92b29b69737762cbaacbd30821d4e",
+      "path": "fixtures/oracle-candidates/issue-2975/expect.json"
+    },
+    {
+      "sha256": "56fef556c3db4a1b0be44cbeb57d9cdda538cf91196cc5d3a1f98a70f04f963c",
+      "path": "fixtures/oracle-candidates/issue-2975/artisan"
+    },
+    {
+      "sha256": "9a5adb9e66d18b36a5d01fb5abbfff2c9f7976d8bb6e6f5c1da6bea917f282ec",
+      "path": "fixtures/oracle-candidates/issue-2944-arrow/decl.d.ts"
+    },
+    {
+      "sha256": "3660e7e6289363ca573ef48049934c7ab5dbadd37fce08bed92a1207f2e3e9de",
+      "path": "fixtures/oracle-candidates/issue-2944-arrow/a.test.ts"
+    },
+    {
+      "sha256": "3f6d1abcb6f4a9bfe087ebfb240610607c1f08a4e03a8f5c460bd61501cdbf77",
+      "path": "fixtures/oracle-candidates/pr29-22-ambiguous-branch/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-22-ambiguous-branch/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-22-ambiguous-branch/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-22-ambiguous-branch/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-22-ambiguous-branch/use.js"
+    },
+    {
+      "sha256": "12c4483ebb46358730abc915213a9279c5e28e11e704fac9a753fd62c729fd6b",
+      "path": "fixtures/oracle-candidates/pr29-01-f14-object/m.js"
+    },
+    {
+      "sha256": "0fafb03bd978c9d85cca857293a329daba849d2ea66d9eed3c2d6db9bf3fae6c",
+      "path": "fixtures/oracle-candidates/pr29-01-f14-object/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-01-f14-object/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-01-f14-object/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-01-f14-object/use.js"
+    },
+    {
+      "sha256": "3d19420c76363e9e6f24b7f396963ba6af30cfeee4f9368582fdde06db5bac67",
+      "path": "fixtures/oracle-candidates/pr29-16-alias-property-mutation/m.js"
+    },
+    {
+      "sha256": "0fafb03bd978c9d85cca857293a329daba849d2ea66d9eed3c2d6db9bf3fae6c",
+      "path": "fixtures/oracle-candidates/pr29-16-alias-property-mutation/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-16-alias-property-mutation/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-16-alias-property-mutation/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-16-alias-property-mutation/use.js"
+    },
+    {
+      "sha256": "7785481aa6b87869486096bbd412a54bab9ed74af6f1ca93fd7c3bde246a0781",
+      "path": "fixtures/oracle-candidates/issue-2946/writer.ts"
+    },
+    {
+      "sha256": "8b874e81ac982a017cdc5817e7622df85932cc1e57d6843618da7dcd346e62fc",
+      "path": "fixtures/oracle-candidates/issue-2946/db.ts"
+    },
+    {
+      "sha256": "ea389886f9fe01838234b578c4e3d8d216cdf908ee120601917e6a1749fdec12",
+      "path": "fixtures/oracle-candidates/issue-2946/expect.json"
+    },
+    {
+      "sha256": "8a3994649b49408f228ad732a9b2ea4c84ab5d2b47e633834bf20f650e505017",
+      "path": "fixtures/oracle-candidates/issue-2946/use.ts"
+    },
+    {
+      "sha256": "de896aa22311892237abf358cd2734720ba69a1da918246b1fe2078237cfabb7",
+      "path": "fixtures/oracle-candidates/g1-go-new-receiver/go.mod"
+    },
+    {
+      "sha256": "4da2eb8b00d4f2aca0e0c10c83f95c4c31f47ec5cb58284a6b0acf892cfe2a16",
+      "path": "fixtures/oracle-candidates/g1-go-new-receiver/expect.json"
+    },
+    {
+      "sha256": "07b19972c079b8c778bf10e01b93ff5972771f50ea598f10322bf939298b19db",
+      "path": "fixtures/oracle-candidates/g1-go-new-receiver/a_router.go"
+    },
+    {
+      "sha256": "ede73844a0ac2bf5ea3dd41a9939b07f012a93425cebec26a4288fdb599bf326",
+      "path": "fixtures/oracle-candidates/g1-go-new-receiver/b_route.go"
+    },
+    {
+      "sha256": "da517c72c73fd2bfa63d9245365b6991a23d5b5828d1f8c96c833c697d83bb92",
+      "path": "fixtures/oracle-candidates/g1-go-new-receiver/use.go"
+    },
+    {
+      "sha256": "d8bfdabef5ef3d978c75fc3289822e1a05f8e2ca2f0bf4a3348a0eb38fb61a23",
+      "path": "fixtures/oracle-candidates/pr29-09-f11-generator-key-outside-generator/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-09-f11-generator-key-outside-generator/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-09-f11-generator-key-outside-generator/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-09-f11-generator-key-outside-generator/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-09-f11-generator-key-outside-generator/use.js"
+    },
+    {
+      "sha256": "1cb8199831131a56bc28580f7762c462e6f3b7619d56c742a8e204ca83a50ee8",
+      "path": "fixtures/oracle-candidates/pr29-31-missing-read-exported-as-undefined-data/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-31-missing-read-exported-as-undefined-data/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-31-missing-read-exported-as-undefined-data/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-31-missing-read-exported-as-undefined-data/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-31-missing-read-exported-as-undefined-data/use.js"
+    },
+    {
+      "sha256": "ab33ab838e198a30e7b9f7777d2dca36d03fcb1d0dca063a0083b7d5b4d22b26",
+      "path": "fixtures/oracle-candidates/pr29-25-unknown-dynamic-key/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-25-unknown-dynamic-key/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-25-unknown-dynamic-key/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-25-unknown-dynamic-key/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-25-unknown-dynamic-key/use.js"
+    },
+    {
+      "sha256": "8f946bba12f93b3ead1ad5f8bc3a7340d857abeaa5290d3b45f439c3d9706428",
+      "path": "fixtures/oracle-candidates/issue-2951/c.ts"
+    },
+    {
+      "sha256": "a91b62874f93ea514db29e0b9beeadd570666b56c0603c566bdac91f63aa4a8f",
+      "path": "fixtures/oracle-candidates/issue-2951/index2.ts"
+    },
+    {
+      "sha256": "db106e86880aa9ac94edab8b260b79e369eded4f01c73fafed611d2c33a7c6eb",
+      "path": "fixtures/oracle-candidates/issue-2951/a.ts"
+    },
+    {
+      "sha256": "d9975e5b60e3a323783abed55b22cfbe1331d40cd4abf22a776cb0db368a6fe0",
+      "path": "fixtures/oracle-candidates/issue-2951/expect.json"
+    },
+    {
+      "sha256": "83ff54c6e13c38b58b564278e264357a807bf061b10bd38d985b0109b98135c7",
+      "path": "fixtures/oracle-candidates/issue-2951/schemas.ts"
+    },
+    {
+      "sha256": "8447bb239c5ec1dc565f41d02e825aa811dfa807d669fbe9f761ba63be90f268",
+      "path": "fixtures/oracle-candidates/issue-2951/index.ts"
+    },
+    {
+      "sha256": "a7d4e577cc53ea0c4b8a408baca4e632c3659d1ca33dc85519608a4abf14890a",
+      "path": "fixtures/oracle-candidates/issue-2951/d.ts"
+    },
+    {
+      "sha256": "995a7344d8afc610dcd0aace6b261a7f7db43922f4368218fa2c5c4d0c71ee84",
+      "path": "fixtures/oracle-candidates/issue-2951/external.ts"
+    },
+    {
+      "sha256": "defbb15f72fa344d43737eddafae62f4fb5051fb799d457f42f18cd9be94d056",
+      "path": "fixtures/oracle-candidates/issue-2951/index3.ts"
+    },
+    {
+      "sha256": "8e3bd6259e93837b4737d2dbdef5f3f2ba201665c9af97ad31bf62159fca0a0f",
+      "path": "fixtures/oracle-candidates/issue-2951/b.ts"
+    },
+    {
+      "sha256": "471c72ee255456dccde5f3a3035cb2705dfa7e861c28a719133c6c5dda7adf0d",
+      "path": "fixtures/oracle-candidates/m1-py-super/base.py"
+    },
+    {
+      "sha256": "680d99157ec2aceb3ea8e0c179f2aa9e48163c1111fcb1130cefa1f09c38eec5",
+      "path": "fixtures/oracle-candidates/m1-py-super/child.py"
+    },
+    {
+      "sha256": "97f9fa858255a3e08eff8e55d5d6f70f885fe0dcc703388be22281cc61fa6e99",
+      "path": "fixtures/oracle-candidates/m1-py-super/expect.json"
+    },
+    {
+      "sha256": "05d752d532aa535b33a9145a07fc2f3b7393e7b704af9d4b8ae17d901858bdb5",
+      "path": "fixtures/oracle-candidates/m2-py-method-return-local/expect.json"
+    },
+    {
+      "sha256": "a982aba00b80151fade24fa8371beff89fba9fb5b1343e2f9eb5387e4012d44d",
+      "path": "fixtures/oracle-candidates/m2-py-method-return-local/t.py"
+    },
+    {
+      "sha256": "a7e4868b299a4fecb72fe9f6a95e3d02f3863b0d9df1710a2675e17a01b72b76",
+      "path": "fixtures/oracle-candidates/pr29-05-f15-string/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-05-f15-string/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-05-f15-string/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-05-f15-string/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-05-f15-string/use.js"
+    },
+    {
+      "sha256": "9a5adb9e66d18b36a5d01fb5abbfff2c9f7976d8bb6e6f5c1da6bea917f282ec",
+      "path": "fixtures/oracle-candidates/issue-2944-verbatim/decl.d.ts"
+    },
+    {
+      "sha256": "5b993018a5e9954ac20b6f92f6498a114074eb399f365006c51c406e6177e890",
+      "path": "fixtures/oracle-candidates/issue-2944-verbatim/a.test.ts"
+    },
+    {
+      "sha256": "bc7a45afa2a0019420a1bbc1c26b0e682eea688e6dff56d9aa6f0bd8f18f288f",
+      "path": "fixtures/oracle-candidates/issue-2973/expect.json"
+    },
+    {
+      "sha256": "05003f4d1d223373199dc661966f299c55fc8763aafe128a3b5a05bbd16b4f9e",
+      "path": "fixtures/oracle-candidates/pr29-12-f12-logical-instance/m.js"
+    },
+    {
+      "sha256": "0fafb03bd978c9d85cca857293a329daba849d2ea66d9eed3c2d6db9bf3fae6c",
+      "path": "fixtures/oracle-candidates/pr29-12-f12-logical-instance/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-12-f12-logical-instance/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-12-f12-logical-instance/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-12-f12-logical-instance/use.js"
+    },
+    {
+      "sha256": "1032fc43429b69f9877376ce85f9481c02a310157c64c1c24472bb482405c375",
+      "path": "fixtures/oracle-candidates/pr29-06-f15-assigned-callable/m.js"
+    },
+    {
+      "sha256": "b25b5c06e5cbd97f986d37d113ff332d5d7a51035467050863175d528db54b01",
+      "path": "fixtures/oracle-candidates/pr29-06-f15-assigned-callable/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-06-f15-assigned-callable/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-06-f15-assigned-callable/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-06-f15-assigned-callable/use.js"
+    },
+    {
+      "sha256": "0fcf130e9026123393d548293a71ed14963b58fa9a3c4501f9ebf3777808aea2",
+      "path": "fixtures/oracle-candidates/n1-py-local-import/expect.json"
+    },
+    {
+      "sha256": "bf4db2a335afb73d26113bd87e02b38718375ec06dab7778815ceb8c41d52a8d",
+      "path": "fixtures/oracle-candidates/n1-py-local-import/t_local_import.py"
+    },
+    {
+      "sha256": "a6bf662abea8400ef8f7b8a92e8af9383e55e0d49c8fa94736e21438c9a81756",
+      "path": "fixtures/oracle-candidates/pr29-02-f14-class/m.js"
+    },
+    {
+      "sha256": "0fafb03bd978c9d85cca857293a329daba849d2ea66d9eed3c2d6db9bf3fae6c",
+      "path": "fixtures/oracle-candidates/pr29-02-f14-class/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-02-f14-class/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-02-f14-class/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-02-f14-class/use.js"
+    },
+    {
+      "sha256": "56c28d577e4f29df7c05e6073633c5013e99f8f4757587fab5dc7a1f40b6fe68",
+      "path": "fixtures/oracle-candidates/p4/expect.json"
+    },
+    {
+      "sha256": "57c6009881ec49428445ec4fa851166e41abbb6116a3d202928b3fa6e9916af3",
+      "path": "fixtures/oracle-candidates/pr29-03-f14-function/m.js"
+    },
+    {
+      "sha256": "0fafb03bd978c9d85cca857293a329daba849d2ea66d9eed3c2d6db9bf3fae6c",
+      "path": "fixtures/oracle-candidates/pr29-03-f14-function/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-03-f14-function/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-03-f14-function/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-03-f14-function/use.js"
+    },
+    {
+      "sha256": "b5f89cf14cf5f0e9635d06bac185b82e0eac6081b45c08df52e83f260162ff05",
+      "path": "fixtures/oracle-candidates/n5-ts-barrel-member/c.ts"
+    },
+    {
+      "sha256": "9ceab5257268fe108c034970616b411bee3463eee693a40acf965bf8b51ae627",
+      "path": "fixtures/oracle-candidates/n5-ts-barrel-member/tsconfig.json"
+    },
+    {
+      "sha256": "67721d2ddbb462dc97d67da0f4160e75252419fd6ef678881e9a1bee3e778eed",
+      "path": "fixtures/oracle-candidates/n5-ts-barrel-member/expect.json"
+    },
+    {
+      "sha256": "8b18bc71e1cbfab76d2f6823b5dc0451eaf4b5104130d217d52cef23e0a95f3e",
+      "path": "fixtures/oracle-candidates/n5-ts-barrel-member/b.ts"
+    },
+    {
+      "sha256": "f006ca63978268b573bdba45b28d1c321caaa4092ed080b437783e2af1ed5b65",
+      "path": "fixtures/oracle-candidates/n2-py-comprehension/expect.json"
+    },
+    {
+      "sha256": "b2ca7b6753b6b0725bcb4cd182869d9316660947fa8e7ad5e78f084d5dd19fcb",
+      "path": "fixtures/oracle-candidates/n2-py-comprehension/t.py"
+    },
+    {
+      "sha256": "0d5b50dd27616f884b5161b96912c741cc0edfb30328e76e428b69579c55aba3",
+      "path": "fixtures/oracle-candidates/issue-2947/expect.json"
+    },
+    {
+      "sha256": "b5750f8dae89d2670453f43bedd890c1452ad4bc17b5cd557fd86419ee842c7f",
+      "path": "fixtures/oracle-candidates/issue-2947/use.ts"
+    },
+    {
+      "sha256": "81b9af8ef51d199c8195f8d786334f59c565989543b030431fae81cb225243ad",
+      "path": "fixtures/oracle-candidates/issue-2947/app.ts"
+    },
+    {
+      "sha256": "d5b884950da85e90aa03feeef40ef9f9071665f395de97cf2d42b32779e3eb5c",
+      "path": "fixtures/oracle-candidates/pr29-13-f13-parameter/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-13-f13-parameter/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-13-f13-parameter/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-13-f13-parameter/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-13-f13-parameter/use.js"
+    },
+    {
+      "sha256": "5dd303f7afbca3054f931fb0ee3ac3bc60c6c882a3bcaec24c4fc7468cf7542a",
+      "path": "fixtures/oracle-candidates/pr29-08-f11-generator-eval/m.js"
+    },
+    {
+      "sha256": "0fafb03bd978c9d85cca857293a329daba849d2ea66d9eed3c2d6db9bf3fae6c",
+      "path": "fixtures/oracle-candidates/pr29-08-f11-generator-eval/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-08-f11-generator-eval/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-08-f11-generator-eval/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-08-f11-generator-eval/use.js"
+    },
+    {
+      "sha256": "0dc4810449218082dc66f734d2860188082c2aaddb7318ec80924afc9cb8777a",
+      "path": "fixtures/oracle-candidates/issue-2962/use.tsx"
+    },
+    {
+      "sha256": "888bbed56f7f1cfeb6351df9c9bd2c6cfedb6102c5accfe0ae7cbdbe26d349c3",
+      "path": "fixtures/oracle-candidates/issue-2962/expect.json"
+    },
+    {
+      "sha256": "498c9b36193ce8d9b0b9b93337837738a636768f4163cf90b023c538baaff826",
+      "path": "fixtures/oracle-candidates/issue-2962/auth.ts"
+    },
+    {
+      "sha256": "91e041352cf4f5c371ab38bfb4139b02d495164f18de31f189df5469367fa776",
+      "path": "fixtures/oracle-candidates/n4-py-builtin/expect.json"
+    },
+    {
+      "sha256": "194240aa2f1f2f885116570e1aaba97f3d0870e39009e4960710168bf768ce10",
+      "path": "fixtures/oracle-candidates/n4-py-builtin/t.py"
+    },
+    {
+      "sha256": "707ee0fb3755bd56d64eb439e49ba65345b1836249288f0d88fb45b80db3efd2",
+      "path": "fixtures/oracle-candidates/pr29-26-local-eval/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-26-local-eval/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-26-local-eval/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-26-local-eval/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-26-local-eval/use.js"
+    },
+    {
+      "sha256": "bb994d0c2d71f00e06f6d881766bb908cb21c03b9355f961dbc973b45f685418",
+      "path": "fixtures/oracle-candidates/pr29-27-literal-eval/m.js"
+    },
+    {
+      "sha256": "0fafb03bd978c9d85cca857293a329daba849d2ea66d9eed3c2d6db9bf3fae6c",
+      "path": "fixtures/oracle-candidates/pr29-27-literal-eval/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-27-literal-eval/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-27-literal-eval/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-27-literal-eval/use.js"
+    },
+    {
+      "sha256": "38acf0e43fbe02d9d031995fbb164a9dd68e91994a36a60c261957234333a9f4",
+      "path": "fixtures/oracle-candidates/pr29-15-f13-block/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-15-f13-block/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-15-f13-block/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-15-f13-block/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-15-f13-block/use.js"
+    },
+    {
+      "sha256": "00b5cbd51024275ef10dabb4686dcc651a3dcd76bed041fd2caef1362b43791b",
+      "path": "fixtures/oracle-candidates/pr29-11-f12-parenthesized-instance/m.js"
+    },
+    {
+      "sha256": "0fafb03bd978c9d85cca857293a329daba849d2ea66d9eed3c2d6db9bf3fae6c",
+      "path": "fixtures/oracle-candidates/pr29-11-f12-parenthesized-instance/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-11-f12-parenthesized-instance/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-11-f12-parenthesized-instance/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-11-f12-parenthesized-instance/use.js"
+    },
+    {
+      "sha256": "1d432a56bc0dc4f12a3cb9ad2b248e1199846d6b94ac110fc30682ed3dad0eb2",
+      "path": "fixtures/oracle-candidates/pr29-19-binding-overwrite/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-19-binding-overwrite/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-19-binding-overwrite/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-19-binding-overwrite/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-19-binding-overwrite/use.js"
+    },
+    {
+      "sha256": "b575b49f100e98ffde5581673b31bed0a24f1e17f8b30c8e6b60a3bdcbd50495",
+      "path": "fixtures/oracle-candidates/issue-2963/expect.json"
+    },
+    {
+      "sha256": "0c5e556eb015a3c8a8d589e37e188349aee195c23481e616a26ee66c0d5fe05c",
+      "path": "fixtures/oracle-candidates/issue-2963/use.py"
+    },
+    {
+      "sha256": "a43ede7af1bf14505dba00fc6f71a513bc14baddfe0261af66fdebdeae86ee14",
+      "path": "fixtures/oracle-candidates/b/queries.ts"
+    },
+    {
+      "sha256": "2540323fef7f1ba58385ccb8251aff4e79d8047e7ec86fe526461be27fd80c10",
+      "path": "fixtures/oracle-candidates/b/expect.json"
+    },
+    {
+      "sha256": "bfff4442f0c60a623dcd25e4b00937718dbf76c4b439c11d1c8ef807354bad04",
+      "path": "fixtures/oracle-candidates/b/session.ts"
+    },
+    {
+      "sha256": "c89f02719ed984b46bd22140b67262bf09487d8316e38a67151d645bb2e81160",
+      "path": "fixtures/oracle-candidates/pr29-32-logical-member-initialization/m.js"
+    },
+    {
+      "sha256": "0fafb03bd978c9d85cca857293a329daba849d2ea66d9eed3c2d6db9bf3fae6c",
+      "path": "fixtures/oracle-candidates/pr29-32-logical-member-initialization/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-32-logical-member-initialization/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-32-logical-member-initialization/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-32-logical-member-initialization/use.js"
+    },
+    {
+      "sha256": "b1068b1d10bb61f379e4722237e5155b5f0e2e6c8970ce7006d568f7c92c9700",
+      "path": "fixtures/oracle-candidates/a/handler.ts"
+    },
+    {
+      "sha256": "f2615924fa4f25aabc45570c07dfdf04591af3ee1780ce4fa0b4e724c0dfdcb8",
+      "path": "fixtures/oracle-candidates/a/expect.json"
+    },
+    {
+      "sha256": "0abc20fadfeb672658e0d5293132a4648f9f2192421dfbf3acf10c4d81dac43c",
+      "path": "fixtures/oracle-candidates/a/lib.ts"
+    },
+    {
+      "sha256": "31c0baa2fe6ea740d301b3ff0610de54119c56c2e2fb7c8564739b254df227d4",
+      "path": "fixtures/oracle-candidates/kmp-22/expect.json"
+    },
+    {
+      "sha256": "d5095685b05d2a5e7895cb2c992faf7cf496dedc6aa181843b29ffbff29b7d3a",
+      "path": "fixtures/oracle-candidates/pr29-29-uncertain-receiver-alias/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-29-uncertain-receiver-alias/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-29-uncertain-receiver-alias/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-29-uncertain-receiver-alias/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-29-uncertain-receiver-alias/use.js"
+    },
+    {
+      "sha256": "ba6e6ddb094143349f0c8cc19b551fab200a2fdba1f8f06a768160ff3b7af23e",
+      "path": "fixtures/oracle-candidates/pr29-04-f15-number/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-04-f15-number/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-04-f15-number/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-04-f15-number/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-04-f15-number/use.js"
+    },
+    {
+      "sha256": "1dd04841734090beb573cb31b99f4e2ed85a7de7cfa6ea97fde10ab34629ad05",
+      "path": "fixtures/oracle-candidates/t1-ts-global-builtin/expect.json"
+    },
+    {
+      "sha256": "e1443c8bc2051ce66441db51c80b8e0098ffb2769d3571d8d5f7ad166d93daaa",
+      "path": "fixtures/oracle-candidates/t1-ts-global-builtin/use.ts"
+    },
+    {
+      "sha256": "625fbe29146e34a7c386296fc98973eb4b20e45a1bc4d82923c2ff256f9a2651",
+      "path": "fixtures/oracle-candidates/j1-java-overload/expect.json"
+    },
+    {
+      "sha256": "9be5f0224de4093ecf0b0af72fc62ae8d1855914afb608aafa1b30434dbcd866",
+      "path": "fixtures/oracle-candidates/issue-2966/expect.json"
+    },
+    {
+      "sha256": "1cc18d295936d3d8f5c5e525dcd58428ea6bdac984680bf476f4e91103cc2d4f",
+      "path": "fixtures/oracle-candidates/issue-2976/expect.json"
+    },
+    {
+      "sha256": "c2c55dc6c10d2d324e67dc0b42d0afb5f255d21e4fed56f21c32a22e9dd17781",
+      "path": "fixtures/oracle-candidates/pr29-18-property-overwrite/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-18-property-overwrite/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-18-property-overwrite/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-18-property-overwrite/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-18-property-overwrite/use.js"
+    },
+    {
+      "sha256": "6d29a3f6d80d2f6cc367849d052475518d3fe47b6c5fca75f91c54d6d820c604",
+      "path": "fixtures/oracle-candidates/issue-2949-pkg/use.ts"
+    },
+    {
+      "sha256": "39abe16fa6a1dd889484d0ac57d2392e3fd90ebeaa84777d97969b7cd41c0f31",
+      "path": "fixtures/oracle-candidates/pr29-17-alias-rebind/m.js"
+    },
+    {
+      "sha256": "a0ab23316c59805d661e3afd64df9c2d9bb630a29482682d8c7aef9870d4cb22",
+      "path": "fixtures/oracle-candidates/pr29-17-alias-rebind/expect.json"
+    },
+    {
+      "sha256": "b0fbccb47ab8d128f1e2bf779f5a13e42cdf18716507fea811c640478c39565d",
+      "path": "fixtures/oracle-candidates/pr29-17-alias-rebind/decoy.js"
+    },
+    {
+      "sha256": "42fc2f059791bb8d60a80208840e783df7888bb0c4a8601fc5e03229791ab3bb",
+      "path": "fixtures/oracle-candidates/pr29-17-alias-rebind/index.js"
+    },
+    {
+      "sha256": "9e5f1f415ea438751c9427b105a2b0db5a51ad362b24c284ede676ef8b3f5656",
+      "path": "fixtures/oracle-candidates/pr29-17-alias-rebind/use.js"
+    },
+    {
+      "sha256": "028a5c71d35899ec34410b022842d5ba46950811116a68a509c0a46d8702dbbc",
+      "path": "fixtures/oracle-candidates/issue-2976/src/com/x/m/Main.java"
+    },
+    {
+      "sha256": "bfcad17f2718c801355b570e8ce394553e78288fb8d66338e80d585383194f64",
+      "path": "fixtures/oracle-candidates/issue-2976/src/com/x/b/Util.java"
+    },
+    {
+      "sha256": "19bb37217dce8c5afd992a3b08970f223de68e5b9ee0aea0738875e5ad569a24",
+      "path": "fixtures/oracle-candidates/issue-2976/src/com/x/a/Util.java"
+    },
+    {
+      "sha256": "59822d4f4a0b978cea621bacec575fee67acd1ebdb4947622f3253bdfdc958b6",
+      "path": "fixtures/oracle-candidates/issue-2966/lib/other.js"
+    },
+    {
+      "sha256": "81d1069066610ac1ffb56ae672379b927913fbd5c3f12cdbe94f43b0bab6ab41",
+      "path": "fixtures/oracle-candidates/issue-2966/lib/model.js"
+    },
+    {
+      "sha256": "ecba23599f49ee2a0fcd8abd895a408e5bc18513235933c9f8f5733d7704cb2e",
+      "path": "fixtures/oracle-candidates/issue-2966/lib/context.js"
+    },
+    {
+      "sha256": "96cd6e9df93e3c75f8918a219e75af4b0863dbae7e3c67472ce0e7591398eb65",
+      "path": "fixtures/oracle-candidates/issue-2966/lib/validation.js"
+    },
+    {
+      "sha256": "555d29babc5c186f0b7b28b358d6e5d40fe7c888e5bb2ad11db8016263172af5",
+      "path": "fixtures/oracle-candidates/issue-2966/lib/types.d.ts"
+    },
+    {
+      "sha256": "2e90808505aa534368b2d34d76717c6e9f537e4c299d9f4ccf00d18d8008bcb7",
+      "path": "fixtures/oracle-candidates/issue-2966/lib/application.js"
+    },
+    {
+      "sha256": "fca0c09c99997d0ad748eccb4672bff28acfc4816269c410fb2efc84024dda8d",
+      "path": "fixtures/oracle-candidates/issue-2966/lib/hooks.js"
+    },
+    {
+      "sha256": "705fed6b03a4cc92935bae825a1796c287124179f079e03745511ed4fef1bc2b",
+      "path": "fixtures/oracle-candidates/issue-2966/lib/reply.js"
+    },
+    {
+      "sha256": "25ebeaf27929de9328bd322e9fd171721a3cd67f0b7345b69736e512d2f6151b",
+      "path": "fixtures/oracle-candidates/issue-2966/test/model.test.js"
+    },
+    {
+      "sha256": "b0c9cb0b7621ca47df4eefa14f22332c641fd754929517975c75ec8e84ddedf2",
+      "path": "fixtures/oracle-candidates/j1-java-overload/src/p/App.java"
+    },
+    {
+      "sha256": "bb19dbfe1822f6164ce66f4beee7b5e0e269a5928651f24951a8c1707c1e3a22",
+      "path": "fixtures/oracle-candidates/j1-java-overload/src/p/Util.java"
+    },
+    {
+      "sha256": "3377b0d5d8f26be76fcc2a57028e524bc5068f04178c168808ce4a751ea5a588",
+      "path": "fixtures/oracle-candidates/j1-java-overload/src/p/Parser.java"
+    },
+    {
+      "sha256": "32b42a2737c51d951a90568d17a09653408ce1bc940d6e42048f2a4f37bf84b3",
+      "path": "fixtures/oracle-candidates/t1-ts-global-builtin/lib/other.ts"
+    },
+    {
+      "sha256": "04ff744b84f9efa1a92f9e5e1a3887fbf6d25b26977d77ca7d51de35cfbdd1ea",
+      "path": "fixtures/oracle-candidates/kmp-22/app/src/main/java/b/App.java"
+    },
+    {
+      "sha256": "89b333ccdf751ec37fbf9b91e9e61fbbe19330379b425075834b9d51e848abd1",
+      "path": "fixtures/oracle-candidates/kmp-22/lib/src/commonMain/kotlin/a/Util.kt"
+    },
+    {
+      "sha256": "d984b3a9bc7b0bd0cb66f70fc9ab92a4cf1bc65d251f6e19d5ce4251996108c7",
+      "path": "fixtures/oracle-candidates/kmp-22/lib/src/androidMain/kotlin/a/Util.kt"
+    },
+    {
+      "sha256": "3606ecefeec671e520ab5c6bf8b3ee85673ef37ad2b2aa4c51bbf23a4cc26610",
+      "path": "fixtures/oracle-candidates/issue-2963/pkg/deco.py"
+    },
+    {
+      "sha256": "8dcf81d5785077fbbec81d28b846607cc0b0675871b1b8ed65d057e7a5d01f0f",
+      "path": "fixtures/oracle-candidates/issue-2963/pkg/__init__.py"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "fixtures/oracle-candidates/n4-py-builtin/other/__init__.py"
+    },
+    {
+      "sha256": "13c5a4ab4cbe963678e2e1a07699ee84c4ab23b141d1da1c0632d98bc07f3b04",
+      "path": "fixtures/oracle-candidates/n4-py-builtin/other/far.py"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "fixtures/oracle-candidates/n2-py-comprehension/other/__init__.py"
+    },
+    {
+      "sha256": "b42973bc1827cc688005202326a1e7c1550ba14d9fe04829d8729b7063e887c7",
+      "path": "fixtures/oracle-candidates/n2-py-comprehension/other/far.py"
+    },
+    {
+      "sha256": "beba4cf670230c0508b9dcf66b0d37bf669670787d189842d0bfd0098063dd3c",
+      "path": "fixtures/oracle-candidates/n5-ts-barrel-member/fx/deaf.ts"
+    },
+    {
+      "sha256": "5c93162a42428600b64c7d7b422d7532712214b74288ac344c9e14d5a92f8a24",
+      "path": "fixtures/oracle-candidates/n5-ts-barrel-member/fx/index.ts"
+    },
+    {
+      "sha256": "3eb7ec3652ee379dff6c5ab4f9b879ebf0d3241ec5cd69ad35c29feab7529532",
+      "path": "fixtures/oracle-candidates/n5-ts-barrel-member/fx/mark.ts"
+    },
+    {
+      "sha256": "ef5e0b9c21c8b89c4dcf93779803488686b0c42abdc0261c0a89c067a9a3711f",
+      "path": "fixtures/oracle-candidates/p4/lab/model.py"
+    },
+    {
+      "sha256": "9292221365869ae6b6f607ab697f7037de75b7fc00133aed3f661767721b6793",
+      "path": "fixtures/oracle-candidates/p4/other/features.py"
+    },
+    {
+      "sha256": "c873cd7099a0dd6333bb28872973461d619bcc8df3c5228bdb80a6baf0b0e66a",
+      "path": "fixtures/oracle-candidates/n1-py-local-import/pkg/core.py"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "fixtures/oracle-candidates/n1-py-local-import/pkg/__init__.py"
+    },
+    {
+      "sha256": "14f08e1445b307a118a693255de4317ca21dae9525795a9f156cf7df554b52f2",
+      "path": "fixtures/oracle-candidates/issue-2973/src/a_cart.js"
+    },
+    {
+      "sha256": "74d8276bf528b9f5089c06dad5a15670c23ea7a3fa01981dbec5f8c9acc01a46",
+      "path": "fixtures/oracle-candidates/issue-2973/src/b_profile.js"
+    },
+    {
+      "sha256": "c95d8747523c72793170d8440a894a5153037e4df29be5c87de398741309db40",
+      "path": "fixtures/oracle-candidates/issue-2975/routes/api.php"
+    },
+    {
+      "sha256": "4671ec0241297da4f99957d4dd2351cc5e8d5863477ce880c19fe40a37cb2b69",
+      "path": "fixtures/oracle-candidates/issue-2975/app/Http/Controllers/UserController.php"
+    },
+    {
+      "sha256": "2bfaa44c833308e10f61991a3edce65e46c2e304b91f93c66a4103b3f6b49baa",
+      "path": "fixtures/oracle-candidates/issue-2975/app/Http/Controllers/Admin/UserController.php"
+    },
+    {
+      "sha256": "251a2e323925568a976733f67803e5dbd0c4962e87f72e13b66775a3482e5dec",
+      "path": "fixtures/oracle-candidates/issue-2964/lib/index.js"
+    },
+    {
+      "sha256": "9a46e7bd78062df9ac62737070ae675305ccd34b56eeb51216b34a686ae1b19d",
+      "path": "fixtures/oracle-candidates/issue-2964/test/a.test.js"
+    },
+    {
+      "sha256": "9cc24081bd4a690f0f2484f378121c42dd77b53ccd99866b05e6061cf33d00f8",
+      "path": "fixtures/oracle-candidates/issue-2964/lib/inner/entry.js"
+    },
+    {
+      "sha256": "3c340d0ee647a44026e3c2821a88377d6b8f27a792f33177af9eafd8b115cf12",
+      "path": "fixtures/oracle-candidates/issue-2964/lib/inner/package.json"
+    },
+    {
+      "sha256": "00d5f0593b7423b2b9db12bee4947443a0b70f341458218506a1fe9ab7072b2b",
+      "path": "fixtures/oracle-candidates/issue-2958/pkg/cli.py"
+    },
+    {
+      "sha256": "95afb0156f7f3b68d3319f581cabc8793edf1c2a0c3a92bcc357814a355291f6",
+      "path": "fixtures/oracle-candidates/issue-2958/examples/factory.py"
+    },
+    {
+      "sha256": "e86232c4dbc7cbc5621e84b511d7618dea8354e885ea9019791ade7098a5d867",
+      "path": "fixtures/oracle-candidates/issue-2957/pkg/_client.py"
+    },
+    {
+      "sha256": "e0d5bccb361bca6d01fc49b9de57b88d1997520e79791a09af65cf22edb51f0e",
+      "path": "fixtures/oracle-candidates/issue-2957/pkg/__init__.py"
+    },
+    {
+      "sha256": "6428bc3174dfc6b4bb19648ebe2bd329c05c45e0c3a450e3bea8d248156838d0",
+      "path": "fixtures/oracle-candidates/issue-2974/src/server.js"
+    },
+    {
+      "sha256": "80d320adf5f77c00e2682b4c6ad3a12a80fe425fe9f9b8041dfa0df2992e97bf",
+      "path": "fixtures/oracle-candidates/issue-2974/src/client.js"
+    },
+    {
+      "sha256": "cbfd8d558c2ec86f19d3342227c8782628111fc77f3dd1e8c3b3d4ab794d39e4",
+      "path": "fixtures/oracle-candidates/issue-2953/lib/reply.js"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "fixtures/oracle-candidates/n3-py-enclosing-local/other/__init__.py"
+    },
+    {
+      "sha256": "4122ee7b460d475dacf958ae7ff1ada8d4b9066ae9e8bd628c62dd6f46e6f3f5",
+      "path": "fixtures/oracle-candidates/n3-py-enclosing-local/other/far.py"
+    },
+    {
+      "sha256": "048d7a65cf53b705fd3ee169727158a6c25a09bc9f11375016ecbe73931b9c57",
+      "path": "fixtures/oracle-candidates/issue-2952/lib/utils.js"
+    },
+    {
+      "sha256": "dc2eef2d26fbbbc48e7b6638c0f9e3cc0cfb688d8d58c5ae4a132611446384e3",
+      "path": "fixtures/oracle-candidates/issue-2952/test/utils.js"
+    },
+    {
+      "sha256": "44b0f8f39571dc149309216a7d39c6efc7cc00d578c8d32f829d8e457a334483",
+      "path": "fixtures/sync-history/fx-tsx/s0/src/types/other.ts"
+    },
+    {
+      "sha256": "e8f39fcd91dac5bcebcc8ea39c5618abdd559db5fad56d44965085ef16254659",
+      "path": "fixtures/sync-history/fx-tsx/s0/src/types/index.ts"
+    },
+    {
+      "sha256": "d576b7355149493ad741f6e075c981d90d31abffadeeaec58c99f604a1ae5bea",
+      "path": "fixtures/sync-history/fx-tsx/s2/src/pages/ClocksPage.tsx"
+    },
+    {
+      "sha256": "d809c90799fd7f55f1b1d739e28dc3c29eb7f18c8f6bc2ad1c0eed0db8ae93ab",
+      "path": "fixtures/sync-history/fx-tsx/s3/src/types/index.ts"
+    },
+    {
+      "sha256": "6e56038744c22412825f22bf7164665c652cbdb6375c882894066275e94dd7bc",
+      "path": "fixtures/sync-history/fx-tsx/s1/src/types/clocks.ts"
+    },
+    {
+      "sha256": "80d7f6e1c43a7b5c0319f82e119f3f852998abeb64e587cc73c9349293928397",
+      "path": "fixtures/sync-history/fx-ts/s1/lib.ts"
+    },
+    {
+      "sha256": "eec6e37be0ed106e1e4e6d3d8e1f6049e98ff6954e9cbd3b32305c887ce2ed89",
+      "path": "fixtures/sync-history/fx-ts/s0/lib.test.ts"
+    },
+    {
+      "sha256": "cff8b980eb98d090232a4cab41e7fc4d1388bc4845f24641f43621c8bf8a2285",
+      "path": "fixtures/sync-history/fx-ts/s0/lib.ts"
+    },
+    {
+      "sha256": "7ea568490d583211aff47a48b540abffa9e04f938ee130ac2431850edc0986d6",
+      "path": "fixtures/sync-history/fx-tsx2/s0/backend/schemas.py"
+    },
+    {
+      "sha256": "44b0f8f39571dc149309216a7d39c6efc7cc00d578c8d32f829d8e457a334483",
+      "path": "fixtures/sync-history/fx-tsx2/s0/src/types/other.ts"
+    },
+    {
+      "sha256": "e8f39fcd91dac5bcebcc8ea39c5618abdd559db5fad56d44965085ef16254659",
+      "path": "fixtures/sync-history/fx-tsx2/s0/src/types/index.ts"
+    },
+    {
+      "sha256": "d576b7355149493ad741f6e075c981d90d31abffadeeaec58c99f604a1ae5bea",
+      "path": "fixtures/sync-history/fx-tsx2/s2/src/pages/ClocksPage.tsx"
+    },
+    {
+      "sha256": "d809c90799fd7f55f1b1d739e28dc3c29eb7f18c8f6bc2ad1c0eed0db8ae93ab",
+      "path": "fixtures/sync-history/fx-tsx2/s3/src/types/index.ts"
+    },
+    {
+      "sha256": "6e56038744c22412825f22bf7164665c652cbdb6375c882894066275e94dd7bc",
+      "path": "fixtures/sync-history/fx-tsx2/s1/src/types/clocks.ts"
+    },
+    {
+      "sha256": "2c7b259cfac9c946c9fb5504a422dff01f021e7775871300cc16b22d3fe11b03",
+      "path": "fixtures/sync-history/fx-go/s1/model.go"
+    },
+    {
+      "sha256": "515cb85f2332be0feb52479af50b143618694843e5a8f4ba2462a4a8244ec7fb",
+      "path": "fixtures/sync-history/fx-go/s2/open.go"
+    },
+    {
+      "sha256": "dc5866b30768eb6dd07e8ffc042908e24fffe78c00e7aba2619c6952e1af9243",
+      "path": "fixtures/sync-history/fx-go/s0/go.mod"
+    },
+    {
+      "sha256": "c7b16716c9e050ced3613e86eaf62f529f90f9332fe7ed97fc5a0fe1fa09598d",
+      "path": "fixtures/sync-history/fx-go/s0/db/db.go"
+    },
+    {
+      "sha256": "2c7b259cfac9c946c9fb5504a422dff01f021e7775871300cc16b22d3fe11b03",
+      "path": "fixtures/sync-history/fx-go-one/s1/model.go"
+    },
+    {
+      "sha256": "515cb85f2332be0feb52479af50b143618694843e5a8f4ba2462a4a8244ec7fb",
+      "path": "fixtures/sync-history/fx-go-one/s1/open.go"
+    },
+    {
+      "sha256": "dc5866b30768eb6dd07e8ffc042908e24fffe78c00e7aba2619c6952e1af9243",
+      "path": "fixtures/sync-history/fx-go-one/s0/go.mod"
+    },
+    {
+      "sha256": "c7b16716c9e050ced3613e86eaf62f529f90f9332fe7ed97fc5a0fe1fa09598d",
+      "path": "fixtures/sync-history/fx-go-one/s0/db/db.go"
+    },
+    {
+      "sha256": "2293c6331d56b1fb877dd322cdc747b98ec653b229fc92e704eecad5c13e6b84",
+      "path": "fixtures/sync-history/fx-py-ctl/s0/t.py"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "fixtures/sync-history/fx-py-ctl/s0/top/__init__.py"
+    },
+    {
+      "sha256": "e0a26041bd37317c8fa601af4513e414c0403be9ce6af715eca951533b2840fa",
+      "path": "fixtures/sync-history/fx-py-ctl/s0/top/sub/h.py"
+    },
+    {
+      "sha256": "4e84e1d53f2d53cf3c176c63eb9ebe58aab1cc3492765ba53890e1c20f7164ae",
+      "path": "fixtures/sync-history/fx-py-ctl/s0/top/sub/__init__.py"
+    },
+    {
+      "sha256": "566b952b70f61b2f6db98ea40f4c65cefccb142dd8e2880cc8506b5eb1f7fcb0",
+      "path": "fixtures/sync-history/fx-py-ctl/s1/top/sub/__init__.py"
+    },
+    {
+      "sha256": "7ea568490d583211aff47a48b540abffa9e04f938ee130ac2431850edc0986d6",
+      "path": "fixtures/sync-history/fx-tsx2-p/s0/backend/schemas.py"
+    },
+    {
+      "sha256": "44b0f8f39571dc149309216a7d39c6efc7cc00d578c8d32f829d8e457a334483",
+      "path": "fixtures/sync-history/fx-tsx2-p/s0/src/types/other.ts"
+    },
+    {
+      "sha256": "e8f39fcd91dac5bcebcc8ea39c5618abdd559db5fad56d44965085ef16254659",
+      "path": "fixtures/sync-history/fx-tsx2-p/s0/src/types/index.ts"
+    },
+    {
+      "sha256": "d576b7355149493ad741f6e075c981d90d31abffadeeaec58c99f604a1ae5bea",
+      "path": "fixtures/sync-history/fx-tsx2-p/s2/src/pages/ClocksPage.tsx"
+    },
+    {
+      "sha256": "6e56038744c22412825f22bf7164665c652cbdb6375c882894066275e94dd7bc",
+      "path": "fixtures/sync-history/fx-tsx2-p/s1/src/types/clocks.ts"
+    },
+    {
+      "sha256": "44b0f8f39571dc149309216a7d39c6efc7cc00d578c8d32f829d8e457a334483",
+      "path": "fixtures/sync-history/fx-tsx-p/s0/src/types/other.ts"
+    },
+    {
+      "sha256": "e8f39fcd91dac5bcebcc8ea39c5618abdd559db5fad56d44965085ef16254659",
+      "path": "fixtures/sync-history/fx-tsx-p/s0/src/types/index.ts"
+    },
+    {
+      "sha256": "d576b7355149493ad741f6e075c981d90d31abffadeeaec58c99f604a1ae5bea",
+      "path": "fixtures/sync-history/fx-tsx-p/s2/src/pages/ClocksPage.tsx"
+    },
+    {
+      "sha256": "6e56038744c22412825f22bf7164665c652cbdb6375c882894066275e94dd7bc",
+      "path": "fixtures/sync-history/fx-tsx-p/s1/src/types/clocks.ts"
+    },
+    {
+      "sha256": "238591e18c6a52da0649019e8c54856c3204959a625cb3ca4ec1602f5a7d677f",
+      "path": "fixtures/sync-history/fx-dup/s1/DELETE"
+    },
+    {
+      "sha256": "5506121a4d39ce698f1ac1143913f2cc66ee035e32c6fac1852a227793236a2f",
+      "path": "fixtures/sync-history/fx-dup/s1/b.ts"
+    },
+    {
+      "sha256": "822a6409f6d528817fc55d9bdb58d24fa23f9dbd81a1a1a28e6695c33f89f1ec",
+      "path": "fixtures/sync-history/fx-dup/s0/t.ts"
+    },
+    {
+      "sha256": "3b181e1cfbe6d580daaae913223d3c14a4306d7d5a663ead0b3e8bdc2d1506b7",
+      "path": "fixtures/sync-history/fx-dup/s0/a.ts"
+    },
+    {
+      "sha256": "613cf172b343bfb1b4ca1bd5aadd34f3875c94845cefd64a3326679a6d88cd1b",
+      "path": "fixtures/sync-history/fx-dup/s0/b.ts"
+    },
+    {
+      "sha256": "12817dac3db65aef3d39e225d1f0fe6e02b13617838ce5c716015a78e378dc13",
+      "path": "fixtures/sync-history/fx-py/s0/t.py"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "fixtures/sync-history/fx-py/s0/top/__init__.py"
+    },
+    {
+      "sha256": "e0a26041bd37317c8fa601af4513e414c0403be9ce6af715eca951533b2840fa",
+      "path": "fixtures/sync-history/fx-py/s0/top/sub/h.py"
+    },
+    {
+      "sha256": "4e84e1d53f2d53cf3c176c63eb9ebe58aab1cc3492765ba53890e1c20f7164ae",
+      "path": "fixtures/sync-history/fx-py/s0/top/sub/__init__.py"
+    },
+    {
+      "sha256": "566b952b70f61b2f6db98ea40f4c65cefccb142dd8e2880cc8506b5eb1f7fcb0",
+      "path": "fixtures/sync-history/fx-py/s1/top/sub/__init__.py"
+    },
+    {
+      "sha256": "70f65ecb1a907d5a1cce31495c880887b39ffe9ac75e6ed20a64078e501a7e89",
+      "path": "lib/subjects/codegraph.mjs"
+    },
+    {
+      "sha256": "0909f5127d418fce1c56a7c7b8fa8bf495f930613a3a7fb6c78e9ba9b9d97c60",
+      "path": "lib/subjects/index.mjs"
+    },
+    {
+      "sha256": "b28b80e222144ae9b244985f9b8a9750a307d677fb89abf2cac3f26a83f5d13a",
+      "path": "lib/subjects/code-graph-rag.mjs"
+    }
+  ]
+}

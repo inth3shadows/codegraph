@@ -1,0 +1,521 @@
+{
+  "counts": {
+    "removed incorrect target": 52,
+    "removed unproven callable target": 12
+  },
+  "rows": [
+    {
+      "file": "examples/auth/index.js",
+      "line": 21,
+      "reference": "express.urlencoded",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "examples/content-negotiation/index.js",
+      "line": 12,
+      "reference": "users.map",
+      "oldTarget": "examples/content-negotiation/db.js:users",
+      "classification": "removed incorrect target",
+      "proof": "Runtime: exported value is an array; users.map is Array.prototype.map, not the exported users array."
+    },
+    {
+      "file": "examples/content-negotiation/index.js",
+      "line": 18,
+      "reference": "users.map",
+      "oldTarget": "examples/content-negotiation/db.js:users",
+      "classification": "removed incorrect target",
+      "proof": "Runtime: exported value is an array; users.map is Array.prototype.map, not the exported users array."
+    },
+    {
+      "file": "examples/content-negotiation/users.js",
+      "line": 6,
+      "reference": "users.map",
+      "oldTarget": "examples/content-negotiation/db.js:users",
+      "classification": "removed incorrect target",
+      "proof": "Runtime: exported value is an array; users.map is Array.prototype.map, not the exported users array."
+    },
+    {
+      "file": "examples/content-negotiation/users.js",
+      "line": 12,
+      "reference": "users.map",
+      "oldTarget": "examples/content-negotiation/db.js:users",
+      "classification": "removed incorrect target",
+      "proof": "Runtime: exported value is an array; users.map is Array.prototype.map, not the exported users array."
+    },
+    {
+      "file": "examples/cookies/index.js",
+      "line": 22,
+      "reference": "express.urlencoded",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "examples/ejs/index.js",
+      "line": 31,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "examples/multi-router/controllers/api_v1.js",
+      "line": 5,
+      "reference": "express.Router",
+      "oldTarget": "lib/express.js:Router",
+      "classification": "removed unproven callable target",
+      "proof": "Old target is the local Router variable holding an external require; the router implementation is outside this source index. Reference ownership alone is not a call-body proof."
+    },
+    {
+      "file": "examples/multi-router/controllers/api_v2.js",
+      "line": 5,
+      "reference": "express.Router",
+      "oldTarget": "lib/express.js:Router",
+      "classification": "removed unproven callable target",
+      "proof": "Old target is the local Router variable holding an external require; the router implementation is outside this source index. Reference ownership alone is not a call-body proof."
+    },
+    {
+      "file": "examples/mvc/index.js",
+      "line": 37,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "examples/mvc/index.js",
+      "line": 47,
+      "reference": "express.urlencoded",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "examples/route-separation/index.js",
+      "line": 31,
+      "reference": "express.urlencoded",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "examples/route-separation/index.js",
+      "line": 32,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "examples/search/index.js",
+      "line": 21,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "examples/static-files/index.js",
+      "line": 22,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "examples/static-files/index.js",
+      "line": 30,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "examples/static-files/index.js",
+      "line": 36,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "examples/view-locals/index.js",
+      "line": 27,
+      "reference": "User.count",
+      "oldTarget": "examples/view-locals/user.js:User",
+      "classification": "removed incorrect target",
+      "proof": "Runtime: User.count and User.all are functions distinct from the User constructor."
+    },
+    {
+      "file": "examples/view-locals/index.js",
+      "line": 29,
+      "reference": "User.all",
+      "oldTarget": "examples/view-locals/user.js:User",
+      "classification": "removed incorrect target",
+      "proof": "Runtime: User.count and User.all are functions distinct from the User constructor."
+    },
+    {
+      "file": "examples/view-locals/index.js",
+      "line": 49,
+      "reference": "User.count",
+      "oldTarget": "examples/view-locals/user.js:User",
+      "classification": "removed incorrect target",
+      "proof": "Runtime: User.count and User.all are functions distinct from the User constructor."
+    },
+    {
+      "file": "examples/view-locals/index.js",
+      "line": 57,
+      "reference": "User.all",
+      "oldTarget": "examples/view-locals/user.js:User",
+      "classification": "removed incorrect target",
+      "proof": "Runtime: User.count and User.all are functions distinct from the User constructor."
+    },
+    {
+      "file": "examples/view-locals/index.js",
+      "line": 87,
+      "reference": "User.count",
+      "oldTarget": "examples/view-locals/user.js:User",
+      "classification": "removed incorrect target",
+      "proof": "Runtime: User.count and User.all are functions distinct from the User constructor."
+    },
+    {
+      "file": "examples/view-locals/index.js",
+      "line": 95,
+      "reference": "User.all",
+      "oldTarget": "examples/view-locals/user.js:User",
+      "classification": "removed incorrect target",
+      "proof": "Runtime: User.count and User.all are functions distinct from the User constructor."
+    },
+    {
+      "file": "examples/view-locals/index.js",
+      "line": 26,
+      "reference": "User.count",
+      "oldTarget": "examples/view-locals/user.js:User",
+      "classification": "removed incorrect target",
+      "proof": "Runtime: User.count and User.all are functions distinct from the User constructor."
+    },
+    {
+      "file": "test/app.options.js",
+      "line": 79,
+      "reference": "express.Router",
+      "oldTarget": "lib/express.js:Router",
+      "classification": "removed unproven callable target",
+      "proof": "Old target is the local Router variable holding an external require; the router implementation is outside this source index. Reference ownership alone is not a call-body proof."
+    },
+    {
+      "file": "test/app.router.js",
+      "line": 875,
+      "reference": "express.Router",
+      "oldTarget": "lib/express.js:Router",
+      "classification": "removed unproven callable target",
+      "proof": "Old target is the local Router variable holding an external require; the router implementation is outside this source index. Reference ownership alone is not a call-body proof."
+    },
+    {
+      "file": "test/express.json.js",
+      "line": 60,
+      "reference": "express.json",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.json.js",
+      "line": 76,
+      "reference": "express.json",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.json.js",
+      "line": 77,
+      "reference": "express.json",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.json.js",
+      "line": 513,
+      "reference": "express.json",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.json.js",
+      "line": 725,
+      "reference": "express.json",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.raw.js",
+      "line": 31,
+      "reference": "express.raw",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.raw.js",
+      "line": 68,
+      "reference": "express.raw",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.raw.js",
+      "line": 69,
+      "reference": "express.raw",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.raw.js",
+      "line": 338,
+      "reference": "express.raw",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.raw.js",
+      "line": 495,
+      "reference": "express.raw",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.static.js",
+      "line": 281,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.static.js",
+      "line": 356,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.static.js",
+      "line": 476,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.static.js",
+      "line": 544,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.static.js",
+      "line": 695,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.static.js",
+      "line": 709,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.static.js",
+      "line": 735,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.static.js",
+      "line": 759,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.static.js",
+      "line": 770,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.static.js",
+      "line": 808,
+      "reference": "express.static",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.text.js",
+      "line": 30,
+      "reference": "express.text",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.text.js",
+      "line": 63,
+      "reference": "express.text",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.text.js",
+      "line": 64,
+      "reference": "express.text",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.text.js",
+      "line": 370,
+      "reference": "express.text",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.text.js",
+      "line": 552,
+      "reference": "express.text",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.urlencoded.js",
+      "line": 31,
+      "reference": "express.urlencoded",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.urlencoded.js",
+      "line": 65,
+      "reference": "express.urlencoded",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.urlencoded.js",
+      "line": 66,
+      "reference": "express.urlencoded",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.urlencoded.js",
+      "line": 616,
+      "reference": "express.urlencoded",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/express.urlencoded.js",
+      "line": 808,
+      "reference": "express.urlencoded",
+      "oldTarget": "lib/express.js:createApplication",
+      "classification": "removed incorrect target",
+      "proof": "lib/express.js assigns these properties to body-parser or serve-static, distinct from createApplication."
+    },
+    {
+      "file": "test/req.baseUrl.js",
+      "line": 22,
+      "reference": "express.Router",
+      "oldTarget": "lib/express.js:Router",
+      "classification": "removed unproven callable target",
+      "proof": "Old target is the local Router variable holding an external require; the router implementation is outside this source index. Reference ownership alone is not a call-body proof."
+    },
+    {
+      "file": "test/req.baseUrl.js",
+      "line": 36,
+      "reference": "express.Router",
+      "oldTarget": "lib/express.js:Router",
+      "classification": "removed unproven callable target",
+      "proof": "Old target is the local Router variable holding an external require; the router implementation is outside this source index. Reference ownership alone is not a call-body proof."
+    },
+    {
+      "file": "test/req.baseUrl.js",
+      "line": 37,
+      "reference": "express.Router",
+      "oldTarget": "lib/express.js:Router",
+      "classification": "removed unproven callable target",
+      "proof": "Old target is the local Router variable holding an external require; the router implementation is outside this source index. Reference ownership alone is not a call-body proof."
+    },
+    {
+      "file": "test/req.baseUrl.js",
+      "line": 38,
+      "reference": "express.Router",
+      "oldTarget": "lib/express.js:Router",
+      "classification": "removed unproven callable target",
+      "proof": "Old target is the local Router variable holding an external require; the router implementation is outside this source index. Reference ownership alone is not a call-body proof."
+    },
+    {
+      "file": "test/req.baseUrl.js",
+      "line": 55,
+      "reference": "express.Router",
+      "oldTarget": "lib/express.js:Router",
+      "classification": "removed unproven callable target",
+      "proof": "Old target is the local Router variable holding an external require; the router implementation is outside this source index. Reference ownership alone is not a call-body proof."
+    },
+    {
+      "file": "test/req.baseUrl.js",
+      "line": 56,
+      "reference": "express.Router",
+      "oldTarget": "lib/express.js:Router",
+      "classification": "removed unproven callable target",
+      "proof": "Old target is the local Router variable holding an external require; the router implementation is outside this source index. Reference ownership alone is not a call-body proof."
+    },
+    {
+      "file": "test/req.baseUrl.js",
+      "line": 57,
+      "reference": "express.Router",
+      "oldTarget": "lib/express.js:Router",
+      "classification": "removed unproven callable target",
+      "proof": "Old target is the local Router variable holding an external require; the router implementation is outside this source index. Reference ownership alone is not a call-body proof."
+    },
+    {
+      "file": "test/res.format.js",
+      "line": 160,
+      "reference": "express.Router",
+      "oldTarget": "lib/express.js:Router",
+      "classification": "removed unproven callable target",
+      "proof": "Old target is the local Router variable holding an external require; the router implementation is outside this source index. Reference ownership alone is not a call-body proof."
+    }
+  ],
+  "limits": "Classification of the64removed baseline edges only. This does not establish complete Express call coverage or prove there are no other missing edges."
+}

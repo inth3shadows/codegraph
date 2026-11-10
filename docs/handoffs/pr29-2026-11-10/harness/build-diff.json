@@ -1,0 +1,747 @@
+{
+ "old": "/tmp/codegraph-pr29-harness-6fevujfy/baseline/dist/bin/codegraph.js",
+ "new": "/tmp/codegraph-pr29-harness-6fevujfy/candidate/dist/bin/codegraph.js",
+ "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae",
+ "results": [
+  {
+   "repo": "requests",
+   "old": {
+    "nodes": 1299,
+    "edges": 2976,
+    "unresolved": 2345
+   },
+   "new": {
+    "nodes": 1299,
+    "edges": 2976,
+    "unresolved": 2345
+   },
+   "ms": [
+    2437,
+    2650
+   ],
+   "diff": {},
+   "verdict": "SAME"
+  },
+  {
+   "repo": "click",
+   "old": {
+    "nodes": 2934,
+    "edges": 7770,
+    "unresolved": 4756
+   },
+   "new": {
+    "nodes": 2934,
+    "edges": 7770,
+    "unresolved": 4756
+   },
+   "ms": [
+    4387,
+    4346
+   ],
+   "diff": {},
+   "verdict": "SAME"
+  },
+  {
+   "repo": "mux",
+   "old": {
+    "nodes": 444,
+    "edges": 1921,
+    "unresolved": 1564
+   },
+   "new": {
+    "nodes": 444,
+    "edges": 1921,
+    "unresolved": 1564
+   },
+   "ms": [
+    1727,
+    1843
+   ],
+   "diff": {},
+   "verdict": "SAME"
+  },
+  {
+   "repo": "ky",
+   "old": {
+    "nodes": 1164,
+    "edges": 5278,
+    "unresolved": 12261
+   },
+   "new": {
+    "nodes": 1164,
+    "edges": 5278,
+    "unresolved": 12261
+   },
+   "ms": [
+    6641,
+    7564
+   ],
+   "diff": {},
+   "verdict": "SAME"
+  },
+  {
+   "repo": "express",
+   "old": {
+    "nodes": 1143,
+    "edges": 2334,
+    "unresolved": 9133
+   },
+   "new": {
+    "nodes": 1143,
+    "edges": 2270,
+    "unresolved": 9197
+   },
+   "ms": [
+    3158,
+    4483
+   ],
+   "diff": {
+    "edges": [
+     {
+      "key": "[\"calls\",21,8,\"express.urlencoded\",\"import\",null,\"examples/auth/index.js\",\"examples/auth/index.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"index.js\",1,135]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",12,24,\"users.map\",\"import\",null,\"examples/content-negotiation/index.js\",\"examples/content-negotiation/index.js\",\"javascript\",\"file\",\"variable\",\"users\",\"users\",\"examples/content-negotiation/db.js\",3,3,\"index.js\",1,47]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",18,15,\"users.map\",\"import\",null,\"examples/content-negotiation/index.js\",\"examples/content-negotiation/index.js\",\"javascript\",\"file\",\"variable\",\"users\",\"users\",\"examples/content-negotiation/db.js\",3,3,\"index.js\",1,47]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",6,20,\"users.map\",\"import\",null,\"examples/content-negotiation/users.js\",\"html\",\"javascript\",\"function\",\"variable\",\"users\",\"users\",\"examples/content-negotiation/db.js\",3,3,\"html\",5,9]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",12,11,\"users.map\",\"import\",null,\"examples/content-negotiation/users.js\",\"text\",\"javascript\",\"function\",\"variable\",\"users\",\"users\",\"examples/content-negotiation/db.js\",3,3,\"text\",11,15]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",22,8,\"express.urlencoded\",\"import\",null,\"examples/cookies/index.js\",\"examples/cookies/index.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"index.js\",1,54]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",31,8,\"express.static\",\"import\",null,\"examples/ejs/index.js\",\"examples/ejs/index.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"index.js\",1,58]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",5,12,\"express.Router\",\"import\",null,\"examples/multi-router/controllers/api_v1.js\",\"apiv1\",\"javascript\",\"variable\",\"variable\",\"Router\",\"Router\",\"lib/express.js\",19,19,\"apiv1\",5,5]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",5,12,\"express.Router\",\"import\",null,\"examples/multi-router/controllers/api_v2.js\",\"apiv2\",\"javascript\",\"variable\",\"variable\",\"Router\",\"Router\",\"lib/express.js\",19,19,\"apiv2\",5,5]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",37,8,\"express.static\",\"import\",null,\"examples/mvc/index.js\",\"examples/mvc/index.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"index.js\",1,96]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",47,8,\"express.urlencoded\",\"import\",null,\"examples/mvc/index.js\",\"examples/mvc/index.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"index.js\",1,96]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",31,8,\"express.urlencoded\",\"import\",null,\"examples/route-separation/index.js\",\"examples/route-separation/index.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"index.js\",1,56]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",32,8,\"express.static\",\"import\",null,\"examples/route-separation/index.js\",\"examples/route-separation/index.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"index.js\",1,56]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",21,8,\"express.static\",\"import\",null,\"examples/search/index.js\",\"examples/search/index.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"index.js\",1,84]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",22,8,\"express.static\",\"import\",null,\"examples/static-files/index.js\",\"examples/static-files/index.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"index.js\",1,44]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",30,19,\"express.static\",\"import\",null,\"examples/static-files/index.js\",\"examples/static-files/index.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"index.js\",1,44]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",36,8,\"express.static\",\"import\",null,\"examples/static-files/index.js\",\"examples/static-files/index.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"index.js\",1,44]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",27,2,\"User.count\",\"import\",null,\"examples/view-locals/index.js\",\"examples/view-locals/index.js\",\"javascript\",\"file\",\"function\",\"User\",\"User\",\"examples/view-locals/user.js\",7,11,\"index.js\",1,156]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",29,4,\"User.all\",\"import\",null,\"examples/view-locals/index.js\",\"examples/view-locals/index.js\",\"javascript\",\"file\",\"function\",\"User\",\"User\",\"examples/view-locals/user.js\",7,11,\"index.js\",1,156]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",49,2,\"User.count\",\"import\",null,\"examples/view-locals/index.js\",\"count\",\"javascript\",\"function\",\"function\",\"User\",\"User\",\"examples/view-locals/user.js\",7,11,\"count\",48,54]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",57,2,\"User.all\",\"import\",null,\"examples/view-locals/index.js\",\"users\",\"javascript\",\"function\",\"function\",\"User\",\"User\",\"examples/view-locals/user.js\",7,11,\"users\",56,62]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",87,2,\"User.count\",\"import\",null,\"examples/view-locals/index.js\",\"count2\",\"javascript\",\"function\",\"function\",\"User\",\"User\",\"examples/view-locals/user.js\",7,11,\"count2\",86,92]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",95,2,\"User.all\",\"import\",null,\"examples/view-locals/index.js\",\"users2\",\"javascript\",\"function\",\"function\",\"User\",\"User\",\"examples/view-locals/user.js\",7,11,\"users2\",94,100]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",26,0,\"User.count\",\"import\",null,\"examples/view-locals/index.js\",\"examples/view-locals/index.js::GET:/\",\"javascript\",\"route\",\"function\",\"User\",\"User\",\"examples/view-locals/user.js\",7,11,\"GET /\",26,26]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",79,19,\"express.Router\",\"import\",null,\"test/app.options.js\",\"test/app.options.js\",\"javascript\",\"file\",\"variable\",\"Router\",\"Router\",\"lib/express.js\",19,19,\"app.options.js\",1,117]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",875,19,\"express.Router\",\"import\",null,\"test/app.router.js\",\"test/app.router.js\",\"javascript\",\"file\",\"variable\",\"Router\",\"Router\",\"lib/express.js\",19,19,\"app.router.js\",1,1218]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",60,12,\"express.json\",\"import\",null,\"test/express.json.js\",\"test/express.json.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.json.js\",1,756]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",76,12,\"express.json\",\"import\",null,\"test/express.json.js\",\"test/express.json.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.json.js\",1,756]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",77,12,\"express.json\",\"import\",null,\"test/express.json.js\",\"test/express.json.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.json.js\",1,756]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",513,14,\"express.json\",\"import\",null,\"test/express.json.js\",\"test/express.json.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.json.js\",1,756]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",725,10,\"express.json\",\"import\",null,\"test/express.json.js\",\"createApp\",\"javascript\",\"function\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"createApp\",722,740]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",31,12,\"express.raw\",\"import\",null,\"test/express.raw.js\",\"test/express.raw.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.raw.js\",1,514]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",68,12,\"express.raw\",\"import\",null,\"test/express.raw.js\",\"test/express.raw.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.raw.js\",1,514]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",69,12,\"express.raw\",\"import\",null,\"test/express.raw.js\",\"test/express.raw.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.raw.js\",1,514]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",338,14,\"express.raw\",\"import\",null,\"test/express.raw.js\",\"test/express.raw.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.raw.js\",1,514]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",495,10,\"express.raw\",\"import\",null,\"test/express.raw.js\",\"createApp\",\"javascript\",\"function\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"createApp\",492,513]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",281,16,\"express.static\",\"import\",null,\"test/express.static.js\",\"test/express.static.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.static.js\",1,816]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",356,16,\"express.static\",\"import\",null,\"test/express.static.js\",\"test/express.static.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.static.js\",1,816]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",476,19,\"express.static\",\"import\",null,\"test/express.static.js\",\"test/express.static.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.static.js\",1,816]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",544,19,\"express.static\",\"import\",null,\"test/express.static.js\",\"test/express.static.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.static.js\",1,816]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",695,29,\"express.static\",\"import\",null,\"test/express.static.js\",\"test/express.static.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.static.js\",1,816]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",709,30,\"express.static\",\"import\",null,\"test/express.static.js\",\"test/express.static.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.static.js\",1,816]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",735,32,\"express.static\",\"import\",null,\"test/express.static.js\",\"test/express.static.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.static.js\",1,816]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",759,14,\"express.static\",\"import\",null,\"test/express.static.js\",\"test/express.static.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.static.js\",1,816]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",770,30,\"express.static\",\"import\",null,\"test/express.static.js\",\"test/express.static.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.static.js\",1,816]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",808,10,\"express.static\",\"import\",null,\"test/express.static.js\",\"createApp\",\"javascript\",\"function\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"createApp\",804,815]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",30,12,\"express.text\",\"import\",null,\"test/express.text.js\",\"test/express.text.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.text.js\",1,567]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",63,12,\"express.text\",\"import\",null,\"test/express.text.js\",\"test/express.text.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.text.js\",1,567]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",64,12,\"express.text\",\"import\",null,\"test/express.text.js\",\"test/express.text.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.text.js\",1,567]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",370,14,\"express.text\",\"import\",null,\"test/express.text.js\",\"test/express.text.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.text.js\",1,567]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",552,10,\"express.text\",\"import\",null,\"test/express.text.js\",\"createApp\",\"javascript\",\"function\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"createApp\",549,566]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",31,12,\"express.urlencoded\",\"import\",null,\"test/express.urlencoded.js\",\"test/express.urlencoded.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.urlencoded.js\",1,829]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",65,12,\"express.urlencoded\",\"import\",null,\"test/express.urlencoded.js\",\"test/express.urlencoded.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.urlencoded.js\",1,829]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",66,12,\"express.urlencoded\",\"import\",null,\"test/express.urlencoded.js\",\"test/express.urlencoded.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.urlencoded.js\",1,829]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",616,14,\"express.urlencoded\",\"import\",null,\"test/express.urlencoded.js\",\"test/express.urlencoded.js\",\"javascript\",\"file\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"express.urlencoded.js\",1,829]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",808,10,\"express.urlencoded\",\"import\",null,\"test/express.urlencoded.js\",\"createApp\",\"javascript\",\"function\",\"function\",\"createApplication\",\"createApplication\",\"lib/express.js\",36,56,\"createApp\",805,822]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",22,16,\"express.Router\",\"import\",null,\"test/req.baseUrl.js\",\"test/req.baseUrl.js\",\"javascript\",\"file\",\"variable\",\"Router\",\"Router\",\"lib/express.js\",19,19,\"req.baseUrl.js\",1,89]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",36,17,\"express.Router\",\"import\",null,\"test/req.baseUrl.js\",\"test/req.baseUrl.js\",\"javascript\",\"file\",\"variable\",\"Router\",\"Router\",\"lib/express.js\",19,19,\"req.baseUrl.js\",1,89]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",37,17,\"express.Router\",\"import\",null,\"test/req.baseUrl.js\",\"test/req.baseUrl.js\",\"javascript\",\"file\",\"variable\",\"Router\",\"Router\",\"lib/express.js\",19,19,\"req.baseUrl.js\",1,89]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",38,17,\"express.Router\",\"import\",null,\"test/req.baseUrl.js\",\"test/req.baseUrl.js\",\"javascript\",\"file\",\"variable\",\"Router\",\"Router\",\"lib/express.js\",19,19,\"req.baseUrl.js\",1,89]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",55,17,\"express.Router\",\"import\",null,\"test/req.baseUrl.js\",\"test/req.baseUrl.js\",\"javascript\",\"file\",\"variable\",\"Router\",\"Router\",\"lib/express.js\",19,19,\"req.baseUrl.js\",1,89]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",56,17,\"express.Router\",\"import\",null,\"test/req.baseUrl.js\",\"test/req.baseUrl.js\",\"javascript\",\"file\",\"variable\",\"Router\",\"Router\",\"lib/express.js\",19,19,\"req.baseUrl.js\",1,89]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",57,17,\"express.Router\",\"import\",null,\"test/req.baseUrl.js\",\"test/req.baseUrl.js\",\"javascript\",\"file\",\"variable\",\"Router\",\"Router\",\"lib/express.js\",19,19,\"req.baseUrl.js\",1,89]",
+      "a": 1,
+      "b": 0
+     },
+     {
+      "key": "[\"calls\",160,19,\"express.Router\",\"import\",null,\"test/res.format.js\",\"test/res.format.js\",\"javascript\",\"file\",\"variable\",\"Router\",\"Router\",\"lib/express.js\",19,19,\"res.format.js\",1,249]",
+      "a": 1,
+      "b": 0
+     }
+    ],
+    "unresolved": [
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/auth/index.js\\\",\\\"examples/auth/index.js\\\",1,135,\\\"javascript\\\"]\",\"examples/auth/index.js\",21,8,\"express.urlencoded\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/content-negotiation/index.js\\\",\\\"examples/content-negotiation/index.js\\\",1,47,\\\"javascript\\\"]\",\"examples/content-negotiation/index.js\",12,24,\"users.map\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/content-negotiation/index.js\\\",\\\"examples/content-negotiation/index.js\\\",1,47,\\\"javascript\\\"]\",\"examples/content-negotiation/index.js\",18,15,\"users.map\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"function\\\",\\\"examples/content-negotiation/users.js\\\",\\\"html\\\",5,9,\\\"javascript\\\"]\",\"examples/content-negotiation/users.js\",6,20,\"users.map\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"function\\\",\\\"examples/content-negotiation/users.js\\\",\\\"text\\\",11,15,\\\"javascript\\\"]\",\"examples/content-negotiation/users.js\",12,11,\"users.map\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/cookies/index.js\\\",\\\"examples/cookies/index.js\\\",1,54,\\\"javascript\\\"]\",\"examples/cookies/index.js\",22,8,\"express.urlencoded\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/ejs/index.js\\\",\\\"examples/ejs/index.js\\\",1,58,\\\"javascript\\\"]\",\"examples/ejs/index.js\",31,8,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"variable\\\",\\\"examples/multi-router/controllers/api_v1.js\\\",\\\"apiv1\\\",5,5,\\\"javascript\\\"]\",\"examples/multi-router/controllers/api_v1.js\",5,12,\"express.Router\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"variable\\\",\\\"examples/multi-router/controllers/api_v2.js\\\",\\\"apiv2\\\",5,5,\\\"javascript\\\"]\",\"examples/multi-router/controllers/api_v2.js\",5,12,\"express.Router\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/mvc/index.js\\\",\\\"examples/mvc/index.js\\\",1,96,\\\"javascript\\\"]\",\"examples/mvc/index.js\",37,8,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/mvc/index.js\\\",\\\"examples/mvc/index.js\\\",1,96,\\\"javascript\\\"]\",\"examples/mvc/index.js\",47,8,\"express.urlencoded\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/route-separation/index.js\\\",\\\"examples/route-separation/index.js\\\",1,56,\\\"javascript\\\"]\",\"examples/route-separation/index.js\",31,8,\"express.urlencoded\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/route-separation/index.js\\\",\\\"examples/route-separation/index.js\\\",1,56,\\\"javascript\\\"]\",\"examples/route-separation/index.js\",32,8,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/search/index.js\\\",\\\"examples/search/index.js\\\",1,84,\\\"javascript\\\"]\",\"examples/search/index.js\",21,8,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/static-files/index.js\\\",\\\"examples/static-files/index.js\\\",1,44,\\\"javascript\\\"]\",\"examples/static-files/index.js\",22,8,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/static-files/index.js\\\",\\\"examples/static-files/index.js\\\",1,44,\\\"javascript\\\"]\",\"examples/static-files/index.js\",30,19,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/static-files/index.js\\\",\\\"examples/static-files/index.js\\\",1,44,\\\"javascript\\\"]\",\"examples/static-files/index.js\",36,8,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/view-locals/index.js\\\",\\\"examples/view-locals/index.js\\\",1,156,\\\"javascript\\\"]\",\"examples/view-locals/index.js\",27,2,\"User.count\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"examples/view-locals/index.js\\\",\\\"examples/view-locals/index.js\\\",1,156,\\\"javascript\\\"]\",\"examples/view-locals/index.js\",29,4,\"User.all\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"function\\\",\\\"examples/view-locals/index.js\\\",\\\"count\\\",48,54,\\\"javascript\\\"]\",\"examples/view-locals/index.js\",49,2,\"User.count\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"function\\\",\\\"examples/view-locals/index.js\\\",\\\"users\\\",56,62,\\\"javascript\\\"]\",\"examples/view-locals/index.js\",57,2,\"User.all\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"function\\\",\\\"examples/view-locals/index.js\\\",\\\"count2\\\",86,92,\\\"javascript\\\"]\",\"examples/view-locals/index.js\",87,2,\"User.count\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"function\\\",\\\"examples/view-locals/index.js\\\",\\\"users2\\\",94,100,\\\"javascript\\\"]\",\"examples/view-locals/index.js\",95,2,\"User.all\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"route\\\",\\\"examples/view-locals/index.js\\\",\\\"examples/view-locals/index.js::GET:/\\\",26,26,\\\"javascript\\\"]\",\"examples/view-locals/index.js\",26,0,\"User.count\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/app.options.js\\\",\\\"test/app.options.js\\\",1,117,\\\"javascript\\\"]\",\"test/app.options.js\",79,19,\"express.Router\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/app.router.js\\\",\\\"test/app.router.js\\\",1,1218,\\\"javascript\\\"]\",\"test/app.router.js\",875,19,\"express.Router\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.json.js\\\",\\\"test/express.json.js\\\",1,756,\\\"javascript\\\"]\",\"test/express.json.js\",60,12,\"express.json\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.json.js\\\",\\\"test/express.json.js\\\",1,756,\\\"javascript\\\"]\",\"test/express.json.js\",76,12,\"express.json\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.json.js\\\",\\\"test/express.json.js\\\",1,756,\\\"javascript\\\"]\",\"test/express.json.js\",77,12,\"express.json\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.json.js\\\",\\\"test/express.json.js\\\",1,756,\\\"javascript\\\"]\",\"test/express.json.js\",513,14,\"express.json\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"function\\\",\\\"test/express.json.js\\\",\\\"createApp\\\",722,740,\\\"javascript\\\"]\",\"test/express.json.js\",725,10,\"express.json\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.raw.js\\\",\\\"test/express.raw.js\\\",1,514,\\\"javascript\\\"]\",\"test/express.raw.js\",31,12,\"express.raw\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.raw.js\\\",\\\"test/express.raw.js\\\",1,514,\\\"javascript\\\"]\",\"test/express.raw.js\",68,12,\"express.raw\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.raw.js\\\",\\\"test/express.raw.js\\\",1,514,\\\"javascript\\\"]\",\"test/express.raw.js\",69,12,\"express.raw\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.raw.js\\\",\\\"test/express.raw.js\\\",1,514,\\\"javascript\\\"]\",\"test/express.raw.js\",338,14,\"express.raw\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"function\\\",\\\"test/express.raw.js\\\",\\\"createApp\\\",492,513,\\\"javascript\\\"]\",\"test/express.raw.js\",495,10,\"express.raw\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.static.js\\\",\\\"test/express.static.js\\\",1,816,\\\"javascript\\\"]\",\"test/express.static.js\",281,16,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.static.js\\\",\\\"test/express.static.js\\\",1,816,\\\"javascript\\\"]\",\"test/express.static.js\",356,16,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.static.js\\\",\\\"test/express.static.js\\\",1,816,\\\"javascript\\\"]\",\"test/express.static.js\",476,19,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.static.js\\\",\\\"test/express.static.js\\\",1,816,\\\"javascript\\\"]\",\"test/express.static.js\",544,19,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.static.js\\\",\\\"test/express.static.js\\\",1,816,\\\"javascript\\\"]\",\"test/express.static.js\",695,29,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.static.js\\\",\\\"test/express.static.js\\\",1,816,\\\"javascript\\\"]\",\"test/express.static.js\",709,30,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.static.js\\\",\\\"test/express.static.js\\\",1,816,\\\"javascript\\\"]\",\"test/express.static.js\",735,32,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.static.js\\\",\\\"test/express.static.js\\\",1,816,\\\"javascript\\\"]\",\"test/express.static.js\",759,14,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.static.js\\\",\\\"test/express.static.js\\\",1,816,\\\"javascript\\\"]\",\"test/express.static.js\",770,30,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"function\\\",\\\"test/express.static.js\\\",\\\"createApp\\\",804,815,\\\"javascript\\\"]\",\"test/express.static.js\",808,10,\"express.static\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.text.js\\\",\\\"test/express.text.js\\\",1,567,\\\"javascript\\\"]\",\"test/express.text.js\",30,12,\"express.text\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.text.js\\\",\\\"test/express.text.js\\\",1,567,\\\"javascript\\\"]\",\"test/express.text.js\",63,12,\"express.text\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.text.js\\\",\\\"test/express.text.js\\\",1,567,\\\"javascript\\\"]\",\"test/express.text.js\",64,12,\"express.text\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.text.js\\\",\\\"test/express.text.js\\\",1,567,\\\"javascript\\\"]\",\"test/express.text.js\",370,14,\"express.text\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"function\\\",\\\"test/express.text.js\\\",\\\"createApp\\\",549,566,\\\"javascript\\\"]\",\"test/express.text.js\",552,10,\"express.text\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.urlencoded.js\\\",\\\"test/express.urlencoded.js\\\",1,829,\\\"javascript\\\"]\",\"test/express.urlencoded.js\",31,12,\"express.urlencoded\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.urlencoded.js\\\",\\\"test/express.urlencoded.js\\\",1,829,\\\"javascript\\\"]\",\"test/express.urlencoded.js\",65,12,\"express.urlencoded\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.urlencoded.js\\\",\\\"test/express.urlencoded.js\\\",1,829,\\\"javascript\\\"]\",\"test/express.urlencoded.js\",66,12,\"express.urlencoded\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/express.urlencoded.js\\\",\\\"test/express.urlencoded.js\\\",1,829,\\\"javascript\\\"]\",\"test/express.urlencoded.js\",616,14,\"express.urlencoded\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"function\\\",\\\"test/express.urlencoded.js\\\",\\\"createApp\\\",805,822,\\\"javascript\\\"]\",\"test/express.urlencoded.js\",808,10,\"express.urlencoded\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/req.baseUrl.js\\\",\\\"test/req.baseUrl.js\\\",1,89,\\\"javascript\\\"]\",\"test/req.baseUrl.js\",22,16,\"express.Router\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/req.baseUrl.js\\\",\\\"test/req.baseUrl.js\\\",1,89,\\\"javascript\\\"]\",\"test/req.baseUrl.js\",36,17,\"express.Router\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/req.baseUrl.js\\\",\\\"test/req.baseUrl.js\\\",1,89,\\\"javascript\\\"]\",\"test/req.baseUrl.js\",37,17,\"express.Router\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/req.baseUrl.js\\\",\\\"test/req.baseUrl.js\\\",1,89,\\\"javascript\\\"]\",\"test/req.baseUrl.js\",38,17,\"express.Router\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/req.baseUrl.js\\\",\\\"test/req.baseUrl.js\\\",1,89,\\\"javascript\\\"]\",\"test/req.baseUrl.js\",55,17,\"express.Router\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/req.baseUrl.js\\\",\\\"test/req.baseUrl.js\\\",1,89,\\\"javascript\\\"]\",\"test/req.baseUrl.js\",56,17,\"express.Router\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/req.baseUrl.js\\\",\\\"test/req.baseUrl.js\\\",1,89,\\\"javascript\\\"]\",\"test/req.baseUrl.js\",57,17,\"express.Router\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     },
+     {
+      "key": "[\"[\\\"file\\\",\\\"test/res.format.js\\\",\\\"test/res.format.js\\\",1,249,\\\"javascript\\\"]\",\"test/res.format.js\",160,19,\"express.Router\",\"calls\"]",
+      "a": 0,
+      "b": 1
+     }
+    ]
+   },
+   "verdict": "DIFFER"
+  }
+ ]
+}

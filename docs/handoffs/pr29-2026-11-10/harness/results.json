@@ -1,0 +1,141 @@
+{
+  "status": "harness complete; no new tested correctness regressions, measured indexing regression",
+  "baselineHead": "87576a8d9ff0d8aba235db5535f5f4429f14b037",
+  "candidate": "same30path saved working diff; no source edits during harness",
+  "isolatedNormalBuilds": "bothPASS",
+  "fixtures": {
+    "total": 70,
+    "pr29Fixed": 32,
+    "existingUnchanged": 38,
+    "existingVerdicts": {
+      "BROKEN": 32,
+      "FIXED": 4,
+      "GUESSED": 2
+    }
+  },
+  "canaries": {
+    "baseline": {
+      "PASS": 69,
+      "FAIL": 1
+    },
+    "candidate": {
+      "PASS": 70
+    }
+  },
+  "corpus": {
+    "identical": [
+      "requests",
+      "click",
+      "mux",
+      "ky"
+    ],
+    "express": {
+      "removedIncorrectCalls": 52,
+      "removedUnprovenCallsToExternalVariable": 12,
+      "addedUnresolved": 64,
+      "filesNodesChanged": false,
+      "confirmedCorrectCallsLostInThisSet": 0
+    }
+  },
+  "shadow": {
+    "same": 17,
+    "changed": 6,
+    "failed": 0,
+    "unstable": 0
+  },
+  "modes": {
+    "inputsPerBuild": 11,
+    "comparisonsPerBuild": 99,
+    "identicalPerBuild": 98,
+    "sameGraphDifferentRowOrderPerBuild": 1,
+    "differentOrFailed": 0
+  },
+  "metamorphic": {
+    "seedsPerBuild": 73,
+    "rowsPerBuild": 219,
+    "candidateClean": 192,
+    "candidateKnownDifferences": 17,
+    "candidateNotApplicable": 10,
+    "baselineDifferences": 26,
+    "removedBaselineDifferences": 9,
+    "newInvariantDifferences": 0,
+    "errors": 0
+  },
+  "timings": [
+    {
+      "repo": "requests",
+      "samplesPerBuild": 4,
+      "baseline": {
+        "medianMs": 2069.0,
+        "rangeMs": [
+          2062,
+          2292
+        ]
+      },
+      "candidate": {
+        "medianMs": 2065.5,
+        "rangeMs": [
+          2007,
+          2193
+        ]
+      },
+      "medianChangePercent": -0.16916384726921585
+    },
+    {
+      "repo": "ky",
+      "samplesPerBuild": 4,
+      "baseline": {
+        "medianMs": 5044.5,
+        "rangeMs": [
+          5000,
+          5140
+        ]
+      },
+      "candidate": {
+        "medianMs": 5675.5,
+        "rangeMs": [
+          5474,
+          5783
+        ]
+      },
+      "medianChangePercent": 12.508672811973431
+    },
+    {
+      "repo": "express",
+      "samplesPerBuild": 4,
+      "baseline": {
+        "medianMs": 2378.5,
+        "rangeMs": [
+          2360,
+          2444
+        ]
+      },
+      "candidate": {
+        "medianMs": 3281.5,
+        "rangeMs": [
+          3241,
+          3825
+        ]
+      },
+      "medianChangePercent": 37.9651040571789
+    }
+  ],
+  "preservation": {
+    "checkedAt": "2026-11-10T11:18:35.214793+00:00",
+    "originalTrackedPathsChecked": 2019,
+    "originalChangedPaths": [],
+    "gitStatusUnchanged": true,
+    "workingDiffUnchanged": true,
+    "candidateSnapshotChangedPaths": [],
+    "stagedDiff": ""
+  },
+  "limitations": [
+    "WASM only; native binary absent",
+    "Existing38fixture cases retain32BROKEN2GUESSED4FIXED; remaining17metamorphic differences are unchanged baseline behavior",
+    "Four timing samples per arm per repo on one shared local host; not a general performance bound",
+    "32targeted fixtures derive from existing contract cases; unchanged QA fixtures and metamorphic transformations provide separate controls",
+    "No compiler-oracle refresh, agent-model A/B, experimental T0, overnight history harness or full repository test suite in this run",
+    "Independent code review remains pending; no commits/push/merge/deploy or production fixes"
+  ],
+  "recommendation": "Profile the JavaScript/TypeScript indexing overhead before further implementation or release readiness claims."
+}
