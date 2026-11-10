@@ -1,0 +1,1172 @@
+{
+ "build": "/tmp/codegraph-pr29-harness-6fevujfy/baseline/dist/bin/codegraph.js",
+ "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae",
+ "modes": [
+  "repeat",
+  "parse1",
+  "parse4",
+  "resolve-pool",
+  "no-parallel-resolve",
+  "no-store-worker",
+  "no-fast-init",
+  "reindex",
+  "sync-from-empty"
+ ],
+ "results": [
+  {
+   "dir": "/tmp/codegraph-pr29-harness-6fevujfy/qa/fixtures/oracle-candidates/pr29-01-f14-object",
+   "results": [
+    {
+     "mode": "base",
+     "ms": 955,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "BASE"
+    },
+    {
+     "mode": "repeat",
+     "ms": 1001,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse1",
+     "ms": 924,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse4",
+     "ms": 944,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "resolve-pool",
+     "ms": 1180,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-parallel-resolve",
+     "ms": 1080,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-store-worker",
+     "ms": 1089,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-fast-init",
+     "ms": 1193,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "reindex",
+     "ms": 1992,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "sync-from-empty",
+     "ms": 1559,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    }
+   ]
+  },
+  {
+   "dir": "/tmp/codegraph-pr29-harness-6fevujfy/qa/fixtures/oracle-candidates/pr29-04-f15-number",
+   "results": [
+    {
+     "mode": "base",
+     "ms": 921,
+     "size": {
+      "nodes": 9,
+      "edges": 8,
+      "unresolved": 2
+     },
+     "verdict": "BASE"
+    },
+    {
+     "mode": "repeat",
+     "ms": 918,
+     "size": {
+      "nodes": 9,
+      "edges": 8,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse1",
+     "ms": 898,
+     "size": {
+      "nodes": 9,
+      "edges": 8,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse4",
+     "ms": 974,
+     "size": {
+      "nodes": 9,
+      "edges": 8,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "resolve-pool",
+     "ms": 1119,
+     "size": {
+      "nodes": 9,
+      "edges": 8,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-parallel-resolve",
+     "ms": 858,
+     "size": {
+      "nodes": 9,
+      "edges": 8,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-store-worker",
+     "ms": 825,
+     "size": {
+      "nodes": 9,
+      "edges": 8,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-fast-init",
+     "ms": 975,
+     "size": {
+      "nodes": 9,
+      "edges": 8,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "reindex",
+     "ms": 1715,
+     "size": {
+      "nodes": 9,
+      "edges": 8,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "sync-from-empty",
+     "ms": 1477,
+     "size": {
+      "nodes": 9,
+      "edges": 8,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    }
+   ]
+  },
+  {
+   "dir": "/tmp/codegraph-pr29-harness-6fevujfy/qa/fixtures/oracle-candidates/pr29-06-f15-assigned-callable",
+   "results": [
+    {
+     "mode": "base",
+     "ms": 857,
+     "size": {
+      "nodes": 10,
+      "edges": 10,
+      "unresolved": 2
+     },
+     "verdict": "BASE"
+    },
+    {
+     "mode": "repeat",
+     "ms": 849,
+     "size": {
+      "nodes": 10,
+      "edges": 10,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse1",
+     "ms": 828,
+     "size": {
+      "nodes": 10,
+      "edges": 10,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse4",
+     "ms": 898,
+     "size": {
+      "nodes": 10,
+      "edges": 10,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "resolve-pool",
+     "ms": 1122,
+     "size": {
+      "nodes": 10,
+      "edges": 10,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-parallel-resolve",
+     "ms": 837,
+     "size": {
+      "nodes": 10,
+      "edges": 10,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-store-worker",
+     "ms": 828,
+     "size": {
+      "nodes": 10,
+      "edges": 10,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-fast-init",
+     "ms": 976,
+     "size": {
+      "nodes": 10,
+      "edges": 10,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "reindex",
+     "ms": 1714,
+     "size": {
+      "nodes": 10,
+      "edges": 10,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "sync-from-empty",
+     "ms": 1482,
+     "size": {
+      "nodes": 10,
+      "edges": 10,
+      "unresolved": 2
+     },
+     "verdict": "IDENTICAL"
+    }
+   ]
+  },
+  {
+   "dir": "/tmp/codegraph-pr29-harness-6fevujfy/qa/fixtures/oracle-candidates/pr29-08-f11-generator-eval",
+   "results": [
+    {
+     "mode": "base",
+     "ms": 887,
+     "size": {
+      "nodes": 11,
+      "edges": 10,
+      "unresolved": 5
+     },
+     "verdict": "BASE"
+    },
+    {
+     "mode": "repeat",
+     "ms": 840,
+     "size": {
+      "nodes": 11,
+      "edges": 10,
+      "unresolved": 5
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse1",
+     "ms": 829,
+     "size": {
+      "nodes": 11,
+      "edges": 10,
+      "unresolved": 5
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse4",
+     "ms": 929,
+     "size": {
+      "nodes": 11,
+      "edges": 10,
+      "unresolved": 5
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "resolve-pool",
+     "ms": 1151,
+     "size": {
+      "nodes": 11,
+      "edges": 10,
+      "unresolved": 5
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-parallel-resolve",
+     "ms": 890,
+     "size": {
+      "nodes": 11,
+      "edges": 10,
+      "unresolved": 5
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-store-worker",
+     "ms": 923,
+     "size": {
+      "nodes": 11,
+      "edges": 10,
+      "unresolved": 5
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-fast-init",
+     "ms": 1001,
+     "size": {
+      "nodes": 11,
+      "edges": 10,
+      "unresolved": 5
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "reindex",
+     "ms": 1876,
+     "size": {
+      "nodes": 11,
+      "edges": 10,
+      "unresolved": 5
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "sync-from-empty",
+     "ms": 1639,
+     "size": {
+      "nodes": 11,
+      "edges": 10,
+      "unresolved": 5
+     },
+     "verdict": "IDENTICAL"
+    }
+   ]
+  },
+  {
+   "dir": "/tmp/codegraph-pr29-harness-6fevujfy/qa/fixtures/oracle-candidates/pr29-22-ambiguous-branch",
+   "results": [
+    {
+     "mode": "base",
+     "ms": 1015,
+     "size": {
+      "nodes": 12,
+      "edges": 11,
+      "unresolved": 3
+     },
+     "verdict": "BASE"
+    },
+    {
+     "mode": "repeat",
+     "ms": 1134,
+     "size": {
+      "nodes": 12,
+      "edges": 11,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse1",
+     "ms": 1066,
+     "size": {
+      "nodes": 12,
+      "edges": 11,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse4",
+     "ms": 1102,
+     "size": {
+      "nodes": 12,
+      "edges": 11,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "resolve-pool",
+     "ms": 1326,
+     "size": {
+      "nodes": 12,
+      "edges": 11,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-parallel-resolve",
+     "ms": 1010,
+     "size": {
+      "nodes": 12,
+      "edges": 11,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-store-worker",
+     "ms": 1025,
+     "size": {
+      "nodes": 12,
+      "edges": 11,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-fast-init",
+     "ms": 1163,
+     "size": {
+      "nodes": 12,
+      "edges": 11,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "reindex",
+     "ms": 2083,
+     "size": {
+      "nodes": 12,
+      "edges": 11,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "sync-from-empty",
+     "ms": 1790,
+     "size": {
+      "nodes": 12,
+      "edges": 11,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    }
+   ]
+  },
+  {
+   "dir": "/tmp/codegraph-pr29-harness-6fevujfy/qa/fixtures/oracle-candidates/pr29-23-agreeing-branch",
+   "results": [
+    {
+     "mode": "base",
+     "ms": 1028,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "BASE"
+    },
+    {
+     "mode": "repeat",
+     "ms": 1017,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse1",
+     "ms": 1064,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse4",
+     "ms": 1156,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "resolve-pool",
+     "ms": 1441,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-parallel-resolve",
+     "ms": 1020,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-store-worker",
+     "ms": 1022,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-fast-init",
+     "ms": 1126,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "reindex",
+     "ms": 2128,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "sync-from-empty",
+     "ms": 1965,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    }
+   ]
+  },
+  {
+   "dir": "/tmp/codegraph-pr29-harness-6fevujfy/qa/fixtures/oracle-candidates/pr29-29-uncertain-receiver-alias",
+   "results": [
+    {
+     "mode": "base",
+     "ms": 1118,
+     "size": {
+      "nodes": 12,
+      "edges": 10,
+      "unresolved": 3
+     },
+     "verdict": "BASE"
+    },
+    {
+     "mode": "repeat",
+     "ms": 1135,
+     "size": {
+      "nodes": 12,
+      "edges": 10,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse1",
+     "ms": 992,
+     "size": {
+      "nodes": 12,
+      "edges": 10,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse4",
+     "ms": 1092,
+     "size": {
+      "nodes": 12,
+      "edges": 10,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "resolve-pool",
+     "ms": 1398,
+     "size": {
+      "nodes": 12,
+      "edges": 10,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-parallel-resolve",
+     "ms": 1070,
+     "size": {
+      "nodes": 12,
+      "edges": 10,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-store-worker",
+     "ms": 1017,
+     "size": {
+      "nodes": 12,
+      "edges": 10,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-fast-init",
+     "ms": 1159,
+     "size": {
+      "nodes": 12,
+      "edges": 10,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "reindex",
+     "ms": 2018,
+     "size": {
+      "nodes": 12,
+      "edges": 10,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "sync-from-empty",
+     "ms": 1764,
+     "size": {
+      "nodes": 12,
+      "edges": 10,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    }
+   ]
+  },
+  {
+   "dir": "/tmp/codegraph-pr29-harness-6fevujfy/qa/fixtures/oracle-candidates/pr29-32-logical-member-initialization",
+   "results": [
+    {
+     "mode": "base",
+     "ms": 1062,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "BASE"
+    },
+    {
+     "mode": "repeat",
+     "ms": 1015,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse1",
+     "ms": 1031,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse4",
+     "ms": 1127,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "resolve-pool",
+     "ms": 1420,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-parallel-resolve",
+     "ms": 1028,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-store-worker",
+     "ms": 1039,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-fast-init",
+     "ms": 1246,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "reindex",
+     "ms": 2143,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "sync-from-empty",
+     "ms": 1741,
+     "size": {
+      "nodes": 11,
+      "edges": 9,
+      "unresolved": 3
+     },
+     "verdict": "IDENTICAL"
+    }
+   ]
+  },
+  {
+   "dir": "/tmp/codegraph-pr29-harness-6fevujfy/qa/fixtures/oracle-candidates/n5-ts-barrel-member",
+   "results": [
+    {
+     "mode": "base",
+     "ms": 1019,
+     "size": {
+      "nodes": 15,
+      "edges": 18,
+      "unresolved": 1
+     },
+     "verdict": "BASE"
+    },
+    {
+     "mode": "repeat",
+     "ms": 1054,
+     "size": {
+      "nodes": 15,
+      "edges": 18,
+      "unresolved": 1
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse1",
+     "ms": 1008,
+     "size": {
+      "nodes": 15,
+      "edges": 18,
+      "unresolved": 1
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse4",
+     "ms": 1122,
+     "size": {
+      "nodes": 15,
+      "edges": 18,
+      "unresolved": 1
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "resolve-pool",
+     "ms": 1593,
+     "size": {
+      "nodes": 15,
+      "edges": 18,
+      "unresolved": 1
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-parallel-resolve",
+     "ms": 1050,
+     "size": {
+      "nodes": 15,
+      "edges": 18,
+      "unresolved": 1
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-store-worker",
+     "ms": 1005,
+     "size": {
+      "nodes": 15,
+      "edges": 18,
+      "unresolved": 1
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-fast-init",
+     "ms": 1195,
+     "size": {
+      "nodes": 15,
+      "edges": 18,
+      "unresolved": 1
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "reindex",
+     "ms": 2427,
+     "size": {
+      "nodes": 15,
+      "edges": 18,
+      "unresolved": 1
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "sync-from-empty",
+     "ms": 1855,
+     "size": {
+      "nodes": 15,
+      "edges": 18,
+      "unresolved": 1
+     },
+     "verdict": "IDENTICAL"
+    }
+   ]
+  },
+  {
+   "dir": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/express",
+   "results": [
+    {
+     "mode": "base",
+     "ms": 3198,
+     "size": {
+      "nodes": 1143,
+      "edges": 2334,
+      "unresolved": 9133
+     },
+     "verdict": "BASE"
+    },
+    {
+     "mode": "repeat",
+     "ms": 3296,
+     "size": {
+      "nodes": 1143,
+      "edges": 2334,
+      "unresolved": 9133
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse1",
+     "ms": 3721,
+     "size": {
+      "nodes": 1143,
+      "edges": 2334,
+      "unresolved": 9133
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse4",
+     "ms": 3074,
+     "size": {
+      "nodes": 1143,
+      "edges": 2334,
+      "unresolved": 9133
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "resolve-pool",
+     "ms": 3678,
+     "size": {
+      "nodes": 1143,
+      "edges": 2334,
+      "unresolved": 9133
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-parallel-resolve",
+     "ms": 3550,
+     "size": {
+      "nodes": 1143,
+      "edges": 2334,
+      "unresolved": 9133
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-store-worker",
+     "ms": 3183,
+     "size": {
+      "nodes": 1143,
+      "edges": 2334,
+      "unresolved": 9133
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-fast-init",
+     "ms": 3167,
+     "size": {
+      "nodes": 1143,
+      "edges": 2334,
+      "unresolved": 9133
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "reindex",
+     "ms": 6187,
+     "size": {
+      "nodes": 1143,
+      "edges": 2334,
+      "unresolved": 9133
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "sync-from-empty",
+     "ms": 5692,
+     "size": {
+      "nodes": 1143,
+      "edges": 2334,
+      "unresolved": 9133
+     },
+     "verdict": "IDENTICAL"
+    }
+   ]
+  },
+  {
+   "dir": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/requests",
+   "results": [
+    {
+     "mode": "base",
+     "ms": 2714,
+     "size": {
+      "nodes": 1299,
+      "edges": 2976,
+      "unresolved": 2345
+     },
+     "verdict": "BASE"
+    },
+    {
+     "mode": "repeat",
+     "ms": 2899,
+     "size": {
+      "nodes": 1299,
+      "edges": 2976,
+      "unresolved": 2345
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse1",
+     "ms": 2888,
+     "size": {
+      "nodes": 1299,
+      "edges": 2976,
+      "unresolved": 2345
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "parse4",
+     "ms": 2688,
+     "size": {
+      "nodes": 1299,
+      "edges": 2976,
+      "unresolved": 2345
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "resolve-pool",
+     "ms": 2785,
+     "size": {
+      "nodes": 1299,
+      "edges": 2976,
+      "unresolved": 2345
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-parallel-resolve",
+     "ms": 2697,
+     "size": {
+      "nodes": 1299,
+      "edges": 2976,
+      "unresolved": 2345
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-store-worker",
+     "ms": 2673,
+     "size": {
+      "nodes": 1299,
+      "edges": 2976,
+      "unresolved": 2345
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "no-fast-init",
+     "ms": 2795,
+     "size": {
+      "nodes": 1299,
+      "edges": 2976,
+      "unresolved": 2345
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "reindex",
+     "ms": 4974,
+     "size": {
+      "nodes": 1299,
+      "edges": 2976,
+      "unresolved": 2345
+     },
+     "verdict": "IDENTICAL"
+    },
+    {
+     "mode": "sync-from-empty",
+     "ms": 4423,
+     "size": {
+      "nodes": 1299,
+      "edges": 2976,
+      "unresolved": 2345
+     },
+     "verdict": "SAME-GRAPH"
+    }
+   ]
+  }
+ ]
+}

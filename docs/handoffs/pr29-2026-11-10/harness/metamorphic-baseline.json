@@ -1,0 +1,3241 @@
+[
+ {
+  "seed": "a",
+  "relation": "decoy",
+  "edges": 4,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 5,
+  "challengeSha256": "8c804eb586ccf55b9834b3e12464b4641abb273e917b1283890b6196d6322582",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "a",
+  "relation": "shift",
+  "edges": 4,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "handler.ts",
+   "lib.ts"
+  ],
+  "challengeSha256": "ef572074d46bceae1b317fcc1252dcddae4aa1c38d72ae2e675a5b1b0004decf",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "a",
+  "relation": "repeat",
+  "edges": 4,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "23c74e58b799e92c5954773a12193b60652aea7953503e7755fe0f7b2f3fb08b",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "b",
+  "relation": "decoy",
+  "edges": 1,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [
+    "queries.ts:8 take -calls-> session.ts:Session::snapshot (instance-method)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 5,
+  "challengeSha256": "0630e262fed84f7373d1271f85deac715094084ac5674e536917032a9f5d698e",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "b",
+  "relation": "shift",
+  "edges": 1,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "queries.ts",
+   "session.ts"
+  ],
+  "challengeSha256": "a9fc526b55bffa2e07db1e7ccbe93f28e0aa57430b5df0d74bed1adc49472a9b",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "b",
+  "relation": "repeat",
+  "edges": 1,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "e62bc5451f37da2a2d83497020c5c6e544c40decec19679394a4887dadbe4f14",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "c",
+  "relation": "decoy",
+  "edges": 1,
+  "diffs": {
+   "CAPTURED": [
+    "orch.ts:5 Orchestrator::check -calls-> zz_cg_decoy/decoy-fns.ts:has (exact-match)"
+   ],
+   "LOST": [
+    "orch.ts:5 Orchestrator::check -calls-> cache.ts:Cache::has (exact-match)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 6,
+  "challengeSha256": "f9af1e114a9028ad0fdf6e0dd6d8272aedca300f0705f03412629080474326f8",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "c",
+  "relation": "shift",
+  "edges": 1,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "cache.ts",
+   "orch.ts"
+  ],
+  "challengeSha256": "f1a17e3a7a9de3e0864f44665003080ad289dbe3aaeb24ce8ecb165e3a1b8e1c",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "c",
+  "relation": "repeat",
+  "edges": 1,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "1f8f44d8ae2346657173aade2442e76b5b31b4fd8da05680aba17af27b1145ab",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "g1-go-new-receiver",
+  "relation": "decoy",
+  "edges": 9,
+  "diffs": {},
+  "decoys": 0,
+  "notApplicable": true,
+  "reason": "no supported source call/class names",
+  "challengeSha256": "e80d5f340c90ca81c9f529f75c6a385a351524cfb56675de75d82aacf79aa92c",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "g1-go-new-receiver",
+  "relation": "shift",
+  "edges": 9,
+  "diffs": {},
+  "shiftedFiles": [],
+  "notApplicable": true,
+  "reason": "no supported files to shift",
+  "challengeSha256": "ea26e8d9c6b8827dd0ad38813a22e6dfaa0796f7502b4a30c68a71fe40b8f352",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "g1-go-new-receiver",
+  "relation": "repeat",
+  "edges": 9,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "76dba48fb10798207eed5d79fdca6bf4b5eaa0682860e1ef849fa634045f56c6",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2944",
+  "relation": "decoy",
+  "edges": 5,
+  "diffs": {
+   "CAPTURED": [
+    "a.test.ts:1 a.test.ts -calls-> zz_cg_decoy/decoy-fns.ts:describe (exact-match)",
+    "a.test.ts:23 a.test.ts -calls-> zz_cg_decoy/decoy-fns.ts:it (exact-match)",
+    "a.test.ts:25 a.test.ts -calls-> zz_cg_decoy/decoy-fns.ts:describe (exact-match)",
+    "a.test.ts:27 a.test.ts -calls-> zz_cg_decoy/decoy-fns.ts:it (exact-match)"
+   ],
+   "LOST": [
+    "a.test.ts:1 a.test.ts -calls-> decl.d.ts:describe (exact-match)",
+    "a.test.ts:23 a.test.ts -calls-> decl.d.ts:it (exact-match)",
+    "a.test.ts:25 a.test.ts -calls-> decl.d.ts:describe (exact-match)",
+    "a.test.ts:27 a.test.ts -calls-> decl.d.ts:it (exact-match)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 6,
+  "challengeSha256": "d4a7e906b515d5441ba21bfb35ea4988e313b931f54233fe0b17cda7fef6e527",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2944",
+  "relation": "shift",
+  "edges": 5,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "a.test.ts",
+   "decl.d.ts"
+  ],
+  "challengeSha256": "19d80bed394c4999e4fc7923317fa9c8f5475a93e764be2351148a92b8cec28b",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2944",
+  "relation": "repeat",
+  "edges": 5,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "1567661684212f0851f4c840735640adc59c3fef433884775bf45a61f8a3a6e0",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2944-arrow",
+  "relation": "decoy",
+  "edges": 6,
+  "diffs": {
+   "CAPTURED": [
+    "a.test.ts:1 a.test.ts -calls-> zz_cg_decoy/decoy-fns.ts:describe (exact-match)",
+    "a.test.ts:23 a.test.ts -calls-> zz_cg_decoy/decoy-fns.ts:it (exact-match)",
+    "a.test.ts:25 a.test.ts -calls-> zz_cg_decoy/decoy-fns.ts:describe (exact-match)",
+    "a.test.ts:27 a.test.ts -calls-> zz_cg_decoy/decoy-fns.ts:it (exact-match)"
+   ],
+   "LOST": [
+    "a.test.ts:1 a.test.ts -calls-> decl.d.ts:describe (exact-match)",
+    "a.test.ts:23 a.test.ts -calls-> decl.d.ts:it (exact-match)",
+    "a.test.ts:25 a.test.ts -calls-> decl.d.ts:describe (exact-match)",
+    "a.test.ts:27 a.test.ts -calls-> decl.d.ts:it (exact-match)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 6,
+  "challengeSha256": "58510d6f32312e64962ecec1d943ea3e81d0e8d89f3f156c5af57394c40e7a7d",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2944-arrow",
+  "relation": "shift",
+  "edges": 6,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "a.test.ts",
+   "decl.d.ts"
+  ],
+  "challengeSha256": "02502bcbd33040a5ef40e82fa76ffa9ee9ceca5c4e1e46e1348466d908cbae7d",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2944-arrow",
+  "relation": "repeat",
+  "edges": 6,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "03baf07209e3a2bb37e10affb6d379609adc91442b4393a786cdb96d21ab5a2b",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2944-verbatim",
+  "relation": "decoy",
+  "edges": 6,
+  "diffs": {
+   "CAPTURED": [
+    "a.test.ts:1 a.test.ts -calls-> zz_cg_decoy/decoy-fns.ts:describe (exact-match)",
+    "a.test.ts:23 a.test.ts -calls-> zz_cg_decoy/decoy-fns.ts:it (exact-match)",
+    "a.test.ts:25 a.test.ts -calls-> zz_cg_decoy/decoy-fns.ts:describe (exact-match)",
+    "a.test.ts:27 a.test.ts -calls-> zz_cg_decoy/decoy-fns.ts:it (exact-match)"
+   ],
+   "LOST": [
+    "a.test.ts:1 a.test.ts -calls-> decl.d.ts:describe (exact-match)",
+    "a.test.ts:23 a.test.ts -calls-> decl.d.ts:it (exact-match)",
+    "a.test.ts:25 a.test.ts -calls-> decl.d.ts:describe (exact-match)",
+    "a.test.ts:27 a.test.ts -calls-> decl.d.ts:it (exact-match)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 6,
+  "challengeSha256": "39ad0a6dade9823b712df049144cdfe3ba7f9e40d2cbd02aa3b62f16d6bf9bfa",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2944-verbatim",
+  "relation": "shift",
+  "edges": 6,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "a.test.ts",
+   "decl.d.ts"
+  ],
+  "challengeSha256": "ebecff07883134a22106ec41bf410f59ac0fea9f2723091f4b2a0b665386cf2c",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2944-verbatim",
+  "relation": "repeat",
+  "edges": 6,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "4c2a691f2b65b7cb48f5d177a28cec4d030336c78b406f9353e0b483f91bb06c",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2946",
+  "relation": "decoy",
+  "edges": 13,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 18,
+  "challengeSha256": "3cdb37b49b8af6537ba0fd5f3070392a6e4f2e3eed05fba17695f5c9b2df837e",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2946",
+  "relation": "shift",
+  "edges": 13,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "db.ts",
+   "use.ts",
+   "writer.ts"
+  ],
+  "challengeSha256": "92cb8575936110478738fde0458178992253d3dc554875f498b05324e1ac809d",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2946",
+  "relation": "repeat",
+  "edges": 13,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "31c403ad778521ce51ad30d75dc5043593f73a63d860d3b604d9358119b8e560",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2947",
+  "relation": "decoy",
+  "edges": 4,
+  "diffs": {
+   "CAPTURED": [
+    "use.ts:1 use.ts -imports-> zz_cg_decoy/decoy-fns.ts:createRoot (exact-match)",
+    "use.ts:4 a -calls-> zz_cg_decoy/decoy-fns.ts:createRoot (exact-match)"
+   ],
+   "LOST": [
+    "use.ts:4 a -calls-> app.ts:App::render (instance-method)",
+    "use.ts:5 b -calls-> app.ts:App::close (instance-method)",
+    "use.ts:6 c -calls-> app.ts:App::close (instance-method)",
+    "use.ts:7 d -calls-> app.ts:App::translate (instance-method)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 23,
+  "challengeSha256": "42ba3b0da1eec27de381feaa294bd93da495a0ded651a4daadaf03f8991f7a47",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2947",
+  "relation": "shift",
+  "edges": 4,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "app.ts",
+   "use.ts"
+  ],
+  "challengeSha256": "50b62e871841fb48123b9780d6da1f955f401e8b232cb0791a9ff1121e3a698d",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2947",
+  "relation": "repeat",
+  "edges": 4,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "d6f80a444a1ed09e8191b046bc8fc42707d1c672b02a4adc9c0e72167c587e69",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2948",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [
+    "use.ts:3 Scene::a -calls-> zz_cg_decoy/decoy-fns.ts:push (exact-match)",
+    "use.ts:4 Scene::b -calls-> zz_cg_decoy/decoy-fns.ts:includes (exact-match)"
+   ],
+   "LOST": [
+    "use.ts:3 Scene::a -calls-> heap.ts:BinaryHeap::push (exact-match)",
+    "use.ts:4 Scene::b -calls-> heap.ts:Conf::includes (exact-match)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 16,
+  "challengeSha256": "996e0dd677d062bea5d03aacf7f6150d7978d61e24a664687d14072093f468e2",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2948",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "heap.ts",
+   "use.ts"
+  ],
+  "challengeSha256": "ac2d2fb3508a8deb548d7e5817df7a309fb577913cd77ff32ce54f4fa74caccc",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2948",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "b53b3852325f76dd08ca3c2a1d2b1c4a19530081bc32e5da1b83b1c426af28fd",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2949",
+  "relation": "decoy",
+  "edges": 7,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 14,
+  "challengeSha256": "798bef1c4bf087b9cf02807fa4dcf69f2eb3878f09474ca5b84258d75db73816",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2949",
+  "relation": "shift",
+  "edges": 7,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "lib.ts",
+   "use.ts"
+  ],
+  "challengeSha256": "8f315f61302a6e4db79bafbd7f26f9bc9c53ec030ece448c9565669648731da8",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2949",
+  "relation": "repeat",
+  "edges": 7,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "c170ba769ddfbdda7e5f80b619e26e8b76ba192324f48635d0460892d57a03f1",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2949-pkg",
+  "relation": "decoy",
+  "edges": 6,
+  "diffs": {
+   "CAPTURED": [
+    "use.ts:1 use.ts -imports-> zz_cg_decoy/decoy-fns.ts:skipString (exact-match)"
+   ],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 14,
+  "challengeSha256": "b320d56aad93ec44df87387c0b3e132b88daf414cb57b659985d01d8c1505527",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2949-pkg",
+  "relation": "shift",
+  "edges": 6,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "use.ts"
+  ],
+  "challengeSha256": "3f119fcfad7a8ea1ece1e05f40f99332ff0e2e44d9e0865d728893b058d38a0c",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2949-pkg",
+  "relation": "repeat",
+  "edges": 6,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "711eab9cfcb68343a534cc41ce1d1d2b6cfed8875f4b7ba6517f644e806cb116",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2951",
+  "relation": "decoy",
+  "edges": 16,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [
+    "a.ts:2 useA -calls-> schemas.ts:ZodString::ipv4 (instance-method)",
+    "c.ts:2 useC -calls-> schemas.ts:ZodString::ipv4 (instance-method)",
+    "d.ts:2 useD -calls-> schemas.ts:ZodString::ipv4 (instance-method)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 10,
+  "challengeSha256": "fb4b88b43e33d2ff1c7a6c51d62da3b6d79ba1593adea46968e9e7dd63d24601",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2951",
+  "relation": "shift",
+  "edges": 16,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "a.ts",
+   "b.ts",
+   "c.ts",
+   "d.ts",
+   "external.ts",
+   "index.ts",
+   "index2.ts",
+   "index3.ts",
+   "schemas.ts"
+  ],
+  "challengeSha256": "0b577fb910a14d0a8788a073bc978c2d259a43cb2a4a7fb5857bb0c55fbee932",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2951",
+  "relation": "repeat",
+  "edges": 16,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "8cc78053c6aebc40472c53955c2f62e6c446dc32531af6bf38856249422c473d",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2952",
+  "relation": "decoy",
+  "edges": 4,
+  "diffs": {
+   "CAPTURED": [
+    "test/utils.js:2 t -calls-> zz_cg_decoy/decoy-methods.js:CgDecoyHost::etag (instance-method)"
+   ],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 14,
+  "challengeSha256": "982a1391db6e154f2b43b03e3be7d960d963897e64b1fed523070bc51bcf812d",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2952",
+  "relation": "shift",
+  "edges": 4,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "lib/utils.js",
+   "test/utils.js"
+  ],
+  "challengeSha256": "8fda9afb8e1e51a6a4aa1b7daeb08707708fc848abf9fd08cd8131f17f442913",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2952",
+  "relation": "repeat",
+  "edges": 4,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "3a59f7547e89908d3a227a87da5ceb84eb96ad7c0e3055bb65cae77143a55fd7",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2953",
+  "relation": "decoy",
+  "edges": 16,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [
+    "app.ts:16 handlerS -calls-> streaming.ts:StreamApi::onAbort (instance-method)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 52,
+  "challengeSha256": "f009f0705d7cbf2b498f89920d146883f58cd27845610205a1cc707f62b41c32",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2953",
+  "relation": "shift",
+  "edges": 16,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "app.ts",
+   "cjsapp.js",
+   "lib/reply.js",
+   "streaming.ts"
+  ],
+  "challengeSha256": "518a181a60309254fb70c95e31e0d3929dceaaa524d6716af08b1679d8673b9e",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2953",
+  "relation": "repeat",
+  "edges": 16,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "fdf0a998bbc9db293ff0e1b9f437438c5c6c7991aac2a06042b632502504d21e",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2954",
+  "relation": "decoy",
+  "edges": 7,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 11,
+  "challengeSha256": "8403c64e458ea0a2b6e7cfcc17438174ae192677144de668408b2d2c44e85f5e",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2954",
+  "relation": "shift",
+  "edges": 7,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "lib.ts",
+   "tools.ts"
+  ],
+  "challengeSha256": "1e9a93fe5d348d8ad8cbbe8ab8cee290c3f8526ebb62b3d64ab68a46c1197080",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2954",
+  "relation": "repeat",
+  "edges": 7,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "77c3fbfcbbab91adcf0b2183b9a503eb1ee811f1aeb88235663b587f5d5d7a12",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2957",
+  "relation": "decoy",
+  "edges": 13,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 14,
+  "challengeSha256": "9a3954b224013c8c2d224bca1f2d46f0363b825e2668715e89560c0ca2705db4",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2957",
+  "relation": "shift",
+  "edges": 13,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "pkg/__init__.py",
+   "pkg/_client.py",
+   "use.py"
+  ],
+  "challengeSha256": "7b5c48b9a1ac4175512e43f27eeb74a21fb314f88a69299ff731de8d7d57590c",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2957",
+  "relation": "repeat",
+  "edges": 13,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "e23035fc96c4f6429f742f690be5994664a56674e7126dfdcf75fffe65ccb36e",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2958",
+  "relation": "decoy",
+  "edges": 1,
+  "diffs": {
+   "CAPTURED": [
+    "examples/factory.py:2 create_app -calls-> zz_cg_decoy/decoy_fns.py:object (exact-match)"
+   ],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 7,
+  "challengeSha256": "aa25e39221a4ac7b52420ca376bc8eb70041066f29f201fd95ce93d3613e5ae0",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2958",
+  "relation": "shift",
+  "edges": 1,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "examples/factory.py",
+   "pkg/cli.py"
+  ],
+  "challengeSha256": "2be896c898e7443762c3999270265beb6fa871305963331ec763219788162452",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2958",
+  "relation": "repeat",
+  "edges": 1,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "2d7a0357b706a5f7fe49e5150865be9380654c69e5e47764b7c058727ced0d27",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2962",
+  "relation": "decoy",
+  "edges": 3,
+  "diffs": {
+   "CAPTURED": [
+    "use.tsx:1 use.tsx -imports-> zz_cg_decoy/decoy-fns.ts:useForm (exact-match)",
+    "use.tsx:3 objSpread -calls-> zz_cg_decoy/decoy-fns.ts:useForm (exact-match)",
+    "use.tsx:8 jsxSpread -calls-> zz_cg_decoy/decoy-fns.ts:useForm (exact-match)",
+    "use.tsx:12 jsxSpreadNested -calls-> zz_cg_decoy/decoy-fns.ts:useForm (exact-match)",
+    "use.tsx:16 controls -calls-> zz_cg_decoy/decoy-fns.ts:useForm (exact-match)",
+    "use.tsx:18 controls -calls-> zz_cg_decoy/decoy-fns.ts:useForm (exact-match)",
+    "use.tsx:20 controls -calls-> zz_cg_decoy/decoy-fns.ts:useForm (exact-match)",
+    "use.tsx:22 controls -calls-> zz_cg_decoy/decoy-fns.ts:useForm (exact-match)"
+   ],
+   "LOST": [
+    "use.tsx:4 objSpread -calls-> auth.ts:register (exact-match)",
+    "use.tsx:9 jsxSpread -calls-> auth.ts:register (exact-match)",
+    "use.tsx:13 jsxSpreadNested -calls-> auth.ts:register (exact-match)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 18,
+  "challengeSha256": "ed3f2ecaa88c40f0a7cdb89cb431f2b1a845d1664ba318785ca71bb68137f054",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2962",
+  "relation": "shift",
+  "edges": 3,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "auth.ts",
+   "use.tsx"
+  ],
+  "challengeSha256": "426b02a8b2a5cc6649e5e8e8be2b10d317e39cf1e0284b7fd23505cf0067d5dd",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2962",
+  "relation": "repeat",
+  "edges": 3,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "793a141de5d88361744a7ebcd15726af028ede594d3e6439276e13aed88f1bdf",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2963",
+  "relation": "decoy",
+  "edges": 12,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 11,
+  "challengeSha256": "f30e9716975268ec8d99bf507df687bafbbde9a4378b63813c37a9e5e4cb82c2",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2963",
+  "relation": "shift",
+  "edges": 12,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "pkg/__init__.py",
+   "pkg/deco.py",
+   "use.py"
+  ],
+  "challengeSha256": "a3b6af93f14bc251eb28b9c96e52f02cbfbc98e1413d322d8ad1b7fbc567e60b",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2963",
+  "relation": "repeat",
+  "edges": 12,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "6c577c5aeeaadb8933094f44548f5b67ef10d36ca84c535606995718fc85c525",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2964",
+  "relation": "decoy",
+  "edges": 14,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 20,
+  "challengeSha256": "97e1c347e0318d432feee1d17fc6fe48947b1ab7aa9a04caec199f91ac61475e",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2964",
+  "relation": "shift",
+  "edges": 14,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "b.js",
+   "lib/index.js",
+   "lib/inner/entry.js",
+   "srv.js",
+   "test/a.test.js"
+  ],
+  "challengeSha256": "beb3f2f76327af0c718d446f467825f08463fe8f8be6219e174c6c84f26fee95",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2964",
+  "relation": "repeat",
+  "edges": 14,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "21f8cefe8ab94ecaa92f6accdb88abb328fc77b5ab33106edc0fe31df52106dc",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2966",
+  "relation": "decoy",
+  "edges": 12,
+  "diffs": {
+   "CAPTURED": [
+    "lib/reply.js:3 lib/reply.js -calls-> zz_cg_decoy/decoy-fns.js:getHeader (exact-match)"
+   ],
+   "LOST": [
+    "lib/model.js:3 init -calls-> lib/other.js:Cast::insertMany (instance-method)",
+    "lib/reply.js:3 lib/reply.js -calls-> lib/types.d.ts:FastifyReply::getHeader (exact-match)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 52,
+  "challengeSha256": "e5ef350885b5a6bc27e2774c2dd34e082cde5dff993fa23b98afaf3afde644be",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2966",
+  "relation": "shift",
+  "edges": 12,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "lib/application.js",
+   "lib/context.js",
+   "lib/hooks.js",
+   "lib/model.js",
+   "lib/other.js",
+   "lib/reply.js",
+   "lib/types.d.ts",
+   "lib/validation.js",
+   "test/model.test.js"
+  ],
+  "challengeSha256": "01e6001b79229b8fd58c0268316cd2d9e3c6cc299e24bbe6101f1ce23eafb8b1",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2966",
+  "relation": "repeat",
+  "edges": 12,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "3baf1e85f5ea2326fe20361475e20b4c0c93f930a14e0f1a44f81a80e39e8593",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2967",
+  "relation": "decoy",
+  "edges": 11,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 44,
+  "challengeSha256": "e9ad32cc634bd5a98409a44610206ddb63a590318fe92bd605b58c5b3cde4dec",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2967",
+  "relation": "shift",
+  "edges": 11,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "mod.js",
+   "mod.ts",
+   "page.tsx",
+   "use.js",
+   "use.ts",
+   "use.tsx"
+  ],
+  "challengeSha256": "c855386f09e184c143f8d91ecceb468f855ab464195dd191dc43fab46946563a",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2967",
+  "relation": "repeat",
+  "edges": 11,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "1e3d79dd143acb566334917d19676b5d9d2db8a00284ede3bbab5fdb87bc302b",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2973",
+  "relation": "decoy",
+  "edges": 6,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 15,
+  "challengeSha256": "89ae8834656fc616f90e02196e3194f56fe996c8870835ba90919745da6dbbad",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2973",
+  "relation": "shift",
+  "edges": 6,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "src/a_cart.js",
+   "src/b_profile.js"
+  ],
+  "challengeSha256": "fd3aa3f8674646dc39a44fefab71c13c44a5ba3d50cd921c91aa9d0a44a0ee99",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2973",
+  "relation": "repeat",
+  "edges": 6,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "ac3e2a2ed7e41157bedcd89db9376ab173fa8ab61652896f83843b7bee440a8e",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2974",
+  "relation": "decoy",
+  "edges": 4,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 14,
+  "challengeSha256": "861b3f189632f9f09ee4c3e260251f482fcff38d93807bf5243d433e38151ff1",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2974",
+  "relation": "shift",
+  "edges": 4,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "src/client.js",
+   "src/server.js"
+  ],
+  "challengeSha256": "f123a674afd499ab5b6b7acd69da5c32e6ad6f70738a8fdb01daf02b6c0d0640",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2974",
+  "relation": "repeat",
+  "edges": 4,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "2d46570ce196b1e3810ce4d3e29e41ba5854e68d3ffc892e38ab32f94a882165",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2975",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {},
+  "decoys": 0,
+  "notApplicable": true,
+  "reason": "no supported source call/class names",
+  "challengeSha256": "975dab35105a07d57d39063c0c53015da9e9f6ab759d4b0b7648895c8b3d9ba7",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2975",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {},
+  "shiftedFiles": [],
+  "notApplicable": true,
+  "reason": "no supported files to shift",
+  "challengeSha256": "3d5c7651fe4b6b6cbd372fdf52fbc2aa0b5726370e3589de82abee7bd748e315",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2975",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "7b3b5b167cb3d64933d555c60cdcfca236b1eea4f94e3d8152d39142a82ac793",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2976",
+  "relation": "decoy",
+  "edges": 3,
+  "diffs": {},
+  "decoys": 0,
+  "notApplicable": true,
+  "reason": "no supported source call/class names",
+  "challengeSha256": "3ac6a80e77f08c474ba3f4b8d5861d4e4194d42674b5d658c18da48ff4ddcdbf",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2976",
+  "relation": "shift",
+  "edges": 3,
+  "diffs": {},
+  "shiftedFiles": [],
+  "notApplicable": true,
+  "reason": "no supported files to shift",
+  "challengeSha256": "4f0aa829bbbd1d9d77102f5b1ea01883ad1d3f47fd14d996e333c22117f51c6f",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "issue-2976",
+  "relation": "repeat",
+  "edges": 3,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "404a0bb172ac884ed4d5942c1799fe9bcb9b4bd1e4c9afef5ce291685d73ba7a",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "j1-java-overload",
+  "relation": "decoy",
+  "edges": 4,
+  "diffs": {},
+  "decoys": 0,
+  "notApplicable": true,
+  "reason": "no supported source call/class names",
+  "challengeSha256": "37fbd957763d7f1a0df607fd9f3cc052e0b4a0c41aa2924bd145037dc976e912",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "j1-java-overload",
+  "relation": "shift",
+  "edges": 4,
+  "diffs": {},
+  "shiftedFiles": [],
+  "notApplicable": true,
+  "reason": "no supported files to shift",
+  "challengeSha256": "26b4ed9c667a9022c50bbd2259ba61253667c6152a798d5d034d1cc7ca79da7a",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "j1-java-overload",
+  "relation": "repeat",
+  "edges": 4,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "74123f6f2427e523cfac577f6cbf7b83d2d7707d435849f28ce5d24c9e689c31",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "kmp-22",
+  "relation": "decoy",
+  "edges": 4,
+  "diffs": {},
+  "decoys": 0,
+  "notApplicable": true,
+  "reason": "no supported source call/class names",
+  "challengeSha256": "6fcc4943012921d5df9433172701584de52c96cf06d10fca7136da2d1f083bf7",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "kmp-22",
+  "relation": "shift",
+  "edges": 4,
+  "diffs": {},
+  "shiftedFiles": [],
+  "notApplicable": true,
+  "reason": "no supported files to shift",
+  "challengeSha256": "0b12037175e542d14a99d28bae180753286a66ce02fda1a643c34c9e76089b4b",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "kmp-22",
+  "relation": "repeat",
+  "edges": 4,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "589f9db58e1cecb64d06736f0ec4c2189d7b22be06bce8f0c7a2bfa2537e23cb",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "m1-py-super",
+  "relation": "decoy",
+  "edges": 4,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 14,
+  "challengeSha256": "4e6e4369476acb809f896fae88a70d69abbe0db61cf30541fe1ca2db6310bcdb",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "m1-py-super",
+  "relation": "shift",
+  "edges": 4,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "base.py",
+   "child.py"
+  ],
+  "challengeSha256": "0ac2ad1fb2e4749929afaeaed870ec2d84cbe089a2c74d080e9977ca8db45db9",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "m1-py-super",
+  "relation": "repeat",
+  "edges": 4,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "7141273322faf938586c0ded1c9d922ec95c6f72ea1736ec8993e74c180c9938",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "m2-py-method-return-local",
+  "relation": "decoy",
+  "edges": 7,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 18,
+  "challengeSha256": "e0e4ec228ca9e88e4eeac5d08b4f2db02974fa664b78dd21ee1917ef396cced5",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "m2-py-method-return-local",
+  "relation": "shift",
+  "edges": 7,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "t.py"
+  ],
+  "challengeSha256": "8dd74b8d3bd89df9fd16a8abba4ac4c3bdefb76a85824fafffaedb046da54118",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "m2-py-method-return-local",
+  "relation": "repeat",
+  "edges": 7,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "38abe521ff6b4d686623334f17447a0b7764299517a51bb3dccbf563a9a932f7",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n1-py-local-import",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 4,
+  "challengeSha256": "863754a727e10eb615f4ff640b0eac298852c613c5922d863296ea1c2d5d4883",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n1-py-local-import",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "pkg/__init__.py",
+   "pkg/core.py",
+   "t_local_import.py"
+  ],
+  "challengeSha256": "881ab911d8416f9a3b7e33a4d2ad536931f783152b3164d10d19cec692bf3b81",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n1-py-local-import",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "fdd5142e1817cfb5faa7c19e8e8d4f8f65911c1b5463047bc17fb8f8e0b43a36",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n2-py-comprehension",
+  "relation": "decoy",
+  "edges": 1,
+  "diffs": {
+   "CAPTURED": [
+    "other/far.py:1 p -calls-> zz_cg_decoy/decoy_fns.py:object (exact-match)",
+    "t.py:2 comp -calls-> zz_cg_decoy/decoy_fns.py:p (exact-match)"
+   ],
+   "LOST": [
+    "t.py:2 comp -calls-> other/far.py:p (exact-match)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 6,
+  "challengeSha256": "f2c75f3d390ab53d28fe24e871d5d8d8db0512a5c28dacc08d79f96135292f70",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n2-py-comprehension",
+  "relation": "shift",
+  "edges": 1,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "other/__init__.py",
+   "other/far.py",
+   "t.py"
+  ],
+  "challengeSha256": "b453df2db3a03a9365a7461910b6c9363b8c6f2938e651f8da824d2359f56268",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n2-py-comprehension",
+  "relation": "repeat",
+  "edges": 1,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "02033dd71ec0431af635f5285fae8e7857ce29c9a5dd56945a52c48cd989f801",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n3-py-enclosing-local",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "cc46d85864db41337a3383776373c1011eb152724ca2674a2e541912732d64df",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n3-py-enclosing-local",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "other/__init__.py",
+   "other/far.py",
+   "t.py"
+  ],
+  "challengeSha256": "dbada0564c0471918f2273bf751e6f80a49c34ff341d6f3da485fc820e5accb8",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n3-py-enclosing-local",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "86c28dc938f33a33b387914e19b9a174b22c85c1d75d5f8ef97c0ec7cd098f7f",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n4-py-builtin",
+  "relation": "decoy",
+  "edges": 1,
+  "diffs": {
+   "CAPTURED": [
+    "t.py:2 run -calls-> zz_cg_decoy/decoy_fns.py:TimeoutError (exact-match)"
+   ],
+   "LOST": [
+    "t.py:2 run -instantiates-> other/far.py:TimeoutError (exact-match)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 5,
+  "challengeSha256": "0ba6e0635266a5694483eed8094d9be7c56781f69f41108548b709eb491e95a6",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n4-py-builtin",
+  "relation": "shift",
+  "edges": 1,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "other/__init__.py",
+   "other/far.py",
+   "t.py"
+  ],
+  "challengeSha256": "2fdc9aaaba97965ebbe616f206d373d7777f50b51f648bd23a405cf266025b9d",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n4-py-builtin",
+  "relation": "repeat",
+  "edges": 1,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "d7e431aaeebc1210fb6e6e56825ee64d043cd692ef9ac8e0f46bca7528278460",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n5-ts-barrel-member",
+  "relation": "decoy",
+  "edges": 8,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 10,
+  "challengeSha256": "8566f9dc4caccd868d815bc49250bc1278c449b148516f8fc6d55299ddce0e03",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n5-ts-barrel-member",
+  "relation": "shift",
+  "edges": 8,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "b.ts",
+   "c.ts",
+   "fx/deaf.ts",
+   "fx/index.ts",
+   "fx/mark.ts"
+  ],
+  "challengeSha256": "5ab5f7667807f7bcc54388636cad835aef0a93bd10d885c788146a7dd3141413",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "n5-ts-barrel-member",
+  "relation": "repeat",
+  "edges": 8,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "fb8fdd913b30072445724ada3ad65c4cd850519978bb9f6903f75ca8af7c4d50",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "p1",
+  "relation": "decoy",
+  "edges": 1,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "a59df48b24dfa544497393965d0ad418fb85e763ca03d6dba66582cd9d10b329",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "p1",
+  "relation": "shift",
+  "edges": 1,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "t.py"
+  ],
+  "challengeSha256": "c1e702fbeda71c7c879d7adfde8986cad206723be1efec07d333367e3ee36b3f",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "p1",
+  "relation": "repeat",
+  "edges": 1,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "3dc67957a9a5d9445990636a211e725407ea304a2d8f8f1d0c556f17d6f389c0",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "p3",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [
+    "use.py:14 size_of_made -calls-> arm.py:Arm::stat (instance-method)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 9,
+  "challengeSha256": "78c7b6103e1d2f78f88f02c6514f71be58391ce31a814b1cec2a5cc74d0c6e1f",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "p3",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "arm.py",
+   "use.py"
+  ],
+  "challengeSha256": "1f2d733591f5689c6f220a880719b690d07c6683caf42d03de1f88626cb79d03",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "p3",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "e34e7a91eae5e6e3d26644bff713094a9e73a77ab1218ca2614d92e2e5d49e9b",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "p4",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "59c253f511e0e2f252487fc0bec371be76222f151eb3c8749f19784398111fa5",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "p4",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "lab/model.py",
+   "other/features.py"
+  ],
+  "challengeSha256": "9aa9295bc6a1e960ea435427accde81b584de1d81b363d27781d2fcaf2cac1c7",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "p4",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "b2b2f73bc9e2544cc8012ea750f4abbbbef5488a3b5dc79e61cda2d175304be3",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "p5-py-stdlib-import",
+  "relation": "decoy",
+  "edges": 1,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "cee8e4c99ca97ebd33aaafcaa02fc243f642c0f5ae35abb70b4ca39d0f294ae9",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "p5-py-stdlib-import",
+  "relation": "shift",
+  "edges": 1,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "clock.py",
+   "use.py"
+  ],
+  "challengeSha256": "070294366d8d0f42d5898f2762706e1e276e4fa1ac23e7d33eb82f50202ee7a2",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "p5-py-stdlib-import",
+  "relation": "repeat",
+  "edges": 1,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "4688b072cc370cb3c32ab7b6065d1e1b5f3107b50ca0f09615ef70b0f8bb38d9",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-01-f14-object",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "29cac43dac6cd057d75e1fc7c83eff5cd68fac6e1ae76b54e39d61c4bd988c0a",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-01-f14-object",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "bf9d97062c12381067134b4279c56efffadcae1ae0bb06f81d48e2f1fdd4fae5",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-01-f14-object",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "e1c852e5f158880429530372cc64c101b43e81390c0967298a9876edcf9b9fe1",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-02-f14-class",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 9,
+  "challengeSha256": "be877ca70b8763e533d64aabdfb86b1c5f773b5af0723d27fee17c2be1df36bc",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-02-f14-class",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "3813fefb9ed95d22b966f7b7377d6af6a233411c43a2e77854aa011c7ee5a977",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-02-f14-class",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "d4328afa999e791463c2bd558ae418b1431473e40a2b04d1ce865e7e27d895b5",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-03-f14-function",
+  "relation": "decoy",
+  "edges": 3,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 10,
+  "challengeSha256": "dc5feef7e2b9e674586092f6b5c818a6449dd702e3b0ea2ce487cb803ada996d",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-03-f14-function",
+  "relation": "shift",
+  "edges": 3,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "b857133fa86245725450fb3e83c1d1b51c2380ee00460078a1d8db8a532f919d",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-03-f14-function",
+  "relation": "repeat",
+  "edges": 3,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "0356a782b9065d54c54d16cd8a90459b3a56085c8fcbc054a96132bc8d92bd6a",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-04-f15-number",
+  "relation": "decoy",
+  "edges": 3,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [
+    "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 7,
+  "challengeSha256": "37c838abc940fec1e7149145c266434bc6c13c1ee3433158dc4c58efde257fc3",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-04-f15-number",
+  "relation": "shift",
+  "edges": 3,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "58a6e774b2089e203c7c6796cd61167375fb40c0fbc05363e2c8fe800ebd0d56",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-04-f15-number",
+  "relation": "repeat",
+  "edges": 3,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "a9e62313a67d33a4703f6c4f11374094190634352e03fe5990160ac9f79ea043",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-05-f15-string",
+  "relation": "decoy",
+  "edges": 3,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [
+    "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 7,
+  "challengeSha256": "3fe629956c5301f47a176ca51675530aaa1c89d5a6f96d070d2d19802acbd7ee",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-05-f15-string",
+  "relation": "shift",
+  "edges": 3,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "8f17a1f0716ed0e7292c1df7197ccabb192fe244f7883bbdbfad699a4fd18286",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-05-f15-string",
+  "relation": "repeat",
+  "edges": 3,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "875e959478d3b7cdace46d25fce34a08c7046fdd15e9c4247d259ec091cea97d",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-06-f15-assigned-callable",
+  "relation": "decoy",
+  "edges": 4,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [
+    "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 9,
+  "challengeSha256": "acc636f0e70e160a2a056c9ee431502e2a046e22a57cb7e0e7e1de2e29fe7189",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-06-f15-assigned-callable",
+  "relation": "shift",
+  "edges": 4,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "e0bb0ad787b044c0edce9961348590d76ee5c818ac2b1ff5a0e70c93a9d37348",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-06-f15-assigned-callable",
+  "relation": "repeat",
+  "edges": 4,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "2aba3c2cfc277ebf653a53e8d292e16f0ac098324b41b3bad3f23a0bf909aa8b",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-07-f10-optional-wrapper",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 11,
+  "challengeSha256": "597be9860c62e834bc5e7327d93565fe38a005d88567a92b7f3610163fccbf0d",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-07-f10-optional-wrapper",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "ed9e6511f37c6dbab8fa5a85aaefdc1f5f6050f83b226bd38d4e44084c47b975",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-07-f10-optional-wrapper",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "b618652954dab8027c93a3149118fc716d5fbfc5b9bcbdcb4e223b419bc2b0a4",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-08-f11-generator-eval",
+  "relation": "decoy",
+  "edges": 3,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 12,
+  "challengeSha256": "b1797d049a36b666520a675caf07910e8dceb4e364c209326aa634e808971770",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-08-f11-generator-eval",
+  "relation": "shift",
+  "edges": 3,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "60145f490d00dd0fb4ec9f1ca5627fa066593af2947d4486cca10ad8e71320c3",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-08-f11-generator-eval",
+  "relation": "repeat",
+  "edges": 3,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "278986fcc5018bd0abe8a81fd856160863500fecdad7e5c20062ae9a543a80aa",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-09-f11-generator-key-outside-generator",
+  "relation": "decoy",
+  "edges": 3,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [
+    "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 11,
+  "challengeSha256": "bfd93ab2a9f0eacb47155a2e4335d2e1a5c55dd0e8f8332a50e7da1ed526d2f9",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-09-f11-generator-key-outside-generator",
+  "relation": "shift",
+  "edges": 3,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "028dfdcfe38b68ab7c97c375904d7712beed2154af93f90ecedb0e6950da0cc1",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-09-f11-generator-key-outside-generator",
+  "relation": "repeat",
+  "edges": 3,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "35bbb96f676ea2250eaa8674ceb7f22c65b2161eba0b4da63340482478b67298",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-10-f12-root-object",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 10,
+  "challengeSha256": "b278c24946b772620b6dac302bdd12667650054ead89bf6ef11224019efc4ad7",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-10-f12-root-object",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "1d115f2a9b7100cfa02542d33b3782c92945fb1094ec1262643d756787d4421b",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-10-f12-root-object",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "2a90e3f1f80d533d47551ba4137fc4e2ccd96283c49febf9dd23b15093785df3",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-11-f12-parenthesized-instance",
+  "relation": "decoy",
+  "edges": 3,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 12,
+  "challengeSha256": "ab2d58583899182b0d1f53205132f330668f1461d2dedb11be2c645ccdb0d0a1",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-11-f12-parenthesized-instance",
+  "relation": "shift",
+  "edges": 3,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "d0db1e0df99a48ca18408ad2f079b3b66b9e612a3b1c5c406a300830c055f5fe",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-11-f12-parenthesized-instance",
+  "relation": "repeat",
+  "edges": 3,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "c160e8f2912a85dff6089149480be566543bb38c208bb3927aaa7bb61f53289e",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-12-f12-logical-instance",
+  "relation": "decoy",
+  "edges": 3,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 12,
+  "challengeSha256": "223f8e0f17acafa61e47ed85eaec0ac1f36defc9caf509a9eba33cddabd8285d",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-12-f12-logical-instance",
+  "relation": "shift",
+  "edges": 3,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "2ba9ed9fc5351377ea463dcf5ede6a2e52f646b07a317b99ad01491770f72eb7",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-12-f12-logical-instance",
+  "relation": "repeat",
+  "edges": 3,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "a286aeaed867b852c8f696eb22064bc469608a3bd3b68aeb70f8bdc3eaf08e88",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-13-f13-parameter",
+  "relation": "decoy",
+  "edges": 4,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [
+    "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 13,
+  "challengeSha256": "17b9c518e8954f48dde99822d72cce45d5dbb47faeb827a4fab66826a72bb7f2",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-13-f13-parameter",
+  "relation": "shift",
+  "edges": 4,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "cf53bab00a2211b12c6e90ae3e1136e056681e958a180a3ea2201e7907c380a3",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-13-f13-parameter",
+  "relation": "repeat",
+  "edges": 4,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "9d50e3cbf23726408f1ab5fb1fad6a8d0c10703d198f23e43600f0014348181c",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-14-f13-arrow",
+  "relation": "decoy",
+  "edges": 4,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [
+    "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 13,
+  "challengeSha256": "6faeba5beacfb399bde90b23be658b7ef14e550b57d2443b668b1480c94cb00f",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-14-f13-arrow",
+  "relation": "shift",
+  "edges": 4,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "c4009ee3e5891768cc6adbd172afb2e60f325031f8f6aca12a89eb43225f3f42",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-14-f13-arrow",
+  "relation": "repeat",
+  "edges": 4,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "95a35f2916095af1de2cf2d526662f1c4e7b63b5edc2702e3a8c6c57a0f8bf36",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-15-f13-block",
+  "relation": "decoy",
+  "edges": 3,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [
+    "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 11,
+  "challengeSha256": "3e268f7eadbe4a411a4e66eca0a6a74e2ba381b30d3a7d74fffbe1c435d43915",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-15-f13-block",
+  "relation": "shift",
+  "edges": 3,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "1e2359fee773acf28281b0abb10a95edd201a78c516f5470b7a3b29b3ec7480e",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-15-f13-block",
+  "relation": "repeat",
+  "edges": 3,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "235af960c3304a173beff3d755e9be809859322c809a55023104ba69190a55b2",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-16-alias-property-mutation",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "19d7eb11864a854c82d99b42908ebff7dbe2890ca2aeeed7d917f04a327a9bdb",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-16-alias-property-mutation",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "503246f4fcba5cc19d071a932e96b080f9ac8f9a351b4d322981935c60c05d61",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-16-alias-property-mutation",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "644f7b21fd70614fd82dbdf334ded60909517566976d9e9efa7989ba1dcbeb58",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-17-alias-rebind",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "13098a1baee5e118249aaf055789f280b1e854b0c03c4a15aaf22663f8b08987",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-17-alias-rebind",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "a8a6915f19e26f8526d4f9e2222b9ed1995fe5459c24faa339a6b79af9ae5f1c",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-17-alias-rebind",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "70eba97dba0599b7fd47db499bf73985dff3ced6e5b93f239d9f697ee03eba92",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-18-property-overwrite",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "a8df6c7c6e8c657e03580dc6b129a494ad28a249bc468decee74f7aceb600096",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-18-property-overwrite",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "256b52741d39d04ade6b27ec51357930093916e528bb0cbcb55093d86489acc5",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-18-property-overwrite",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "05d1eba506aafe02327c1e07e3abd64e262d6172ca88cd01db74fe5c58548adf",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-19-binding-overwrite",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "760b1a4938f23988913de9fcc5be898ddfc38c2a7630cadd31fd95ead8fed58c",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-19-binding-overwrite",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "b34ca0409a60874caf1d6193c031736b2e07a52f0c38cb5f7df7fc0825312781",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-19-binding-overwrite",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "ef072765ee85c5746dcc48cf3944d5937d5f204e3be2dce22201c8ede1382ea8",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-20-post-export-write",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "de82cbea24197eaeb3d637c7ede7e741b8cb0515280c64aae830bc11b86b5d7c",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-20-post-export-write",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "7623b8d184e49da3e59d574d20acd6a34ac7ea03ec1a8b5fd177a1d79710493e",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-20-post-export-write",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "867496479c589f4b69b3defd9c8ea9d54a41fb9f09cd2787b4fed0e8bf28111e",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-21-old-exports-alias",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "72c07fdaa55dbde066e384ca884b7135601b7148534c34ce5a37a7a91ca33cca",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-21-old-exports-alias",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "ac3e46623e1588cc5d933390f1184060896cdbca51ca6fe5bce08479972b6e53",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-21-old-exports-alias",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "be2cf1bf578603cfa0ce2ea78ff51a1b6eb7f21f82cd86922f7cc9a94dc5af64",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-22-ambiguous-branch",
+  "relation": "decoy",
+  "edges": 3,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 10,
+  "challengeSha256": "561ea2bd6f3d124d5a889a2b09d514ddf84a1f78646c355d8187b9dc44bcd19a",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-22-ambiguous-branch",
+  "relation": "shift",
+  "edges": 3,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "9a665cbe3ba4a33314ec8bd601b31177429fc1434ab27130ef3b6ce3145056ad",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-22-ambiguous-branch",
+  "relation": "repeat",
+  "edges": 3,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "749d67c147026c91038e4b8554bf10eff6096c1f68434e64257099050f59aa50",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-23-agreeing-branch",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "6d672a038b638174d019e884f590bd321e69d5f0505b2f072197087e679df468",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-23-agreeing-branch",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "0a38cf42e7671c45a572ffa12ba3224100abdc5680351b118027e662630b0b47",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-23-agreeing-branch",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "1b217de943f1dbc591d6dd70e9e26307a1a7fa47cf911b8568004803ef74aff1",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-24-opaque-escape",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [
+    "m.js:2 m.js -calls-> zz_cg_decoy/decoy-fns.js:opaque (exact-match)"
+   ],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 10,
+  "challengeSha256": "068040fbad9c35ff114888eaf794ff9b42cf11a9940d31f4849df436cfd0decf",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-24-opaque-escape",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "4e4da4355359a9d8a194ae1676f738b1b5aee5a631a6f5007a6fa1563fc08a8b",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-24-opaque-escape",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "af1ee5c5984ec4b6e7e9f385b28e14dcde1e579729ff29a1e8ca46f30bb7ddaf",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-25-unknown-dynamic-key",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "e64cadb2a67a055366b536f517afcc5f9139899a8e26ffd4570bb17d820a0769",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-25-unknown-dynamic-key",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "ac3644c5ca50bc491038b965c46715acea1032db2e1227bb60c08eb9508d0462",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-25-unknown-dynamic-key",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "71a39af48952bdc6a7f3cced8ee26045cb5525d2e7bbd8cd0c08e411804b5abb",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-26-local-eval",
+  "relation": "decoy",
+  "edges": 3,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "4ba4dbfa98c444e2d23c635afba7cfeaa2fd07bb2dd97d6b5a87e58670b2970d",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-26-local-eval",
+  "relation": "shift",
+  "edges": 3,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "91471b1b7ed95c1826307576e343c0e6bc554266ea6f0d33d1b72d49558c8222",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-26-local-eval",
+  "relation": "repeat",
+  "edges": 3,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "6568e213ba5b3d9d9e38bab14c1c2fa7dbd19f9b1dd6f712cb19320add5b0ace",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-27-literal-eval",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "43dcb6d954d2d7ca77da0e382f6360f10cd8d9736f9b6144b4f4b93013372757",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-27-literal-eval",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "d7406afe6f2dae6d32308971cbc77a82282a70881073a3a96ac76a6c38ff7874",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-27-literal-eval",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "59de166a04e8b8b871b91de19e755463474101da40bd4e2d07bb1563559eee7f",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-28-eval-property-on-local-identity",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "ae026bb9d891d6e7835e7a56b2d1e2b8858671facf82cf4445782911f2687de7",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-28-eval-property-on-local-identity",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "39cc5d781ebec8eb2db7ed4b94be2405b914ae66a1af173b1030523eed7c355b",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-28-eval-property-on-local-identity",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "0d7ad16c4e6e74c8306cd6de39a68aacc4e702eadb5a84383320bbb933d728c8",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-29-uncertain-receiver-alias",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "b32f71d281ae6ca9070dce8ad40a5e9eee1ad0d98854e401c083a14b9edb3ed9",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-29-uncertain-receiver-alias",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "2b5f8d2442a00d68d758e1cf9bbd78d8b55c2bbb5947db4790321bdc21b2c539",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-29-uncertain-receiver-alias",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "ea3cc8a6904debc063e12ed3cba0f0ec9416e3ae09e28b04d03709eff7d81393",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-30-data-overwrite-after-literal-eval",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "c91d4e006c81cdc59fffd829b2b25b880a4f43fd6b4c3990d115de94a4aea5cd",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-30-data-overwrite-after-literal-eval",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "f74e7abd03d9a51ced5a28b64bf93a1c53e67b03f258bd9733b5544ca9b42691",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-30-data-overwrite-after-literal-eval",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "cfbfa20afbe306a605937087d187593fbfb94d40e2061ee0804c29f8f19e4ec9",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-31-missing-read-exported-as-undefined-data",
+  "relation": "decoy",
+  "edges": 3,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [
+    "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+   ],
+   "GAINED": []
+  },
+  "decoys": 7,
+  "challengeSha256": "d809d330757e7adaa9ccd66e2d4e173f75a92526436d77e86ec1ef8ba42d6652",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-31-missing-read-exported-as-undefined-data",
+  "relation": "shift",
+  "edges": 3,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "6a38b2474fe9bb5cda1accc21f375346e0b82b32cfa4e53fa38313dec6aeacfe",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-31-missing-read-exported-as-undefined-data",
+  "relation": "repeat",
+  "edges": 3,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "98fd5f692611fcf125381c7da4a91d8bab7d2bd2815cde6e87cda8d24e4bbc34",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-32-logical-member-initialization",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 8,
+  "challengeSha256": "ed9b5f1db073f0355d1987249efda00b7aeb8d72adace9eccb7164a2813adf58",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-32-logical-member-initialization",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "decoy.js",
+   "index.js",
+   "m.js",
+   "use.js"
+  ],
+  "challengeSha256": "df3fefe59102265a61529283472fc97961b752b11657c687582c84ae86620eb7",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "pr29-32-logical-member-initialization",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "163d93fd14368c432a570aa851103aa716de164d2ec2022f907fc7e5dce0c910",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "t1-ts-global-builtin",
+  "relation": "decoy",
+  "edges": 2,
+  "diffs": {
+   "CAPTURED": [],
+   "LOST": [],
+   "GAINED": []
+  },
+  "decoys": 13,
+  "challengeSha256": "5471fcbe384ec58f70017e954af1cb833d612f2965bd0350339a8002cb362e7a",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "t1-ts-global-builtin",
+  "relation": "shift",
+  "edges": 2,
+  "diffs": {
+   "MOVED": [],
+   "LOST": []
+  },
+  "shiftedFiles": [
+   "lib/other.ts",
+   "use.ts"
+  ],
+  "challengeSha256": "f9628e6b2eed869a68171abfc114d1eff528d110f4abea4770dc9ac6eda8cfef",
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ },
+ {
+  "seed": "t1-ts-global-builtin",
+  "relation": "repeat",
+  "edges": 2,
+  "diffs": {
+   "REPEAT": []
+  },
+  "challengeSha256": "27ff91204c32d3545923620cf2bde3b26ace047dac416de5b15702a45b9063d0",
+  "byteIdentical": true,
+  "subject": "codegraph",
+  "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae"
+ }
+]

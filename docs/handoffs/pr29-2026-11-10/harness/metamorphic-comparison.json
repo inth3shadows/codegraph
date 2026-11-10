@@ -1,0 +1,208 @@
+{
+  "candidateNewInvariantDifferences": [],
+  "removedBaselineDifferences": [
+    {
+      "seed": "issue-2952",
+      "relation": "decoy",
+      "kind": "CAPTURED",
+      "removed": [
+        "test/utils.js:2 t -calls-> zz_cg_decoy/decoy-methods.js:CgDecoyHost::etag (instance-method)"
+      ]
+    },
+    {
+      "seed": "pr29-04-f15-number",
+      "relation": "decoy",
+      "kind": "LOST",
+      "removed": [
+        "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+      ]
+    },
+    {
+      "seed": "pr29-05-f15-string",
+      "relation": "decoy",
+      "kind": "LOST",
+      "removed": [
+        "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+      ]
+    },
+    {
+      "seed": "pr29-06-f15-assigned-callable",
+      "relation": "decoy",
+      "kind": "LOST",
+      "removed": [
+        "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+      ]
+    },
+    {
+      "seed": "pr29-09-f11-generator-key-outside-generator",
+      "relation": "decoy",
+      "kind": "LOST",
+      "removed": [
+        "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+      ]
+    },
+    {
+      "seed": "pr29-13-f13-parameter",
+      "relation": "decoy",
+      "kind": "LOST",
+      "removed": [
+        "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+      ]
+    },
+    {
+      "seed": "pr29-14-f13-arrow",
+      "relation": "decoy",
+      "kind": "LOST",
+      "removed": [
+        "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+      ]
+    },
+    {
+      "seed": "pr29-15-f13-block",
+      "relation": "decoy",
+      "kind": "LOST",
+      "removed": [
+        "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+      ]
+    },
+    {
+      "seed": "pr29-31-missing-read-exported-as-undefined-data",
+      "relation": "decoy",
+      "kind": "LOST",
+      "removed": [
+        "use.js:1 run -calls-> decoy.js:Decoy::load (instance-method)"
+      ]
+    }
+  ],
+  "candidateRemainingDifferences": [
+    {
+      "seed": "b",
+      "relation": "decoy",
+      "diffs": {
+        "LOST": 1
+      }
+    },
+    {
+      "seed": "c",
+      "relation": "decoy",
+      "diffs": {
+        "CAPTURED": 1,
+        "LOST": 1
+      }
+    },
+    {
+      "seed": "issue-2944",
+      "relation": "decoy",
+      "diffs": {
+        "CAPTURED": 4,
+        "LOST": 4
+      }
+    },
+    {
+      "seed": "issue-2944-arrow",
+      "relation": "decoy",
+      "diffs": {
+        "CAPTURED": 4,
+        "LOST": 4
+      }
+    },
+    {
+      "seed": "issue-2944-verbatim",
+      "relation": "decoy",
+      "diffs": {
+        "CAPTURED": 4,
+        "LOST": 4
+      }
+    },
+    {
+      "seed": "issue-2947",
+      "relation": "decoy",
+      "diffs": {
+        "CAPTURED": 2,
+        "LOST": 4
+      }
+    },
+    {
+      "seed": "issue-2948",
+      "relation": "decoy",
+      "diffs": {
+        "CAPTURED": 2,
+        "LOST": 2
+      }
+    },
+    {
+      "seed": "issue-2949-pkg",
+      "relation": "decoy",
+      "diffs": {
+        "CAPTURED": 1
+      }
+    },
+    {
+      "seed": "issue-2951",
+      "relation": "decoy",
+      "diffs": {
+        "LOST": 3
+      }
+    },
+    {
+      "seed": "issue-2953",
+      "relation": "decoy",
+      "diffs": {
+        "LOST": 1
+      }
+    },
+    {
+      "seed": "issue-2958",
+      "relation": "decoy",
+      "diffs": {
+        "CAPTURED": 1
+      }
+    },
+    {
+      "seed": "issue-2962",
+      "relation": "decoy",
+      "diffs": {
+        "CAPTURED": 8,
+        "LOST": 3
+      }
+    },
+    {
+      "seed": "issue-2966",
+      "relation": "decoy",
+      "diffs": {
+        "CAPTURED": 1,
+        "LOST": 2
+      }
+    },
+    {
+      "seed": "n2-py-comprehension",
+      "relation": "decoy",
+      "diffs": {
+        "CAPTURED": 2,
+        "LOST": 1
+      }
+    },
+    {
+      "seed": "n4-py-builtin",
+      "relation": "decoy",
+      "diffs": {
+        "CAPTURED": 1,
+        "LOST": 1
+      }
+    },
+    {
+      "seed": "p3",
+      "relation": "decoy",
+      "diffs": {
+        "LOST": 1
+      }
+    },
+    {
+      "seed": "pr29-24-opaque-escape",
+      "relation": "decoy",
+      "diffs": {
+        "CAPTURED": 1
+      }
+    }
+  ]
+}

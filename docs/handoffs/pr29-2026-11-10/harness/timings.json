@@ -1,0 +1,197 @@
+{
+  "notes": "Four fresh CLI indexes per arm per repo, alternating build order. Run after other harness processes finish. Same local host and copied source, no native kernel.",
+  "results": [
+    {
+      "name": "requests",
+      "run": 1,
+      "side": "baseline",
+      "ok": true,
+      "status": 0,
+      "ms": 2292
+    },
+    {
+      "name": "requests",
+      "run": 1,
+      "side": "candidate",
+      "ok": true,
+      "status": 0,
+      "ms": 2193
+    },
+    {
+      "name": "requests",
+      "run": 2,
+      "side": "candidate",
+      "ok": true,
+      "status": 0,
+      "ms": 2007
+    },
+    {
+      "name": "requests",
+      "run": 2,
+      "side": "baseline",
+      "ok": true,
+      "status": 0,
+      "ms": 2062
+    },
+    {
+      "name": "requests",
+      "run": 3,
+      "side": "baseline",
+      "ok": true,
+      "status": 0,
+      "ms": 2065
+    },
+    {
+      "name": "requests",
+      "run": 3,
+      "side": "candidate",
+      "ok": true,
+      "status": 0,
+      "ms": 2077
+    },
+    {
+      "name": "requests",
+      "run": 4,
+      "side": "candidate",
+      "ok": true,
+      "status": 0,
+      "ms": 2054
+    },
+    {
+      "name": "requests",
+      "run": 4,
+      "side": "baseline",
+      "ok": true,
+      "status": 0,
+      "ms": 2073
+    },
+    {
+      "name": "ky",
+      "run": 1,
+      "side": "baseline",
+      "ok": true,
+      "status": 0,
+      "ms": 5035
+    },
+    {
+      "name": "ky",
+      "run": 1,
+      "side": "candidate",
+      "ok": true,
+      "status": 0,
+      "ms": 5606
+    },
+    {
+      "name": "ky",
+      "run": 2,
+      "side": "candidate",
+      "ok": true,
+      "status": 0,
+      "ms": 5474
+    },
+    {
+      "name": "ky",
+      "run": 2,
+      "side": "baseline",
+      "ok": true,
+      "status": 0,
+      "ms": 5054
+    },
+    {
+      "name": "ky",
+      "run": 3,
+      "side": "baseline",
+      "ok": true,
+      "status": 0,
+      "ms": 5000
+    },
+    {
+      "name": "ky",
+      "run": 3,
+      "side": "candidate",
+      "ok": true,
+      "status": 0,
+      "ms": 5783
+    },
+    {
+      "name": "ky",
+      "run": 4,
+      "side": "candidate",
+      "ok": true,
+      "status": 0,
+      "ms": 5745
+    },
+    {
+      "name": "ky",
+      "run": 4,
+      "side": "baseline",
+      "ok": true,
+      "status": 0,
+      "ms": 5140
+    },
+    {
+      "name": "express",
+      "run": 1,
+      "side": "baseline",
+      "ok": true,
+      "status": 0,
+      "ms": 2396
+    },
+    {
+      "name": "express",
+      "run": 1,
+      "side": "candidate",
+      "ok": true,
+      "status": 0,
+      "ms": 3284
+    },
+    {
+      "name": "express",
+      "run": 2,
+      "side": "candidate",
+      "ok": true,
+      "status": 0,
+      "ms": 3241
+    },
+    {
+      "name": "express",
+      "run": 2,
+      "side": "baseline",
+      "ok": true,
+      "status": 0,
+      "ms": 2360
+    },
+    {
+      "name": "express",
+      "run": 3,
+      "side": "baseline",
+      "ok": true,
+      "status": 0,
+      "ms": 2361
+    },
+    {
+      "name": "express",
+      "run": 3,
+      "side": "candidate",
+      "ok": true,
+      "status": 0,
+      "ms": 3279
+    },
+    {
+      "name": "express",
+      "run": 4,
+      "side": "candidate",
+      "ok": true,
+      "status": 0,
+      "ms": 3825
+    },
+    {
+      "name": "express",
+      "run": 4,
+      "side": "baseline",
+      "ok": true,
+      "status": 0,
+      "ms": 2444
+    }
+  ]
+}

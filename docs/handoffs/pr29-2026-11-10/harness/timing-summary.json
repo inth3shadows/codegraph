@@ -1,0 +1,59 @@
+[
+  {
+    "repo": "requests",
+    "samplesPerBuild": 4,
+    "baseline": {
+      "medianMs": 2069.0,
+      "rangeMs": [
+        2062,
+        2292
+      ]
+    },
+    "candidate": {
+      "medianMs": 2065.5,
+      "rangeMs": [
+        2007,
+        2193
+      ]
+    },
+    "medianChangePercent": -0.16916384726921585
+  },
+  {
+    "repo": "ky",
+    "samplesPerBuild": 4,
+    "baseline": {
+      "medianMs": 5044.5,
+      "rangeMs": [
+        5000,
+        5140
+      ]
+    },
+    "candidate": {
+      "medianMs": 5675.5,
+      "rangeMs": [
+        5474,
+        5783
+      ]
+    },
+    "medianChangePercent": 12.508672811973431
+  },
+  {
+    "repo": "express",
+    "samplesPerBuild": 4,
+    "baseline": {
+      "medianMs": 2378.5,
+      "rangeMs": [
+        2360,
+        2444
+      ]
+    },
+    "candidate": {
+      "medianMs": 3281.5,
+      "rangeMs": [
+        3241,
+        3825
+      ]
+    },
+    "medianChangePercent": 37.9651040571789
+  }
+]

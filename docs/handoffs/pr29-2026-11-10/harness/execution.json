@@ -1,0 +1,23 @@
+{
+  "completed": {
+    "build-baseline": 0,
+    "build-candidate": 0,
+    "replay-baseline": 1,
+    "replay-candidate": 0,
+    "build-diff": 1,
+    "shadow": 1,
+    "modes-baseline": 0,
+    "modes-candidate": 0,
+    "metamorphic-baseline": 1,
+    "metamorphic-candidate": 1,
+    "timings": 0
+  },
+  "explanations": {
+    "replay-baseline": "one anonymous canary changed FIXED to BROKEN; ordinary known bug verdicts do not alone cause nonzero exit",
+    "build-diff": "Express64removed calls/64new unresolved; other4repos SAME",
+    "shadow": "6expected changed answers;17SAME; no FAILED/UNSTABLE",
+    "metamorphic": "Baseline26DIFF, candidate17DIFF, no ERROR; 9previous differences disappear, detailed per-diff comparison saved"
+  },
+  "activeSessions": {},
+  "next": "Harness complete. Report performance regression; no automatic fixes/review/publication."
+}

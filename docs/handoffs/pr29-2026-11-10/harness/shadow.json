@@ -1,0 +1,396 @@
+{
+ "old": "/tmp/codegraph-pr29-harness-6fevujfy/baseline/dist/bin/codegraph.js",
+ "new": "/tmp/codegraph-pr29-harness-6fevujfy/candidate/dist/bin/codegraph.js",
+ "adapterSha256": "7d489e2cc4df242ff9c036806cc367fd606f37fa3bf7e0062a9b70ee41317dae",
+ "results": [
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/mux",
+   "q": [
+    "explore",
+    "Router ServeHTTP",
+    "--max-files",
+    "2"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    428,
+    428
+   ]
+  },
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/mux",
+   "q": [
+    "explore",
+    "Route Match regexp",
+    "--max-files",
+    "2"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    440,
+    440
+   ]
+  },
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/mux",
+   "q": [
+    "callers",
+    "HandleFunc"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    65,
+    65
+   ]
+  },
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/mux",
+   "q": [
+    "callees",
+    "ServeHTTP"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    33,
+    33
+   ]
+  },
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/mux",
+   "q": [
+    "node",
+    "ServeHTTP"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    74,
+    74
+   ]
+  },
+  {
+   "repo": "fixtures/oracle-candidates/issue-2952",
+   "q": [
+    "callers",
+    "normalizeType"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    5,
+    5
+   ]
+  },
+  {
+   "repo": "fixtures/oracle-candidates/issue-2952",
+   "q": [
+    "callees",
+    "t"
+   ],
+   "verdict": "CHANGED",
+   "diff": [
+    " ",
+    "-Callees of \"t\" (1):",
+    "+Callees of \"t\" (2):",
+    " ",
+    " function t (javascript) — test/utils.js:2",
+    " function    compileTrust",
+    "   lib/utils.js:4",
+    "+",
+    "+function    generateETag",
+    "+  lib/utils.js:1"
+   ],
+   "lines": [
+    6,
+    9
+   ]
+  },
+  {
+   "repo": "fixtures/oracle-candidates/j1-java-overload",
+   "q": [
+    "callers",
+    "load"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    6,
+    6
+   ]
+  },
+  {
+   "repo": "fixtures/oracle-candidates/g1-go-new-receiver",
+   "q": [
+    "callers",
+    "Host"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    16,
+    16
+   ]
+  },
+  {
+   "repo": "fixtures/oracle-candidates/m2-py-method-return-local",
+   "q": [
+    "callers",
+    "add"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    6,
+    6
+   ]
+  },
+  {
+   "repo": "fixtures/oracle-candidates/t1-ts-global-builtin",
+   "q": [
+    "callers",
+    "parseInt"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    6,
+    6
+   ]
+  },
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/express",
+   "q": [
+    "explore",
+    "createApplication handle use"
+   ],
+   "verdict": "CHANGED",
+   "diff": [
+    "  ...",
+    " **Blast radius — what depends on these (update/verify before editing)**",
+    " ",
+    "-- `createApplication` (lib/express.js:36) — 118 callers in `lib/express.js`; tests: `examples/auth/index.js`, `examples/cookies/index.js`, `examples/ejs/index.js`, `examples/mvc/index.js` +90",
+    "+- `createApplication` (lib/express.js:36) — 111 callers in `lib/express.js`; tests: `examples/mvc/lib/boot.js`, `test/app.all.js`, `test/app.engine.js`, `test/app.head.js` +90",
+    " - `createETagGenerator` (lib/utils.js:249) — 1 caller in `lib/utils.js`; tested via callers: `test/Route.js`, `test/Router.js` +3",
+    " "
+   ],
+   "lines": [
+    525,
+    525
+   ]
+  },
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/express",
+   "q": [
+    "callers",
+    "createApplication"
+   ],
+   "verdict": "CHANGED",
+   "diff": [
+    " ",
+    "-Callers of \"createApplication\" (20 of 118):",
+    "+Callers of \"createApplication\" (20 of 111):",
+    " ",
+    " function createApplication (javascript) — lib/express.js:36",
+    "-file        index.js",
+    "-  examples/auth/index.js:21",
+    "-",
+    "-file        index.js",
+    "-  examples/cookies/index.js:22",
+    "-",
+    "-file        index.js",
+    "-  examples/ejs/index.js:31",
+    "-",
+    "-file        index.js",
+    "-  examples/mvc/index.js:37, 47",
+    "-",
+    " file        boot.js",
+    "   examples/mvc/lib/boot.js:21",
+    " ",
+    "-file        index.js",
+    "-  examples/route-separation/index.js:31, 32",
+    "-",
+    "-file        index.js",
+    "-  examples/search/index.js:21",
+    "-",
+    "-file        index.js",
+    "-  examples/static-files/index.js:22, 30, 36",
+    "-",
+    " file        app.all.js",
+    "   test/app.all.js:9, 26",
+    "  ...",
+    "   test/app.route.js:8, 24, 43, 56, 67, 89, 111, 130, 152, 174",
+    " ",
+    "-Showing 20 of 118; pass --limit to widen.",
+    "+file        app.router.js",
+    "+  test/app.router.js:13, 47, 59, 65, 96, 108, 120, 132, 145, 171, +56 more",
+    "+",
+    "+file        app.routes.error.js",
+    "+  test/app.routes.error.js:10, 26",
+    "+",
+    "+file        app.use.js",
+    "+  test/app.use.js:10, 11, 23, 24, 38, 39, 40, 64, 65, 72, +25 more",
+    "+",
+    "+file        config.js",
+    "+  test/config.js:9, 15, 21, 26, 31, 37, 43, 48, 57, 67, +20 more",
+    "+",
+    "+file        exports.js",
+    "+  test/exports.js:54, 59, 72",
+    "+",
+    "+file        express.json.js",
+    "+  test/express.json.js:53, 74, 505",
+    "+",
+    "+file        express.raw.js",
+    "+  test/express.raw.js:24, 66, 330",
+    "+",
+    "+Showing 20 of 111; pass --limit to widen."
+   ],
+   "lines": [
+    65,
+    65
+   ]
+  },
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/express",
+   "q": [
+    "callees",
+    "createApplication"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    9,
+    9
+   ]
+  },
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/ky",
+   "q": [
+    "explore",
+    "Ky create request"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    333,
+    333
+   ]
+  },
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/ky",
+   "q": [
+    "callers",
+    "create"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    21,
+    21
+   ]
+  },
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/ky",
+   "q": [
+    "callees",
+    "create"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    42,
+    42
+   ]
+  },
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/requests",
+   "q": [
+    "explore",
+    "Session request send"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    352,
+    352
+   ]
+  },
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/requests",
+   "q": [
+    "callers",
+    "request"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    70,
+    70
+   ]
+  },
+  {
+   "repo": "/tmp/codegraph-pr29-harness-6fevujfy/corpus/requests",
+   "q": [
+    "callees",
+    "send"
+   ],
+   "verdict": "SAME",
+   "lines": [
+    96,
+    96
+   ]
+  },
+  {
+   "repo": "fixtures/oracle-candidates/pr29-01-f14-object",
+   "q": [
+    "callees",
+    "run"
+   ],
+   "verdict": "CHANGED",
+   "diff": [
+    " ",
+    "-Callees of \"run\" (0):",
+    "+Callees of \"run\" (1):",
+    " ",
+    " function run (javascript) — use.js:1",
+    "-ℹ No callees found for \"run\"",
+    "+method      load",
+    "+  m.js:1"
+   ],
+   "lines": [
+    5,
+    6
+   ]
+  },
+  {
+   "repo": "fixtures/oracle-candidates/pr29-04-f15-number",
+   "q": [
+    "callees",
+    "run"
+   ],
+   "verdict": "CHANGED",
+   "diff": [
+    " ",
+    "-Callees of \"run\" (1):",
+    "+Callees of \"run\" (0):",
+    " ",
+    " function run (javascript) — use.js:1",
+    "-method      load",
+    "-  decoy.js:1",
+    "+ℹ No callees found for \"run\""
+   ],
+   "lines": [
+    6,
+    5
+   ]
+  },
+  {
+   "repo": "fixtures/oracle-candidates/pr29-06-f15-assigned-callable",
+   "q": [
+    "callees",
+    "run"
+   ],
+   "verdict": "CHANGED",
+   "diff": [
+    "  ...",
+    " ",
+    " function run (javascript) — use.js:1",
+    "-method      load",
+    "-  decoy.js:1",
+    "+function    real",
+    "+  m.js:1"
+   ],
+   "lines": [
+    6,
+    6
+   ]
+  }
+ ]
+}
