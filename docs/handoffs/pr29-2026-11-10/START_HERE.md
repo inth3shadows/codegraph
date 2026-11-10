@@ -4,6 +4,10 @@ Read this file first. The archive contains historical checkpoints, including fai
 
 The user requested that all task notes be committed for continuation in Claude. This is a documentation-only handoff. The implementation remains uncommitted in `/tmp/codegraph-cjs-missing-fix-20261108` on `fix/commonjs-eval-callee-context`. Preserve every existing implementation change. The implementation baseline is `87576a8d9ff0d8aba235db5535f5f4429f14b037`; a documentation commit above it changes the repository HEAD without changing that tested baseline.
 
+## Update 2026-11-10 (Claude): #2499 fix
+
+The full suite (first run on this revision) found that PR29 broke `js-class-expressions` #2499. Class expressions such as `module.exports = class R { static make() {} }` were built without their static members or prototype, so they were wrongly reported as absent. Fixed in `src/resolution/commonjs-export-evidence.ts`, with 5 regression tests in `__tests__/commonjs-export-evidence.test.ts`. Both are uncommitted. `implementation/source-sha256.json` and `implementation/working-tree.patch.gz` include the fix; the patch reconstructs all 30 paths from 87576a8d. The fix's own checks ran in an isolated copy: replay identical, 5 corpora SAME, full suite green apart from load-sensitive timing tests. The harness results below predate the fix. Profiling notes: `~/.claude/plans/pr29-indexing-perf.md`, local to the WSL machine.
+
 ## Read next
 
 1. [Latest harness handoff](plans/handoff-codegraph-pr29-harness-complete-2026-11-10.md) and [full harness report](history/pr29-harness-20261110T013135Z/report.md).

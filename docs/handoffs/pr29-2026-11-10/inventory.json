@@ -779,10 +779,11 @@
       "sha256": "4a6d3c15c4730b0da1a134cbb6810917b3d201162831099368fe79f25e4ddb8c"
     },
     {
-      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-value-model-integration-2026-11-09/source-sha256.json",
+      "source": "generated from the PR29 checkout working tree, 2026-11-10",
       "file": "implementation/source-sha256.json",
-      "group": "focused-tested implementation snapshot",
-      "sha256": "42b64bf6283c88c2d130c230b4a4a804998eda6046ab9e2638a094e7693ea27a"
+      "group": "current implementation snapshot",
+      "sha256": "5f82d8dd0b11185859d19159c2522d067b8a0930248bb15fed09b86cc1ec9c11",
+      "updated": "2026-11-10: includes the #2499 class-expression fix; previous sha256 42b64bf6283c88c2d130c230b4a4a804998eda6046ab9e2638a094e7693ea27a"
     },
     {
       "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-value-model-integration-2026-11-09/integration-from-round11.patch",
@@ -793,12 +794,13 @@
       "encoding": "gzip"
     },
     {
-      "source": "/home/ericm/personal_projects/codegraph-qa/codex-20261107-122850-780/.review/commonjs-fix-2026-11-08/pr29-harness-20261110T013135Z/candidate.patch",
+      "source": "git diff --binary 87576a8d -- <30 manifest paths>, PR29 checkout, 2026-11-10",
       "file": "implementation/working-tree.patch.gz",
       "group": "pending implementation backup",
-      "sha256": "47898e69e9ef76f56458ed17757839a1ab07f5ebf6258a4ceccce18a28233b75",
-      "sourceSha256": "00807ba2f472296c7a9ab273d0900cc988033f749c77fdb8ed4f5202899379d3",
-      "encoding": "gzip"
+      "sha256": "ac2e0fd955aec5bddd35a7271349a12b05646126db22a8e653e2b8b00fbdca9d",
+      "sourceSha256": "d33e5ed82c21384fbbe9036f6f27966e57101e9d517c7ac45047845918affa1a",
+      "encoding": "gzip",
+      "updated": "2026-11-10: includes the #2499 class-expression fix; previous sha256 47898e69e9ef76f56458ed17757839a1ab07f5ebf6258a4ceccce18a28233b75 (source 00807ba2f472296c7a9ab273d0900cc988033f749c77fdb8ed4f5202899379d3)"
     }
   ],
   "notes": "Copies of task-specific notes and result data; original files retained. Historical instructions describe earlier states and are superseded by START_HERE.md. Build archives, dependency trees, raw logs and source snapshots remain in the documented private evidence directories."
