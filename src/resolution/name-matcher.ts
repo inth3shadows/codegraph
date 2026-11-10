@@ -10,7 +10,7 @@ import { Language, Node, IMPLICIT_RECORD_ACCESSOR_DOC } from '../types';
 import { escapeRegExp, escapesRoot } from '../utils';
 import { UnresolvedRef, ResolvedRef, ResolutionContext, ImportMapping, isSupertypeTarget, CPP_DEFINE_SIGNATURE, isInheritanceRef, isImportableKind } from './types';
 import { blankStringContents, stripCommentsForRegex } from './strip-comments';
-import { readCommonJsExportMembers } from './commonjs-export-members';
+import { clearCommonJsExportEvidence, commonJsExportEvidence, commonJsEvidenceFiles, commonJsImportShadowed } from './commonjs-export-evidence';
 import { isJsSuperCallSite } from './js-super-calls';
 import { JS_ARRAY_METHODS, JS_BROWSER_HOST_GLOBALS, JS_BUILT_INS, JS_BUILTIN_METHODS, TS_PRIMITIVE_TYPES } from './js-builtins';
 import { SWIFT_TYPE_PATH_CALL, resolveSwiftTypePathCall } from './swift-type-visibility';
@@ -22350,6 +22350,7 @@ function getInferScanStates(context: ResolutionContext): Map<string, InferScanSt
 
 /** Drop the per-context scan states (see ReferenceResolver.clearCaches). */
 export function clearNameMatcherMemos(context: ResolutionContext): void {
+  clearCommonJsExportEvidence(context);
   lastRustNameRead = null;
   lastJavaNameRead = null;
   INFER_SCAN_STATES.delete(context);
@@ -25382,9 +25383,10 @@ export function matchMethodCall(
 
 /**
  * Is a member call's receiver (`z` in `z.string`, `ns` in `ns.util.fn`) an
- * namespace import, a default binding to a namespace-only module, or one
- * from outside the repo? A require of `exports.x = …` is a default binding,
- * but its absent members are no unrelated class's methods.
+ * namespace import, a default binding that cannot justify a method guess,
+ * or one from outside the repo? Known-absent members and inconclusive eval
+ * parsing must not borrow an unrelated class's method. Explicit member
+ * writes and stated whole values keep their existing resolution paths.
  */
 function isImportedModuleReceiver(receiver: string, member: string, ref: UnresolvedRef, context: ResolutionContext): boolean {
   const root = receiver.split('.')[0]!;
@@ -25399,12 +25401,13 @@ function isImportedModuleReceiver(receiver: string, member: string, ref: Unresol
   const module = binding.isDefault ? defaultModuleNamespace(binding.source, ref.filePath, ref.language, context) : null;
   const firstMember = receiver.includes('.') ? receiver.slice(root.length + 1).split('.')[0]! : member;
   return binding.isNamespace ||
-    (module?.namespace === true && !module.members.has(firstMember)) ||
+    ((module?.commonJs === true || module?.namespace === true) && !module.members.has(firstMember)) ||
     context.isOutOfRepoImport?.(binding.source, ref.filePath, ref.language) === true;
 }
 
 interface ModuleNamespaceInfo {
   namespace: boolean;
+  commonJs?: boolean;
   members: ReadonlySet<string>;
   files: ReadonlySet<string>;
   truncated?: boolean;
@@ -25430,18 +25433,14 @@ function defaultModuleNamespace(source: string, from: string, language: Language
   if (cached !== undefined) return cached;
   const code = context.readFile(file);
   let info: ModuleNamespaceInfo = { namespace: false, members, files };
-  if (code !== null && !/\bdefault\b|\bexport\s*=/.test(code)) {
-    // Follow only a whole-file forwarder; extra assignments or other code
-    // make the effective default uncertain. Named module.exports.x writes
-    // still describe the namespace, whereas any other use of module may
-    // replace it (including computed writes or assignment through an alias).
-    const forwarded = /^\s*(?:['"]use strict['"];\s*)?(?:exports\s*=\s*)?module\.exports\s*=\s*(?:exports\s*=\s*)?require\(\s*['"]([^'"]+)['"]\s*\)\s*;?\s*$/.exec(code);
-    if (forwarded) {
-      const next = defaultModuleNamespace(forwarded[1]!, file, language, context, seen);
-      info = { ...next, files: new Set([...files, ...next.files]) };
-    } else {
-      const exported = readCommonJsExportMembers(code, /\.(?:[cm]?js|[jt]sx)$/.test(file));
-      info = { namespace: !exported.uncertain, members: exported.members, files };
+  if (code !== null) {
+    const exported = commonJsExportEvidence(file, context);
+    if (exported?.commonJs) {
+      // All positive members have already had an import-resolution path.
+      // No fact, complete or incomplete, licenses a global name guess.
+      info = { namespace: true, commonJs: true, members, files: commonJsEvidenceFiles(file, context) };
+    } else if (!/\bdefault\b|\bexport\s*=/.test(code)) {
+      info = { namespace: true, members, files };
     }
   }
   // A depth/cycle cutoff says nothing about a shorter lookup of this file.
@@ -32159,6 +32158,14 @@ export function matchReference(
   ref: UnresolvedRef,
   context: ResolutionContext
 ): ResolvedRef | null {
+  // Import resolution already tried this binding's callable/constructor evidence.
+  // A rejected CommonJS value cannot borrow a same-named global function.
+  if (JS_FAMILY.has(ref.language) && (ref.referenceKind === 'calls' || ref.referenceKind === 'instantiates') && !ref.referenceName.includes('.')) {
+    const imported = context.getImportMappings?.(ref.filePath, ref.language)?.find(binding => binding.localName === ref.referenceName);
+    const file = imported && context.resolveModuleFile?.(imported.source, ref.filePath, ref.language);
+    if (file && commonJsExportEvidence(file, context)?.commonJs &&
+        !commonJsImportShadowed(ref.filePath, ref.referenceName, ref.line, ref.column, context)) return null;
+  }
   const result = gateLanguageMatch(matchReferenceInner(ref, context), ref, context);
   // `this.container.classList.toggle()` inside `toggle()`, `window.$events
   // .listen()` inside `listen()`, Scala's `requestToArmeria(request).execute()`

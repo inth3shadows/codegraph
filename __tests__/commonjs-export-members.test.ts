@@ -1,7 +1,64 @@
-import { describe, expect, it } from 'vitest';
-import { readCommonJsExportMembers } from '../src/resolution/commonjs-export-members';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { readCommonJsExportMembers as readMembers } from '../src/resolution/commonjs-export-members';
+import { getParser, loadGrammarsForLanguages } from '../src/extraction/grammars';
+import { hasCommonJsEvalCall } from '../src/extraction/commonjs-eval';
+
+beforeAll(async () => { await loadGrammarsForLanguages(['javascript', 'typescript', 'tsx']); });
+
+function readCommonJsExportMembers(source: string, jsx = false) {
+  return readMembers(source, jsx, () => {
+    const language = jsx ? 'tsx' : source.includes('generic<T>') ? 'typescript' : 'javascript';
+    const tree = getParser(language)!.parse(source)!;
+    try { return hasCommonJsEvalCall(tree.rootNode); }
+    finally { tree.delete(); }
+  });
+}
 
 describe('CommonJS export member discovery', () => {
+  describe.each([
+    ['namespace writes', 'exports.known = known;', 'namespace', ['known']],
+    ['direct alias', 'exports.load = Store.prototype.load;', 'namespace', ['load']],
+    ['root object', 'module.exports = { load: Store.prototype.load };', 'value', []],
+    ['root instance', 'module.exports = new Store();', 'value', []],
+    ['computed write', 'exports[key] = Store.prototype.load;', 'opaque', []],
+    ['escaped exports', 'take(exports);', 'opaque', []],
+  ] as const)('%s independently of eval certainty', (_label, assignment, exportForm, members) => {
+    it.each([
+      ['absent', false], ['present', true], ['unknown', null],
+    ] as const)('retains export evidence when eval is %s', (evalState, fact) => {
+      const result = readMembers(`${assignment}\nwrap(eval)("code");`, false, () => fact);
+      expect(result).toMatchObject({ exportForm, evalState });
+      expect([...result.members]).toEqual(members);
+      expect(result.uncertain).toBe(exportForm !== 'namespace' || fact !== false);
+    });
+  });
+
+  it.each([
+    'module["exports"] = new Store();',
+    'module /* root */ ["exports"] = { load: Store.prototype.load };',
+    'exports = module.exports = new Store();',
+    'module.exports = exports = new Store();',
+    'exports.known = known; module.exports = new Store();',
+    'module.exports = new Store(); module.exports.extra = extra;',
+    'module.exports = new Store(); take(module.exports);',
+  ])('retains a stated whole value beside bracket or mixed writes: %s', (source) => {
+    const result = readMembers(`${source}\nwrap(eval)("code");`, false, () => null);
+    expect(result).toMatchObject({ exportForm: 'value', evalState: 'unknown', uncertain: true });
+  });
+
+  it.each([
+    'holder.module.exports = new Store();',
+    'module.exports === new Store();',
+    'module.exports.load = Store.prototype.load;',
+    'const text = "module.exports = new Store();";',
+  ])('does not infer a stated whole value from %s', (source) => {
+    expect(readMembers(source)).not.toHaveProperty('exportForm', 'value');
+  });
+
+  it('does not prove eval absent when the extraction fact is missing or unknown', () => {
+    expect(readMembers('wrap(eval)("ignored");').uncertain).toBe(true);
+    expect(readMembers('wrap(eval)("ignored");', false, () => null).uncertain).toBe(true);
+  });
   it.each([
     'exports.load = Store.prototype.load;',
     'module.exports.load = Store.prototype.load;',

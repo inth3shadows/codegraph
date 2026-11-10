@@ -125,4 +125,10 @@ describe('the engine stays unloaded until something needs it', () => {
       console.log(typeof FileWatcher, typeof MCPServer, typeof LockUnavailableError);`;
     expect(node(['--input-type=module', '-e', script], dir).trim()).toBe('function function function');
   });
+
+  it('loading export evidence does not load its compiler until analysis is requested', () => {
+    const script = `require(${JSON.stringify(path.join(DIST, 'resolution', 'commonjs-export-evidence.js'))});
+      console.log(Object.keys(require.cache).some(k => /typescript[/\\\\]lib[/\\\\]typescript\\.js$/.test(k)));`;
+    expect(node(['-e', script], dir).trim()).toBe('false');
+  });
 });

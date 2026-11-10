@@ -4,38 +4,34 @@ interface LexicalToken { type: string; value: string; closed?: boolean }
 interface Property { name: string | null; next: number }
 
 const TRIVIA = new Set(['WhiteSpace', 'LineTerminatorSequence', 'SingleLineComment', 'MultiLineComment', 'HashbangComment']);
-const EXPRESSION_PREFIX_WORDS = new Set(['return', 'throw', 'case', 'delete', 'void', 'typeof', 'new', 'in', 'instanceof', 'else', 'do', 'await', 'yield']);
+
+export type CommonJsExportForm = 'namespace' | 'value' | 'opaque';
+export type CommonJsEvalState = 'present' | 'absent' | 'unknown';
 
 /** Syntactic CommonJS writes, without interpreting their values or executing code. */
-export function readCommonJsExportMembers(source: string, jsx = false): { members: ReadonlySet<string>; uncertain: boolean } {
+export function readCommonJsExportMembers(source: string, jsx = false, evalCall?: () => boolean | null): {
+  /** Explicit property writes, not an inventory of a stated whole value. */
+  members: ReadonlySet<string>;
+  uncertain: boolean;
+  exportForm: CommonJsExportForm;
+  evalState: CommonJsEvalState;
+} {
   const tokens: LexicalToken[] = [...jsTokens(source, { jsx })].filter((t) => !TRIVIA.has(t.type));
   const members = new Set<string>();
-  let uncertain = false;
+  let exportForm: CommonJsExportForm = 'namespace';
+  let evalState: CommonJsEvalState = 'absent';
+  let evalResult: boolean | null | undefined;
+  const checkEval = (): void => {
+    if (evalResult === undefined) evalResult = evalCall?.() ?? null;
+    evalState = evalResult === null ? 'unknown' : evalResult ? 'present' : 'absent';
+  };
+  const opaque = (): void => {
+    // An escape cannot erase a stated value. Neither form claims its final
+    // member inventory; a value keeps the resolver's existing value paths.
+    if (exportForm !== 'value') exportForm = 'opaque';
+  };
   const moduleApi = (token: LexicalToken | undefined): boolean => token?.type === 'StringLiteral' &&
     (token.value.slice(1, -1) === 'module' || token.value.slice(1, -1) === 'node:module');
-
-  const literalEvalCall = (at: number): boolean => {
-    let before = at - 1;
-    let after = at + 1;
-    // Parentheses around the bare callee preserve direct eval semantics.
-    while (tokens[before]?.value === '(' && tokens[after]?.value === ')') {
-      before--;
-      after++;
-    }
-    const prefix = tokens[before];
-    // wrap(eval)(code) passes eval as an argument; its parentheses do not
-    // group the callee. The same applies after a member access or call.
-    if (after > at + 1 && prefix && (
-      (prefix.type === 'IdentifierName' && !EXPRESSION_PREFIX_WORDS.has(prefix.value)) ||
-      prefix.type.endsWith('Literal') || prefix.type === 'NoSubstitutionTemplate' || prefix.type === 'TemplateTail' ||
-      [')', ']', '?.', '++', '--'].includes(prefix.value)
-    )) return false;
-    if (tokens[after]?.value !== '(') return false;
-    let argument = after + 1;
-    while (tokens[argument]?.value === '(') argument++;
-    const type = tokens[argument]?.type;
-    return type === 'StringLiteral' || type === 'NoSubstitutionTemplate' || type === 'TemplateHead';
-  };
 
   const property = (at: number): Property | null => {
     const key = tokens[at + 1];
@@ -58,30 +54,37 @@ export function readCommonJsExportMembers(source: string, jsx = false): { member
     if (tokens[at - 1]?.value === 'typeof') continue;
     // Literal eval code and Node's module/cache APIs can supply exports
     // without an assignment to the ordinary CommonJS bindings in this file.
-    if ((root.value === 'eval' && literalEvalCall(at)) ||
-        (root.value === 'require' && (property(at + 1)?.name === 'cache' ||
+    if (root.value === 'eval') {
+      checkEval();
+      continue;
+    }
+    if ((root.value === 'require' && (property(at + 1)?.name === 'cache' ||
           (tokens[at + 1]?.value === '(' && moduleApi(tokens[at + 2])))) ||
         (root.value === 'from' && moduleApi(tokens[at + 1])) ||
         (root.value === 'import' && (moduleApi(tokens[at + 1]) ||
           (tokens[at + 1]?.value === '(' && moduleApi(tokens[at + 2]))))) {
-      uncertain = true;
+      opaque();
       continue;
     }
     if (root.value !== 'exports' && root.value !== 'module') continue;
     let next = at + 1;
     if (root.value === 'module') {
       const exported = property(next);
-      if (exported?.name !== 'exports') { uncertain = true; continue; }
+      if (exported?.name !== 'exports') { opaque(); continue; }
       next = exported.next;
+      if (tokens[next]?.value === '=') {
+        exportForm = 'value';
+        continue;
+      }
     }
     const member = property(next);
     // Escaping the object, replacing its default, or mutating its prototype
     // supplies an API whose absent members cannot be established here.
     if (!member || member.name === null || member.name === '__proto__') {
-      uncertain = true;
+      opaque();
       continue;
     }
     if (tokens[member.next]?.value === '=') members.add(member.name);
   }
-  return { members, uncertain };
+  return { members, uncertain: exportForm !== 'namespace' || evalState !== 'absent', exportForm, evalState };
 }

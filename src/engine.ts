@@ -13,6 +13,7 @@ export { ESM_IMPORT_LANGUAGES } from './resolution/import-resolver';
 export {
   createImportReader,
   reopenNameMatchedImports,
+  reopenFailedReferencesThroughCommonJs,
   reopenReferencesThroughAddedFiles,
   reopenReferencesThroughBarrels,
   reopenReferencesThroughChangedDefaults,

@@ -41,6 +41,8 @@ import {
   retargetSelfOverload,
 } from './name-matcher';
 import { JS_ARRAY_METHODS } from './js-builtins';
+import type { CommonJsIntent } from './commonjs-value-graph';
+import { commonJsExportEvidence, commonJsExportNode, commonJsEvidenceFiles, commonJsImportShadowed } from './commonjs-export-evidence';
 
 /**
  * Extension resolution order by language
@@ -269,18 +271,15 @@ const fileExportIndexes = new WeakMap<ResolutionContext, Map<string, FileExportI
  * binds (`createApplication`, `function name(`, `class Name`) or the module
  * it forwards (`require('./lib/express')`), or null.
  */
-const COMMONJS_DEFAULT_EXPORT =
-  /^[ \t]*(?:exports\s*=\s*)?module\.exports\s*=\s*(?:exports\s*=\s*)?(?:require\(\s*['"]([^'"]+)['"]\s*\)\s*;?[ \t]*$|(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(|class\s+([A-Za-z_$][\w$]*)|([A-Za-z_$][\w$]*)\s*;?[ \t]*$)/m;
-
 function commonJsDefaultExport(filePath: string, context: ResolutionContext): { source?: string; name?: string } | null {
   if (!JS_FAMILY_FILE.test(filePath)) return null;
-  if (context.fileContains && !context.fileContains(filePath, 'module.exports')) return null;
-  const idx = getFileExportIndex(filePath, context);
-  if (idx.commonJsDefault !== undefined) return idx.commonJsDefault;
-  const source = context.readFile(filePath);
-  const m = source && source.includes('module.exports') ? COMMONJS_DEFAULT_EXPORT.exec(source) : null;
-  idx.commonJsDefault = !m ? null : m[1] ? { source: m[1] } : { name: m[2] ?? m[3] ?? m[4] };
-  return idx.commonJsDefault;
+  const record = commonJsExportEvidence(filePath, context);
+  if (!record?.commonJs) return null;
+  const exported = record.exported;
+  const source = exported.kind === 'identity' ? record.graph.objects.get(exported.id)?.source : undefined;
+  if (source) return { source };
+  const node = commonJsExportNode(filePath, null, context);
+  return node ? { name: node.name } : null;
 }
 
 function getFileExportIndex(filePath: string, context: ResolutionContext): FileExportIndex {
@@ -3422,6 +3421,20 @@ export function resolveViaImport(
           : null;
         const want = { isDefault: imp.isDefault, isNamespace: imp.isNamespace, exportedName, memberName };
 
+        if (resolvedPath && commonJsExportEvidence(resolvedPath, context)?.commonJs &&
+            commonJsImportShadowed(ref.filePath, imp.localName, ref.line, ref.column, context)) continue;
+
+        // Select the value actually used by this reference, including a member
+        // of a named object import. Calling api.load does not call api itself.
+        if (resolvedPath && commonJsExportEvidence(resolvedPath, context)?.commonJs) {
+          const suffix = ref.referenceName.startsWith(imp.localName + '.') ? ref.referenceName.slice(imp.localName.length + 1) : null;
+          const member = imp.isDefault || imp.isNamespace ? suffix : [imp.exportedName, suffix].filter(Boolean).join('.');
+          const node = commonJsExportNode(resolvedPath, member, context, ref.referenceKind === 'calls' ? 'callable' : ref.referenceKind === 'instantiates' ? 'constructible' : 'reference');
+          if (node) return { original: ref, targetNodeId: node.id, confidence: 0.9, resolvedBy: 'import',
+            metadata: { typeFrom: [...commonJsEvidenceFiles(resolvedPath, context)].sort() } };
+          continue;
+        }
+
         const targetNode = findImportedExport(imp.source, resolvedPath, want, ref, context);
         const memberRead = !imp.isNamespace && ref.referenceName.startsWith(imp.localName + '.');
 
@@ -3567,7 +3580,7 @@ function findImportedExport(
   ref: UnresolvedRef,
   context: ResolutionContext
 ): Node | undefined {
-  const inFile = (): Node | undefined => (file ? findExportedSymbol(file, want, ref.language, context, new Set()) : undefined);
+  const inFile = (): Node | undefined => (file ? findExportedSymbol(file, { ...want, intent: ref.referenceKind === 'calls' ? 'callable' : ref.referenceKind === 'instantiates' ? 'constructible' : 'reference' }, ref.language, context, new Set()) : undefined);
   const declared = isBareModuleSpecifier(source, ref.language) ? findAmbientModuleExport(source, want, ref, context) : undefined;
   if (!declared) return inFile();
   return (isRepositoryModule(source, file, ref, context) ? inFile() : undefined) ?? declared;
@@ -4262,6 +4275,7 @@ function findExportedSymbol(
     isNamespace: boolean;
     exportedName: string;
     memberName: string | null;
+    intent?: CommonJsIntent;
   },
   language: Language,
   context: ResolutionContext,
@@ -4279,7 +4293,7 @@ function findExportedSymbol(
       memo = new Map();
       exportedSymbolMemos.set(context, memo);
     }
-    const key = `${filePath}\0${want.isDefault ? 1 : 0}${want.isNamespace ? 1 : 0}\0${want.exportedName}\0${want.memberName ?? ''}\0${language}`;
+    const key = `${filePath}\0${want.isDefault ? 1 : 0}${want.isNamespace ? 1 : 0}\0${want.exportedName}\0${want.memberName ?? ''}\0${language}\0${want.intent ?? 'reference'}`;
     if (memo.has(key)) return memo.get(key);
     const result = findExportedSymbolWalk(filePath, want, language, context, visited, depth);
     memo.set(key, result);
@@ -4295,6 +4309,7 @@ function findExportedSymbolWalk(
     isNamespace: boolean;
     exportedName: string;
     memberName: string | null;
+    intent?: CommonJsIntent;
   },
   language: Language,
   context: ResolutionContext,
@@ -4304,6 +4319,10 @@ function findExportedSymbolWalk(
   if (depth > REEXPORT_MAX_DEPTH) return undefined;
   if (visited.has(filePath)) return undefined;
   visited.add(filePath);
+
+  if (commonJsExportEvidence(filePath, context)?.commonJs) {
+    return commonJsExportNode(filePath, want.isDefault ? null : want.memberName ?? want.exportedName, context, want.intent);
+  }
 
   const exportIndex = getFileExportIndex(filePath, context);
 
@@ -4383,6 +4402,7 @@ function findExportedSymbolWalk(
           isNamespace: false,
           exportedName: rex.originalName,
           memberName: null,
+          intent: want.intent,
         },
         language,
         context,

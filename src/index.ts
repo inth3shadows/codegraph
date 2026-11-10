@@ -1119,6 +1119,7 @@ export class CodeGraph {
       moduleConfigLanguages,
       parseModuleConfigSnapshot,
       reopenNameMatchedImports,
+      reopenFailedReferencesThroughCommonJs,
       reopenReferencesThroughAddedFiles,
       reopenReferencesThroughBarrels,
       reopenReferencesThroughChangedDefaults,
@@ -1553,6 +1554,7 @@ export class CodeGraph {
               const file = this.queries.getFileByPath(filePath);
               return file ? [{ path: filePath, language: file.language }] : [];
             });
+            reopenFailedReferencesThroughCommonJs(this.queries, importReader, editedModules);
             const nameMatched = reopenNameMatchedImports(
               this.queries, importReader, editedModules, edgesBeforeResolution,
               (specifier, fromFile, language) => this.resolver.resolveModuleFile(specifier, fromFile, language),

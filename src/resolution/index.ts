@@ -860,6 +860,8 @@ export class ReferenceResolver {
    */
   private createContext(): ResolutionContext {
     return {
+      getCommonJsEvalCall: (file, source) => this.queries.getCommonJsEvalCall(file,
+        createHash('sha256').update(source).digest('hex')),
       // A C or C++ `#include` the import resolver can't place is linked by the
       // end of its path, as resolveOneInner's name matching does: protobuf's
       // `google/protobuf/descriptor.upb.h`, which two generated copies end in.

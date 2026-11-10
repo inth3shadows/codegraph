@@ -214,7 +214,7 @@ function aliasTarget(path: string, alias: Node, ctx: ResolutionContext): Node | 
     // `ns.f` is the module's export `f`, and an import of a symbol is that symbol.
     if (binding.isNamespace && members.length === 0) return null;
     const referenceName = binding.isNamespace ? `${root}.${members.shift()!}` : root;
-    const hit = ctx.resolveImport?.({ ...at, referenceName });
+    const hit = ctx.resolveImport?.({ ...at, referenceName, referenceKind: 'references' });
     target = hit ? ctx.getNodeById?.(hit.targetNodeId) ?? null : null;
     if (target && binding.isDefault && !isStatedDefaultExport(target, ctx)) return null;
   } else {

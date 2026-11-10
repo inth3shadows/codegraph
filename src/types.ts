@@ -270,6 +270,9 @@ export interface FileRecord {
    * `undefined` as "content signal unknown, fall back to the path check".
    */
   generated?: boolean;
+
+  /** Extraction fact stored with this content hash in project metadata. */
+  commonJsEvalCall?: boolean | null;
 }
 
 /**
@@ -313,6 +316,8 @@ export interface IndexHealth {
  * Result from parsing a source file
  */
 export interface ExtractionResult {
+  /** Direct eval detected from the AST; null means parsing was inconclusive. */
+  commonJsEvalCall?: boolean | null;
   /** Extracted nodes */
   nodes: Node[];
 

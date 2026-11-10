@@ -129,6 +129,8 @@ export interface ResolutionContext {
   fileExists(filePath: string): boolean;
   /** Read file content */
   readFile(filePath: string): string | null;
+  /** AST fact for this exact source; missing/stale/error results are unknown. */
+  getCommonJsEvalCall?(filePath: string, source: string): boolean | null;
   /** `readFile(filePath)?.includes(needle) ?? false` for an ASCII `needle`, without decoding a file that lacks it. */
   fileContains?(filePath: string, needle: string): boolean;
   /**
