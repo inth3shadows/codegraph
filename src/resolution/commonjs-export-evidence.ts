@@ -728,8 +728,14 @@ const BLOCKING_UNKNOWNS = new Set(['opaque call argument', 'opaque method receiv
 /** Sloppy-mode syntax the parser reports but parses intact: legacy octal literals, escapes and leading-zero decimals. */
 const SLOPPY_SYNTAX = new Set([1121, 1487, 1488, 1489]);
 
+/**
+ * Resolves a member that a modelled file forwards into a file outside the
+ * model, by that file's pre-model export lookup.
+ */
+export type CommonJsOutsideLookup = (file: string, member: string | null, intent: CommonJsIntent) => Node | undefined;
+
 export function commonJsExportNode(file: string, member: string | null, context: ResolutionContext,
-  intent: CommonJsIntent = 'reference', seen = new Set<string>()): Node | undefined {
+  intent: CommonJsIntent = 'reference', seen = new Set<string>(), outside?: CommonJsOutsideLookup): Node | undefined {
   const key = `${file}\0${member ?? ''}\0${intent}`;
   if (seen.has(key) || seen.size >= 8) return undefined;
   seen.add(key);
@@ -756,7 +762,11 @@ export function commonJsExportNode(file: string, member: string | null, context:
     if (source && !(intent === 'reference' && candidate.reference)) {
       const next = context.resolveModuleFile?.(source, file, 'javascript');
       const path = candidate.kind === 'forward' ? candidate.path.join('.') || null : null;
-      return next ? commonJsExportNode(next, path, context, intent, new Set(seen)) : undefined;
+      if (!next) return undefined;
+      // A forward into a file outside the model answers as that file does
+      // without the model (R14-6), not as a blocked member.
+      if (!commonJsExportEvidence(next, context)?.commonJs) return path?.includes('.') ? undefined : outside?.(next, path, intent);
+      return commonJsExportNode(next, path, context, intent, new Set(seen), outside);
     }
     const decision = record.graph.answer(candidate)[intent];
     return decision.status === 'positive' && decision.selector ? indexed(decision.selector) : undefined;

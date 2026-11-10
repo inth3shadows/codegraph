@@ -304,3 +304,27 @@ describe('files the value model keeps', () => {
     expect(calls(await index(files), 'run')).toEqual(expected);
   });
 });
+
+describe('round 14', () => {
+  it('an unmodelled file uses the pre-model reader verbatim: wrap(eval)(code) is not a direct eval (R14-S1)', async () => {
+    const graph = await index({
+      'm.js': "class Impl { run(){ return 1; } }\nthis.flag = 1;\nexports.load = function load(){ return 2; };\nfunction wrap(f){ return f; }\nwrap(eval)('1');\n",
+      'c.js': 'const lib = require("./m");\nconst { run } = require("./m");\nfunction go(){ run(); return lib.run(); }\nmodule.exports = go;\n',
+    });
+    expect(calls(graph, 'go')).toEqual([]);
+  });
+
+  const use = "const m=require('./m');const {a,b}=require('./m');\nfunction run(){ m.a(); m.b(); a(); b(); }\nmodule.exports=run;\n";
+  const forwarder = 'exports.b=require("./y").b;exports.a=require("./y").a;\n';
+  it.each([
+    ['an ES module', 'export function b(){return 2}\nexport function a(){return 1}\n'],
+    ['an unmodelled CommonJS file', 'function b(){return 2}\nfunction a(){return 1}\n(function(){exports.q=1})();\nexports.b=b;exports.a=a;\n'],
+  ])('a member forwarded into %s resolves in that file (R14-6)', async (_label, target) => {
+    expect(calls(await index({ 'm.js': forwarder, 'y.js': target, 'use.js': use }), 'run')).toEqual(['y.js:a', 'y.js:a', 'y.js:b', 'y.js:b']);
+  });
+
+  it('a same-named declaration the unmodelled file never exports is not the answer', async () => {
+    const target = 'function b(){return 2}\nfunction a(){return 1}\n(function(){exports.q=1})();\nexports.a=a;\n';
+    expect(calls(await index({ 'm.js': forwarder, 'y.js': target, 'use.js': use }), 'run')).toEqual(['y.js:a', 'y.js:a']);
+  });
+});
