@@ -42,7 +42,7 @@ import {
 } from './name-matcher';
 import { JS_ARRAY_METHODS } from './js-builtins';
 import type { CommonJsIntent } from './commonjs-value-graph';
-import { commonJsExportEvidence, commonJsExportNode, commonJsEvidenceFiles, commonJsImportShadowed } from './commonjs-export-evidence';
+import { commonJsExportDecision, commonJsExportEvidence, commonJsFallbackAllows, commonJsExportNode, commonJsEvidenceFiles, commonJsImportShadowed } from './commonjs-export-evidence';
 
 /**
  * Extension resolution order by language
@@ -3174,7 +3174,26 @@ function namespaceDeclaringFile(
   return undefined;
 }
 
+/** Evidence files an unknown CommonJS answer limits this reference's fallback to. */
+const COMMONJS_FALLBACK = new WeakMap<UnresolvedRef, ReadonlySet<string>>();
+const COMMONJS_UNKNOWN_WALK = new WeakSet<ResolutionContext>();
+
 export function resolveViaImport(
+  ref: UnresolvedRef,
+  context: ResolutionContext
+): ResolvedRef | null {
+  try {
+    const result = resolveViaImportInner(ref, context);
+    const files = COMMONJS_FALLBACK.get(ref);
+    if (!result || !files) return result;
+    return commonJsFallbackAllows(context.getNodeById?.(result.targetNodeId), files, ref.referenceKind) ? result : null;
+  } finally {
+    COMMONJS_FALLBACK.delete(ref);
+    COMMONJS_UNKNOWN_WALK.delete(context);
+  }
+}
+
+function resolveViaImportInner(
   ref: UnresolvedRef,
   context: ResolutionContext
 ): ResolvedRef | null {
@@ -3429,10 +3448,14 @@ export function resolveViaImport(
         if (resolvedPath && commonJsExportEvidence(resolvedPath, context)?.commonJs) {
           const suffix = ref.referenceName.startsWith(imp.localName + '.') ? ref.referenceName.slice(imp.localName.length + 1) : null;
           const member = imp.isDefault || imp.isNamespace ? suffix : [imp.exportedName, suffix].filter(Boolean).join('.');
-          const node = commonJsExportNode(resolvedPath, member, context, ref.referenceKind === 'calls' ? 'callable' : ref.referenceKind === 'instantiates' ? 'constructible' : 'reference');
-          if (node) return { original: ref, targetNodeId: node.id, confidence: 0.9, resolvedBy: 'import',
+          const decision = commonJsExportDecision(resolvedPath, member || null, context, ref.referenceKind === 'calls' ? 'callable' : ref.referenceKind === 'instantiates' ? 'constructible' : 'reference');
+          if (decision.status === 'positive') return { original: ref, targetNodeId: decision.node.id, confidence: 0.9, resolvedBy: 'import',
             metadata: { typeFrom: [...commonJsEvidenceFiles(resolvedPath, context)].sort() } };
-          continue;
+          if (decision.status === 'blocked') continue;
+          // Unknown: the generic export lookup below may answer, kept to the
+          // module's evidence files by resolveViaImport.
+          COMMONJS_FALLBACK.set(ref, new Set([...(COMMONJS_FALLBACK.get(ref) ?? []), ...commonJsEvidenceFiles(resolvedPath, context)]));
+          COMMONJS_UNKNOWN_WALK.add(context);
         }
 
         const targetNode = findImportedExport(imp.source, resolvedPath, want, ref, context);
@@ -4321,7 +4344,9 @@ function findExportedSymbolWalk(
   visited.add(filePath);
 
   if (commonJsExportEvidence(filePath, context)?.commonJs) {
-    return commonJsExportNode(filePath, want.isDefault ? null : want.memberName ?? want.exportedName, context, want.intent);
+    const decision = commonJsExportDecision(filePath, want.isDefault ? null : want.memberName ?? want.exportedName, context, want.intent);
+    if (decision.status === 'positive') return decision.node;
+    if (decision.status === 'blocked' || !COMMONJS_UNKNOWN_WALK.has(context)) return undefined;
   }
 
   const exportIndex = getFileExportIndex(filePath, context);

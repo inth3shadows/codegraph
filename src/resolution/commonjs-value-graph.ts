@@ -9,7 +9,7 @@ export interface CommonJsDeclaration {
 interface Reference { reference?: CommonJsDeclaration; referenceIdentity?: string }
 export type CommonJsValue = Reference & (
   { kind: 'data'; value: string | number | boolean | null | undefined; known: boolean } |
-  { kind: 'identity'; id: string } | { kind: 'unknown'; reason: string } |
+  { kind: 'identity'; id: string } | { kind: 'unknown'; reason: string; cause?: string } |
   { kind: 'absent' } | { kind: 'union'; values: CommonJsValue[] } |
   { kind: 'forward'; source: string; path: string[] }
 );
@@ -29,6 +29,8 @@ interface OwnedObject {
   properties: Map<string, CommonJsValue>;
   prototype?: CommonJsValue;
   closed: boolean;
+  /** Why the object stopped being closed: the first invalidation reason. */
+  openReason?: string;
   source?: string;
 }
 
@@ -38,7 +40,7 @@ export class CommonJsValueGraph {
   readonly objects = new Map<string, OwnedObject>();
 
   data(value: Extract<CommonJsValue, { kind: 'data' }>['value'], known = true): CommonJsValue { return { kind: 'data', value, known }; }
-  unknown(reason: string): CommonJsValue { return { kind: 'unknown', reason }; }
+  unknown(reason: string, cause?: string): CommonJsValue { return cause ? { kind: 'unknown', reason, cause } : { kind: 'unknown', reason }; }
   absent(): CommonJsValue { return { kind: 'absent' }; }
   allocate(kind: OwnedObject['kind'], id: string, selector?: CommonJsDeclaration, constructible = false, source?: string): CommonJsValue {
     if (!this.objects.has(id)) this.objects.set(id, { kind, selector, constructible, source, properties: new Map(), closed: true });
@@ -70,7 +72,7 @@ export class CommonJsValueGraph {
     const object = this.objects.get(owner.id)!;
     if (object.properties.has(name)) return object.properties.get(name)!;
     if (object.source) return { kind: 'forward', source: object.source, path: [name] };
-    if (!object.closed) return this.unknown('incomplete properties');
+    if (!object.closed) return this.unknown('incomplete properties', object.openReason);
     return object.prototype ? this.read(object.prototype, name, seen) : this.absent();
   }
   invalidate(owner: CommonJsValue, reason: string): void {
@@ -78,6 +80,7 @@ export class CommonJsValueGraph {
     if (owner.kind !== 'identity') return;
     const object = this.objects.get(owner.id)!;
     object.closed = false;
+    object.openReason ??= reason;
     for (const name of object.properties.keys()) object.properties.set(name, this.unknown(reason));
   }
   escape(value: CommonJsValue, reason: string, seen = new Set<string>()): void {

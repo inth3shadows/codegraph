@@ -212,3 +212,69 @@ describe.each(['./m', './index'])('named CommonJS values through %s', specifier 
     expect(graph.getOutgoingEdges(construct.id).filter(edge => edge.kind === 'instantiates').map(edge => graph.getNode(edge.target)?.qualifiedName)).toEqual(['Store']);
   });
 });
+
+describe('unknown CommonJS evidence falls back within its evidence files (F17)', () => {
+  it.each([
+    ['constructed instance', 'class Foo { constructor(){ this.x=1; } load(){ return 1; } }\nmodule.exports = new Foo();\n', ['m.js:Foo::load']],
+    ['inherited instance', 'class Base { base(){} }\nclass Foo extends Base { load(){ return 1; } }\nmodule.exports = new Foo();\n', ['m.js:Foo::load']],
+    ['frozen object', 'const api = { load(){ return 1; } };\nObject.freeze(api);\nmodule.exports = api;\n', ['m.js:api::load']],
+    ['Object.assign', 'function load(){ return 42; }\nObject.assign(module.exports, { load });\n', ['m.js:load']],
+    ['defineProperty', "function load(){ return 42; }\nObject.defineProperty(module.exports, 'load', { value: load, enumerable: true });\n", ['m.js:load']],
+  ])('%s', async (label, source, expected) => {
+    // Baseline resolved assigned/defined members only through a destructured require.
+    const use = /assign|define/i.test(label) ? "const {load}=require('./m');function run(){return load();}" : "const svc=require('./m');function run(){return svc.load();}";
+    expect(calls(await index({ 'm.js': source, 'use.js': use }), 'run')).toEqual(expected);
+    // A same-named candidate elsewhere is never the fallback's answer; at
+    // worst the fallback declines.
+    const withDecoy = calls(await index({ 'm.js': source, 'use.js': use, 'decoy.js': 'class Decoy { load() {} }\nfunction load() {}\n' }), 'run');
+    expect(withDecoy.filter(target => !expected.includes(target))).toEqual([]);
+  });
+
+  it('follows spread re-exports into the spread modules', async () => {
+    const graph = await index({ 'a.js': 'function load(){ return 1; }\nmodule.exports = { load };\n',
+      'b.js': 'function save(){ return 2; }\nmodule.exports = { save };\n',
+      'index.js': "module.exports = { ...require('./a'), ...require('./b') };\n", 'decoy.js': 'function save() {}\n',
+      'use.js': "const { save } = require('./index');function run(){return save();}" });
+    expect(calls(graph, 'run')).toEqual(['b.js:save']);
+  });
+
+  it.each([
+    'const api={load:Store.prototype.load};opaque(api);module.exports=api;',
+    'const api={load:Store.prototype.load};api[key]=42;module.exports=api;',
+  ])('never falls back to the storage variable: %s', async exportSource => {
+    const graph = await index({ 'm.js': `class Store { load() { return 42; } }\n${exportSource}`,
+      'use.js': "const named=require('./m');function run(){return named.load();}" });
+    expect(calls(graph, 'run')).toEqual([]);
+  });
+});
+
+describe('sloppy-mode and closure-written CommonJS keep their import edges (F18, F19a)', () => {
+  const use = "const svc=require('./m');const {helper}=require('./m');function run(){helper();return svc.main();}";
+  it.each([
+    ['hashbang', '#!/usr/bin/env node\nfunction main(){ return 1; }\nfunction helper(){ return 2; }\nmodule.exports = { main, helper };\n'],
+    ['legacy octal literal', 'var mode = 0755;\nfunction main(){ return mode; }\nfunction helper(){ return 2; }\nmodule.exports = { main, helper };\n'],
+    ['legacy octal escape', 'var s = "\\101";\nfunction main(){ return s; }\nfunction helper(){ return 2; }\nmodule.exports = { main, helper };\n'],
+    ['Flow annotations', '// @flow\nfunction main(x: number): number { return x; }\nfunction helper(){ return 2; }\nmodule.exports = { main, helper };\n'],
+  ])('%s', async (_label, source) => {
+    expect(calls(await index({ 'm.js': source, 'use.js': use }), 'run')).toEqual(['m.js:helper', 'm.js:main']);
+  });
+
+  it('an unparsable file falls back instead of blocking its imports', async () => {
+    const source = '<!-- legacy\nfunction main(){ return 1; }\nfunction helper(){ return 2; }\nmodule.exports = { main, helper };\n';
+    const graph = await index({ 'm.js': source, 'use.js': use, 'decoy.js': 'function helper() {}\nfunction main() {}\n' });
+    expect(calls(graph, 'run').filter(target => !target.startsWith('m.js:'))).toEqual([]);
+  });
+
+  it.each([
+    ['function IIFE', "(function(){\n  'use strict';\n  function main(){ return 1; }\n  function helper(){ return 2; }\n  module.exports = { main: main, helper: helper };\n})();\n"],
+    ['arrow IIFE', '(() => {\n  function main(){ return 1; }\n  function helper(){ return 2; }\n  module.exports = { main, helper };\n})();\n'],
+  ])('%s', async (_label, source) => {
+    expect(calls(await index({ 'm.js': source, 'use.js': use }), 'run')).toEqual(['m.js:helper', 'm.js:main']);
+  });
+
+  it('a callback that never writes exports keeps exports closed', async () => {
+    const source = 'function main(){ return 1; }\n[1].forEach(function(x){ return x; });\nmodule.exports = { main };\n';
+    const graph = await index({ 'm.js': source, 'decoy.js': 'function helper() {}\n', 'use.js': use });
+    expect(calls(graph, 'run')).toEqual(['m.js:main']);
+  });
+});

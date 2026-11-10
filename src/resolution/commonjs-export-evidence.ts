@@ -51,7 +51,22 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
     while (ts.isParenthesizedExpression(expression) || ts.isAsExpression(expression) || ts.isNonNullExpression(expression)) expression = expression.expression;
     return expression;
   };
+  const touchesWrapperExports = (body: TS.Node, b: { isBinding: (expression: TS.Expression, name: string) => boolean }): boolean => {
+    let found = false;
+    const scan = (child: TS.Node): void => {
+      if (found) return;
+      const propertyName = (ts.isPropertyAccessExpression(child.parent) && child.parent.name === child) ||
+        ((ts.isPropertyAssignment(child.parent) || ts.isMethodDeclaration(child.parent)) && child.parent.name === child);
+      if (!propertyName && ts.isIdentifier(child) && (b.isBinding(child, 'module') || b.isBinding(child, 'exports'))) { found = true; return; }
+      ts.forEachChild(child, scan);
+    };
+    scan(body);
+    return found;
+  };
   const bind = (text: string) => {
+    // A hashbang is legal only at offset 0, which the wrapper moves; blank it
+    // in place so every later offset is unchanged (F18).
+    text = text.replace(/^#![^\n]*/, line => ' '.repeat(line.length));
     const prefix = 'function __codegraph_cjs(exports, require, module, __filename, __dirname) {\n';
     const filename = `/${file}`;
     const tree = ts.createSourceFile(filename, `${prefix}${text}\n}`, ts.ScriptTarget.Latest, true,
@@ -71,7 +86,8 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
       expression = unwrap(expression);
       return ts.isIdentifier(expression) && symbol(expression) === parameters.get(name);
     };
-    return { tree, wrapper, parameters, checker, symbol, isBinding, diagnostics: program.getSyntacticDiagnostics(tree), prefix: prefix.length };
+    return { tree, wrapper, parameters, checker, symbol, isBinding, diagnostics: program.getSyntacticDiagnostics(tree).filter(diagnostic => !SLOPPY_SYNTAX.has(diagnostic.code) &&
+      !(diagnostic.code >= 8002 && diagnostic.code <= 8017)), prefix: prefix.length };
   };
   type Bound = ReturnType<typeof bind>;
   const bound = bind(source);
@@ -126,7 +142,11 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
     result.commonJs = false;
     return result;
   }
-  if (bound.diagnostics.length || !bound.wrapper.body) { result.unknown = true; return result; }
+  if (bound.diagnostics.length || !bound.wrapper.body) {
+    result.unknown = true;
+    result.exported = result.graph.unknown('unparsed source');
+    return result;
+  }
   let graph = result.graph;
   const module = graph.allocate('object', `${file}:module`);
   const namespace = graph.allocate('object', `${file}:namespace`);
@@ -279,7 +299,11 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
         else if (ts.isMethodDeclaration(item) && item.body) {
           const selector = declaration(item, b, map);
           if (selector?.name) graph.write(value, selector.name, graph.allocate('function', identity(selector), selector));
-        } else graph.invalidate(value, 'unmodeled object member');
+        } else {
+          // `...require('./a')` still names a module the value may come from.
+          if (ts.isSpreadAssignment(item)) valueOf(item.expression, b, map);
+          graph.invalidate(value, ts.isSpreadAssignment(item) ? 'object spread' : 'unmodeled object member');
+        }
       }
       return value;
     }
@@ -372,7 +396,13 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
       const callee = unwrap(node.expression);
       const intrinsicEval = ts.isIdentifier(callee) && callee.text === 'eval' && !b.symbol(callee);
       if (!(intrinsicEval && !node.questionDotToken) && !b.isBinding(callee, 'require')) {
-        for (const argument of node.arguments) graph.escape(valueOf(argument, b, map), 'opaque call argument');
+        // `Object.freeze(api)` changes no member; `Object.assign(exports, …)`
+        // writes members this analysis does not model, so ordinary matching may
+        // still answer for them (FALLBACK_CAUSES).
+        const builtin = ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && callee.expression.text === 'Object' &&
+          !b.symbol(callee.expression) ? callee.name.text : undefined;
+        if (!(builtin && OBJECT_READS.has(builtin))) for (const argument of node.arguments)
+          graph.escape(valueOf(argument, b, map), builtin && OBJECT_WRITES.has(builtin) ? 'unmodeled builtin write' : 'opaque call argument');
         const receiver = property(callee, b, map);
         if (receiver) graph.escape(receiver.owner, 'opaque method receiver');
         let localHarmless = false, capturesExports = false;
@@ -392,6 +422,11 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
             effects(declaration.body);
           }
         }
+        // An IIFE, UMD factory or callback that writes module/exports runs
+        // code this walk does not enter; its writes are unknown, not absent (F19a).
+        const closures = [callee, ...node.arguments.map(unwrap)].filter((fn): fn is TS.FunctionExpression | TS.ArrowFunction =>
+          ts.isFunctionExpression(fn) || ts.isArrowFunction(fn));
+        if (closures.some(fn => touchesWrapperExports(fn.body, b))) graph.invalidate(graph.read(module, 'exports'), 'unmodeled closure write');
         const calleeValue = valueOf(callee, b, map);
         if (capturesExports || (calleeValue.kind === 'unknown' && calleeValue.reason === 'intrinsic eval') || intrinsicEval || (!localHarmless && node.arguments.some(argument => ts.isIdentifier(unwrap(argument)) && (unwrap(argument) as TS.Identifier).text === 'eval'))) {
           graph.invalidate(graph.read(module, 'exports'), 'indirect eval effects');
@@ -460,13 +495,52 @@ export function commonJsExportResult(record: CommonJsExportEvidence, member: str
   return record.graph.answer(value);
 }
 
+/**
+ * What an export answers for one intent. `blocked` is a complete negative
+ * (absent, non-callable, or disagreeing positives) and licenses no other
+ * target. `unknown` is the analyzer giving up; callers fall back to their
+ * prior matching, limited to the module's evidence files.
+ */
+/**
+ * Whether a fallback target found by ordinary matching may stand for an
+ * unknown CommonJS answer: inside the module's evidence files, and code that
+ * can run (or be constructed) rather than the storage holding it.
+ */
+export function commonJsFallbackAllows(target: Node | null | undefined, files: ReadonlySet<string>, kind: string): boolean {
+  if (!target || !files.has(target.filePath)) return false;
+  if (kind === 'calls') return target.kind === 'function' || target.kind === 'method';
+  if (kind === 'instantiates') return target.kind === 'class' || target.kind === 'function';
+  return true;
+}
+
+const OBJECT_READS = new Set(['freeze', 'seal', 'preventExtensions', 'isFrozen', 'isSealed', 'isExtensible', 'keys', 'values', 'entries', 'getOwnPropertyNames', 'getOwnPropertyDescriptor', 'getPrototypeOf']);
+const OBJECT_WRITES = new Set(['assign', 'defineProperty', 'defineProperties', 'setPrototypeOf']);
+/**
+ * Unknowns from code this analysis does not model, as opposed to an opaque
+ * call or dynamic write that may have changed a known value. Only these let
+ * ordinary matching answer (inside the module's evidence files).
+ */
+const FALLBACK_CAUSES = new Set(['custom construction/inheritance outside contract', 'unmodeled builtin write', 'object spread',
+  'unparsed source', 'unmodeled closure write']);
+/** Sloppy-mode syntax the parser reports but parses intact: legacy octal literals and escapes. */
+const SLOPPY_SYNTAX = new Set([1121, 1487]);
+
+export type CommonJsExportDecision = { status: 'positive'; node: Node } | { status: 'blocked' } | { status: 'unknown' };
+
 export function commonJsExportNode(file: string, member: string | null, context: ResolutionContext,
-  intent: CommonJsIntent = 'reference', seen = new Set<string>()): Node | undefined {
+  intent: CommonJsIntent = 'reference'): Node | undefined {
+  const decision = commonJsExportDecision(file, member, context, intent);
+  return decision.status === 'positive' ? decision.node : undefined;
+}
+
+export function commonJsExportDecision(file: string, member: string | null, context: ResolutionContext,
+  intent: CommonJsIntent = 'reference', seen = new Set<string>()): CommonJsExportDecision {
+  const blocked: CommonJsExportDecision = { status: 'blocked' };
   const key = `${file}\0${member ?? ''}\0${intent}`;
-  if (seen.has(key) || seen.size >= 8) return undefined;
+  if (seen.has(key) || seen.size >= 8) return blocked;
   seen.add(key);
   const record = commonJsExportEvidence(file, context);
-  if (!record?.commonJs) return undefined;
+  if (!record?.commonJs) return blocked;
   let value = record.exported;
   for (const name of member?.split('.') ?? []) value = record.graph.read(value, name);
   const indexed = (declaration: Declaration): Node | undefined => {
@@ -479,19 +553,22 @@ export function commonJsExportNode(file: string, member: string | null, context:
     matches.sort((a, b) => (a.endLine - a.startLine) - (b.endLine - b.startLine) || b.startColumn - a.startColumn);
     return matches[0];
   };
-  const select = (candidate: CommonJsValue): Node | undefined => {
+  const select = (candidate: CommonJsValue): CommonJsExportDecision => {
     if (candidate.kind === 'union') {
-      const nodes = candidate.values.map(select);
-      return nodes.length && nodes.every(node => node && node.id === nodes[0]?.id) ? nodes[0] : undefined;
+      const decisions = candidate.values.map(select);
+      const first = decisions[0];
+      return first?.status === 'positive' && decisions.every(d => d.status === 'positive' && d.node.id === first.node.id) ? first : blocked;
     }
     const source = candidate.kind === 'forward' ? candidate.source : candidate.kind === 'identity' ? record.graph.objects.get(candidate.id)?.source : undefined;
     if (source && !(intent === 'reference' && candidate.reference)) {
       const next = context.resolveModuleFile?.(source, file, 'javascript');
       const path = candidate.kind === 'forward' ? candidate.path.join('.') || null : null;
-      return next ? commonJsExportNode(next, path, context, intent, new Set(seen)) : undefined;
+      return next ? commonJsExportDecision(next, path, context, intent, new Set(seen)) : blocked;
     }
+    if (candidate.kind === 'unknown') return FALLBACK_CAUSES.has(candidate.cause ?? candidate.reason) ? { status: 'unknown' } : blocked;
     const decision = record.graph.answer(candidate)[intent];
-    return decision.status === 'positive' && decision.selector ? indexed(decision.selector) : undefined;
+    const node = decision.status === 'positive' && decision.selector ? indexed(decision.selector) : undefined;
+    return node ? { status: 'positive', node } : blocked;
   };
   return select(value);
 }
