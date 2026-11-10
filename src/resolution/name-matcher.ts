@@ -10,7 +10,8 @@ import { Language, Node, IMPLICIT_RECORD_ACCESSOR_DOC } from '../types';
 import { escapeRegExp, escapesRoot } from '../utils';
 import { UnresolvedRef, ResolvedRef, ResolutionContext, ImportMapping, isSupertypeTarget, CPP_DEFINE_SIGNATURE, isInheritanceRef, isImportableKind } from './types';
 import { blankStringContents, stripCommentsForRegex } from './strip-comments';
-import { clearCommonJsExportEvidence, commonJsExportDecision, commonJsExportEvidence, commonJsFallbackAllows, commonJsEvidenceFiles, commonJsImportShadowed } from './commonjs-export-evidence';
+import { readLexicalCommonJsExportMembers } from './commonjs-export-members';
+import { clearCommonJsExportEvidence, commonJsExportEvidence, commonJsEvidenceFiles, commonJsImportShadowed } from './commonjs-export-evidence';
 import { isJsSuperCallSite } from './js-super-calls';
 import { JS_ARRAY_METHODS, JS_BROWSER_HOST_GLOBALS, JS_BUILT_INS, JS_BUILTIN_METHODS, TS_PRIMITIVE_TYPES } from './js-builtins';
 import { SWIFT_TYPE_PATH_CALL, resolveSwiftTypePathCall } from './swift-type-visibility';
@@ -25400,11 +25401,8 @@ function isImportedModuleReceiver(receiver: string, member: string, ref: Unresol
       holderScopeAt(n, ref, false, context) !== null)) return false;
   const module = binding.isDefault ? defaultModuleNamespace(binding.source, ref.filePath, ref.language, context) : null;
   const firstMember = receiver.includes('.') ? receiver.slice(root.length + 1).split('.')[0]! : member;
-  // An unknown CommonJS answer lifts only this guard; matchReference keeps the
-  // result to the module's evidence files.
-  const unknownCommonJs = module?.commonJs === true && COMMONJS_UNKNOWN_REFS.has(ref);
   return binding.isNamespace ||
-    (!unknownCommonJs && (module?.commonJs === true || module?.namespace === true) && !module.members.has(firstMember)) ||
+    ((module?.commonJs === true || module?.namespace === true) && !module.members.has(firstMember)) ||
     context.isOutOfRepoImport?.(binding.source, ref.filePath, ref.language) === true;
 }
 
@@ -25443,7 +25441,19 @@ function defaultModuleNamespace(source: string, from: string, language: Language
       // No fact, complete or incomplete, licenses a global name guess.
       info = { namespace: true, commonJs: true, members, files: commonJsEvidenceFiles(file, context) };
     } else if (!/\bdefault\b|\bexport\s*=/.test(code)) {
-      info = { namespace: true, members, files };
+      // Outside the value model: the pre-model lexical reading. Follow only a
+      // whole-file forwarder; extra assignments or other code make the
+      // effective default uncertain. Named module.exports.x writes still
+      // describe the namespace, whereas any other use of module may replace it
+      // (including computed writes or assignment through an alias).
+      const forwarded = /^\s*(?:['"]use strict['"];\s*)?(?:exports\s*=\s*)?module\.exports\s*=\s*(?:exports\s*=\s*)?require\(\s*['"]([^'"]+)['"]\s*\)\s*;?\s*$/.exec(code);
+      if (forwarded) {
+        const next = defaultModuleNamespace(forwarded[1]!, file, language, context, seen);
+        info = { ...next, files: new Set([...files, ...next.files]) };
+      } else {
+        const exported = readLexicalCommonJsExportMembers(code, /\.(?:[cm]?js|[jt]sx)$/.test(file));
+        info = { namespace: !exported.uncertain, members: exported.members, files };
+      }
     }
   }
   // A depth/cycle cutoff says nothing about a shorter lookup of this file.
@@ -32157,45 +32167,19 @@ export function dumpNameMatcherProfile(label: string): void {
   }
 }
 
-const COMMONJS_UNKNOWN_REFS = new WeakSet<UnresolvedRef>();
-
-/**
- * The CommonJS answer for a call through an imported binding: a bare
- * `load()` or a member of a default `require()` binding. Positive answers were
- * the import resolver's to take, so here they count as blocked, as before.
- */
-function commonJsImportGate(ref: UnresolvedRef, context: ResolutionContext):
-    { status: 'blocked' } | { status: 'unknown'; files: ReadonlySet<string> } | undefined {
-  if (!JS_FAMILY.has(ref.language) || (ref.referenceKind !== 'calls' && ref.referenceKind !== 'instantiates')) return undefined;
-  const dot = ref.referenceName.indexOf('.');
-  const root = dot < 0 ? ref.referenceName : ref.referenceName.slice(0, dot);
-  const binding = context.getImportMappings?.(ref.filePath, ref.language)?.find(m => m.localName === root);
-  if (!binding || (dot >= 0 && (!binding.isDefault || ref.referenceKind !== 'calls'))) return undefined;
-  const file = context.resolveModuleFile?.(binding.source, ref.filePath, ref.language);
-  if (!file || !commonJsExportEvidence(file, context)?.commonJs) return undefined;
-  if (commonJsImportShadowed(ref.filePath, root, ref.line, ref.column, context)) return undefined;
-  const suffix = dot < 0 ? null : ref.referenceName.slice(dot + 1);
-  const member = binding.isDefault || binding.isNamespace ? suffix : [binding.exportedName, suffix].filter(Boolean).join('.');
-  const decision = commonJsExportDecision(file, member || null, context, ref.referenceKind === 'calls' ? 'callable' : 'constructible');
-  return decision.status === 'unknown' ? { status: 'unknown', files: commonJsEvidenceFiles(file, context) } : { status: 'blocked' };
-}
-
 export function matchReference(
   ref: UnresolvedRef,
   context: ResolutionContext
 ): ResolvedRef | null {
-  // Import resolution already tried this binding's callable/constructor
-  // evidence. A rejected CommonJS value cannot borrow a same-named global
-  // function; an unknown one may fall back, but only into its evidence files.
-  const commonJs = commonJsImportGate(ref, context);
-  if (commonJs?.status === 'blocked' && !ref.referenceName.includes('.')) return null;
-  let result: ResolvedRef | null;
-  if (commonJs?.status === 'unknown') {
-    COMMONJS_UNKNOWN_REFS.add(ref);
-    try { result = gateLanguageMatch(matchReferenceInner(ref, context), ref, context); }
-    finally { COMMONJS_UNKNOWN_REFS.delete(ref); }
-    if (!result || !commonJsFallbackAllows(context.getNodeById?.(result.targetNodeId), commonJs.files, ref.referenceKind)) return null;
-  } else result = gateLanguageMatch(matchReferenceInner(ref, context), ref, context);
+  // Import resolution already tried this binding's callable/constructor evidence.
+  // A rejected CommonJS value cannot borrow a same-named global function.
+  if (JS_FAMILY.has(ref.language) && (ref.referenceKind === 'calls' || ref.referenceKind === 'instantiates') && !ref.referenceName.includes('.')) {
+    const imported = context.getImportMappings?.(ref.filePath, ref.language)?.find(binding => binding.localName === ref.referenceName);
+    const file = imported && context.resolveModuleFile?.(imported.source, ref.filePath, ref.language);
+    if (file && commonJsExportEvidence(file, context)?.commonJs &&
+        !commonJsImportShadowed(ref.filePath, ref.referenceName, ref.line, ref.column, context)) return null;
+  }
+  const result = gateLanguageMatch(matchReferenceInner(ref, context), ref, context);
   // `this.container.classList.toggle()` inside `toggle()`, `window.$events
   // .listen()` inside `listen()`, Scala's `requestToArmeria(request).execute()`
   // inside `execute()`: a member of what the receiver is, which is the calling

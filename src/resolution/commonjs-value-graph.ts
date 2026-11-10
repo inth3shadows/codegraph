@@ -9,7 +9,7 @@ export interface CommonJsDeclaration {
 interface Reference { reference?: CommonJsDeclaration; referenceIdentity?: string }
 export type CommonJsValue = Reference & (
   { kind: 'data'; value: string | number | boolean | null | undefined; known: boolean } |
-  { kind: 'identity'; id: string } | { kind: 'unknown'; reason: string; cause?: string } |
+  { kind: 'identity'; id: string } | { kind: 'unknown'; reason: string } |
   { kind: 'absent' } | { kind: 'union'; values: CommonJsValue[] } |
   { kind: 'forward'; source: string; path: string[] }
 );
@@ -29,8 +29,8 @@ interface OwnedObject {
   properties: Map<string, CommonJsValue>;
   prototype?: CommonJsValue;
   closed: boolean;
-  /** Why the object stopped being closed: the first invalidation reason. */
-  openReason?: string;
+  /** Every reason the object was opened, in no order. */
+  openReasons?: Set<string>;
   source?: string;
 }
 
@@ -40,7 +40,7 @@ export class CommonJsValueGraph {
   readonly objects = new Map<string, OwnedObject>();
 
   data(value: Extract<CommonJsValue, { kind: 'data' }>['value'], known = true): CommonJsValue { return { kind: 'data', value, known }; }
-  unknown(reason: string, cause?: string): CommonJsValue { return cause ? { kind: 'unknown', reason, cause } : { kind: 'unknown', reason }; }
+  unknown(reason: string): CommonJsValue { return { kind: 'unknown', reason }; }
   absent(): CommonJsValue { return { kind: 'absent' }; }
   allocate(kind: OwnedObject['kind'], id: string, selector?: CommonJsDeclaration, constructible = false, source?: string): CommonJsValue {
     if (!this.objects.has(id)) this.objects.set(id, { kind, selector, constructible, source, properties: new Map(), closed: true });
@@ -72,7 +72,7 @@ export class CommonJsValueGraph {
     const object = this.objects.get(owner.id)!;
     if (object.properties.has(name)) return object.properties.get(name)!;
     if (object.source) return { kind: 'forward', source: object.source, path: [name] };
-    if (!object.closed) return this.unknown('incomplete properties', object.openReason);
+    if (!object.closed) return this.unknown('incomplete properties');
     return object.prototype ? this.read(object.prototype, name, seen) : this.absent();
   }
   invalidate(owner: CommonJsValue, reason: string): void {
@@ -80,7 +80,7 @@ export class CommonJsValueGraph {
     if (owner.kind !== 'identity') return;
     const object = this.objects.get(owner.id)!;
     object.closed = false;
-    object.openReason ??= reason;
+    (object.openReasons ??= new Set()).add(reason);
     for (const name of object.properties.keys()) object.properties.set(name, this.unknown(reason));
   }
   escape(value: CommonJsValue, reason: string, seen = new Set<string>()): void {
@@ -134,7 +134,7 @@ export class CommonJsValueGraph {
   fork(): CommonJsValueGraph {
     const clone = new CommonJsValueGraph();
     for (const [key, cell] of this.bindings) clone.bindings.set(key, cell);
-    for (const [id, object] of this.objects) clone.objects.set(id, { ...object, properties: new Map(object.properties) });
+    for (const [id, object] of this.objects) clone.objects.set(id, { ...object, properties: new Map(object.properties), openReasons: object.openReasons && new Set(object.openReasons) });
     return clone;
   }
   static join(left: CommonJsValueGraph, right: CommonJsValueGraph): CommonJsValueGraph {
@@ -152,7 +152,8 @@ export class CommonJsValueGraph {
         a.properties.get(name) ?? (a.closed ? result.absent() : result.unknown('incomplete branch')),
         b.properties.get(name) ?? (b.closed ? result.absent() : result.unknown('incomplete branch')),
       ]));
-      result.objects.set(id, { ...a, properties, closed: a.closed && b.closed,
+      const reasons = new Set([...a.openReasons ?? [], ...b.openReasons ?? []]);
+      result.objects.set(id, { ...a, properties, closed: a.closed && b.closed, openReasons: reasons.size ? reasons : undefined,
         prototype: a.prototype || b.prototype ? result.union([a.prototype ?? result.absent(), b.prototype ?? result.absent()]) : undefined });
     }
     return result;

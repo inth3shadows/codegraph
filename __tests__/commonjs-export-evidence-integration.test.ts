@@ -5,6 +5,7 @@ import * as path from 'path';
 import { CodeGraph } from '../src';
 import { runInNewContext } from 'node:vm';
 import { commonJsValueCases } from './fixtures/commonjs-value-cases';
+import { collectCommonJsExportEvidence as collect } from '../src/resolution/commonjs-export-evidence';
 
 const projects: Array<{ root: string; graph: CodeGraph }> = [];
 afterEach(() => {
@@ -213,68 +214,93 @@ describe.each(['./m', './index'])('named CommonJS values through %s', specifier 
   });
 });
 
-describe('unknown CommonJS evidence falls back within its evidence files (F17)', () => {
-  it.each([
-    ['constructed instance', 'class Foo { constructor(){ this.x=1; } load(){ return 1; } }\nmodule.exports = new Foo();\n', ['m.js:Foo::load']],
-    ['inherited instance', 'class Base { base(){} }\nclass Foo extends Base { load(){ return 1; } }\nmodule.exports = new Foo();\n', ['m.js:Foo::load']],
-    ['frozen object', 'const api = { load(){ return 1; } };\nObject.freeze(api);\nmodule.exports = api;\n', ['m.js:api::load']],
-    ['Object.assign', 'function load(){ return 42; }\nObject.assign(module.exports, { load });\n', ['m.js:load']],
-    ['defineProperty', "function load(){ return 42; }\nObject.defineProperty(module.exports, 'load', { value: load, enumerable: true });\n", ['m.js:load']],
-  ])('%s', async (label, source, expected) => {
-    // Baseline resolved assigned/defined members only through a destructured require.
-    const use = /assign|define/i.test(label) ? "const {load}=require('./m');function run(){return load();}" : "const svc=require('./m');function run(){return svc.load();}";
-    expect(calls(await index({ 'm.js': source, 'use.js': use }), 'run')).toEqual(expected);
-    // A same-named candidate elsewhere is never the fallback's answer; at
-    // worst the fallback declines.
-    const withDecoy = calls(await index({ 'm.js': source, 'use.js': use, 'decoy.js': 'class Decoy { load() {} }\nfunction load() {}\n' }), 'run');
-    expect(withDecoy.filter(target => !expected.includes(target))).toEqual([]);
-  });
-
-  it('follows spread re-exports into the spread modules', async () => {
-    const graph = await index({ 'a.js': 'function load(){ return 1; }\nmodule.exports = { load };\n',
-      'b.js': 'function save(){ return 2; }\nmodule.exports = { save };\n',
-      'index.js': "module.exports = { ...require('./a'), ...require('./b') };\n", 'decoy.js': 'function save() {}\n',
-      'use.js': "const { save } = require('./index');function run(){return save();}" });
-    expect(calls(graph, 'run')).toEqual(['b.js:save']);
-  });
-
+describe('opaque writes on a known value stay no-edge', () => {
   it.each([
     'const api={load:Store.prototype.load};opaque(api);module.exports=api;',
     'const api={load:Store.prototype.load};api[key]=42;module.exports=api;',
-  ])('never falls back to the storage variable: %s', async exportSource => {
+  ])('never resolves to the storage variable: %s', async exportSource => {
     const graph = await index({ 'm.js': `class Store { load() { return 42; } }\n${exportSource}`,
       'use.js': "const named=require('./m');function run(){return named.load();}" });
     expect(calls(graph, 'run')).toEqual([]);
   });
 });
 
-describe('sloppy-mode and closure-written CommonJS keep their import edges (F18, F19a)', () => {
+describe('sloppy-mode CommonJS stays in the model (F18)', () => {
   const use = "const svc=require('./m');const {helper}=require('./m');function run(){helper();return svc.main();}";
+  const body = 'function main(){ return 1; }\nfunction helper(){ return 2; }\nmodule.exports = { main, helper };\n';
   it.each([
-    ['hashbang', '#!/usr/bin/env node\nfunction main(){ return 1; }\nfunction helper(){ return 2; }\nmodule.exports = { main, helper };\n'],
-    ['legacy octal literal', 'var mode = 0755;\nfunction main(){ return mode; }\nfunction helper(){ return 2; }\nmodule.exports = { main, helper };\n'],
-    ['legacy octal escape', 'var s = "\\101";\nfunction main(){ return s; }\nfunction helper(){ return 2; }\nmodule.exports = { main, helper };\n'],
+    ['hashbang', `#!/usr/bin/env node\n${body}`],
+    ['hashbang after a BOM', `\uFEFF#!/usr/bin/env node\n${body}`],
+    ['legacy octal literal', `var mode = 0755;\n${body}`],
+    ['legacy octal escape', `var s = "\\101";\n${body}`],
+    ['leading-zero decimal', `var n = 08;\n${body}`],
+    ['escape \\8', `var s = "\\8";\n${body}`],
     ['Flow annotations', '// @flow\nfunction main(x: number): number { return x; }\nfunction helper(){ return 2; }\nmodule.exports = { main, helper };\n'],
   ])('%s', async (_label, source) => {
+    expect(collect(source, 'm.js').commonJs).toBe(true);
     expect(calls(await index({ 'm.js': source, 'use.js': use }), 'run')).toEqual(['m.js:helper', 'm.js:main']);
   });
 
-  it('an unparsable file falls back instead of blocking its imports', async () => {
-    const source = '<!-- legacy\nfunction main(){ return 1; }\nfunction helper(){ return 2; }\nmodule.exports = { main, helper };\n';
-    const graph = await index({ 'm.js': source, 'use.js': use, 'decoy.js': 'function helper() {}\nfunction main() {}\n' });
-    expect(calls(graph, 'run').filter(target => !target.startsWith('m.js:'))).toEqual([]);
+  it('a hashbang ended by a lone CR stays modelled and resolves as before', async () => {
+    // The extractor reads `function main` as part of the hashbang line, as it
+    // did before the model; only helper has a node to resolve to.
+    const source = `#!/usr/bin/env node\r${body}`;
+    expect(collect(source, 'm.js').members).toHaveProperty('main');
+    expect(calls(await index({ 'm.js': source, 'use.js': use }), 'run')).toEqual(['m.js:helper']);
   });
 
-  it.each([
-    ['function IIFE', "(function(){\n  'use strict';\n  function main(){ return 1; }\n  function helper(){ return 2; }\n  module.exports = { main: main, helper: helper };\n})();\n"],
-    ['arrow IIFE', '(() => {\n  function main(){ return 1; }\n  function helper(){ return 2; }\n  module.exports = { main, helper };\n})();\n'],
-  ])('%s', async (_label, source) => {
-    expect(calls(await index({ 'm.js': source, 'use.js': use }), 'run')).toEqual(['m.js:helper', 'm.js:main']);
+  it('an unparsable file leaves the model', () => {
+    expect(collect(`<!-- legacy\n${body}`, 'm.js')).toMatchObject({ commonJs: false, unmodeled: 'unparsed source' });
   });
 
   it('a callback that never writes exports keeps exports closed', async () => {
     const source = 'function main(){ return 1; }\n[1].forEach(function(x){ return x; });\nmodule.exports = { main };\n';
     const graph = await index({ 'm.js': source, 'decoy.js': 'function helper() {}\n', 'use.js': use });
     expect(calls(graph, 'run')).toEqual(['m.js:main']);
+  });
+});
+
+describe('a file outside the value model resolves exactly as before the model', () => {
+  // Each expectation is the pre-PR (87576a8d) graph for the same files.
+  it.each([
+    ["ctorcls", {"c.js":"const svc=require('./m');\nfunction run(){ return svc.load(); }\nmodule.exports=run;\n","m.js":"class Foo {\n  constructor(){ this.x=1; }\n  load(){ return 1; }\n}\nmodule.exports = new Foo();\n"}, ["m.js:Foo::load"], "incomplete: custom construction/inheritance outside contract"],
+    ["extcls", {"c.js":"const svc=require('./m');\nfunction run(){ svc.base(); return svc.load(); }\nmodule.exports=run;\n","m.js":"class Base { base(){ return 2; } }\nclass Foo extends Base {\n  load(){ return 1; }\n}\nmodule.exports = new Foo();\n"}, ["m.js:Base::base","m.js:Foo::load"], "incomplete: custom construction/inheritance outside contract"],
+    ["evbus", {"c.js":"const bus=require('./m');\nfunction run(){ bus.publish(1); }\nmodule.exports=run;\n","m.js":"const EventEmitter = require('events');\nclass Bus extends EventEmitter {\n  publish(x){ this.emit('x', x); }\n}\nmodule.exports = new Bus();\n"}, ["m.js:Bus::publish"], "incomplete: custom construction/inheritance outside contract"],
+    ["oassign", {"c.js":"const api = require('./m');\nconst { load } = require('./m');\nfunction run(){ load(); return api.load(); }\nmodule.exports = run;\n","m.js":"function load(){ return 42; }\nObject.assign(module.exports, { load });\n"}, ["m.js:load"], "incomplete: unmodeled builtin write"],
+    ["spreadreq", {"a.js":"function load(){ return 1; }\nmodule.exports = { load };\n","b.js":"function save(){ return 2; }\nmodule.exports = { save };\n","c.js":"const api = require('./index');\nconst { save } = require('./index');\nfunction run(){ save(); return api.load(); }\nmodule.exports = run;\n","index.js":"module.exports = {\n  ...require('./a'),\n  ...require('./b'),\n};\n"}, ["b.js:save"], null],
+    ["iife", {"c.js":"const lib = require('./m');\nconst { load } = require('./m');\nfunction run(){ load(); return lib.load(); }\nmodule.exports = run;\n","m.js":"(function(){\n  'use strict';\n  function load(){ return 1; }\n  module.exports = { load: load };\n})();\n"}, ["m.js:load","m.js:load"], "unmodeled use of module.exports"],
+    ["thisexp2", {"c.js":"const { load } = require('./m');\nfunction run(){ return load(); }\nmodule.exports=run;\n","m.js":"function load(){ return 1; }\nthis.load = load;\n"}, ["m.js:load"], "top-level this"],
+    ["topret", {"c.js":"const api = require('./m');\nconst { load } = require('./m');\nfunction run(){ load(); return api.load(); }\nmodule.exports = run;\n","m.js":"function load(){ return 1; }\nexports.load = load;\nif (exports.load) return;\nexports.load = 42;\n"}, ["m.js:load","m.js:load"], "top-level return"],
+    ["interop", {"c.ts":"import load, { helper } from './m';\nexport function run(){ helper(); return load(); }\n","e.mjs.js":"import load from './m';\nexport function run2(){ return load(); }\n","m.js":"\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.helper = helper;\nexports.default = load;\nfunction load(){ return 1; }\nfunction helper(){ return 2; }\n"}, ["m.js:helper","m.js:load"], "ES module interop default"],
+    ["callthis", {"m.js":"function main(){return 1;}\nfunction helper(){return 2;}\n(function(){ module.exports={main,helper}; }).call(this);\n","use.js":"const svc=require(\"./m\");const {helper}=require(\"./m\");function run(){helper();return svc.main();}\n"}, ["m.js:helper"], "unmodeled use of module.exports"],
+    ["newfn", {"m.js":"function main(){return 1;}\nfunction helper(){return 2;}\nnew function(){ module.exports={main,helper}; };\n","use.js":"const svc=require(\"./m\");const {helper}=require(\"./m\");function run(){helper();return svc.main();}\n"}, ["m.js:helper"], "unmodeled use of module.exports"],
+    ["aliasiife", {"m.js":"function main(){return 1;}\nfunction helper(){return 2;}\nconst api=module.exports={};\n(function(){ api.main=main; api.helper=helper; })();\n","use.js":"const svc=require(\"./m\");const {helper}=require(\"./m\");function run(){helper();return svc.main();}\n"}, ["m.js:helper"], "unmodeled use of exports"],
+    ["varclosure", {"m.js":"function main(){return 1;}\nfunction helper(){return 2;}\nconst init=()=>{ module.exports={main,helper}; };\ninit();\n","use.js":"const svc=require(\"./m\");const {helper}=require(\"./m\");function run(){helper();return svc.main();}\n"}, ["m.js:helper"], "unmodeled use of module.exports"],
+    ["fwd1", {"impl.js":"function load(){return 1;}\nObject.assign(exports,{load});\n","index.js":"module.exports = require('./impl');\n","use.js":"const {load}=require(\"./index\");function run(){return load();}\n"}, ["impl.js:load"], null],
+    ["mixb", {"m.js":"function load(){return 1;}\nObject.assign(exports,{load});delete exports.load;\n","use.js":"const {load}=require(\"./m\");function run(){return load();}\n"}, ["m.js:load"], "unmodeled use of exports"],
+    ["initfn", {"c.js":"const lib = require('./m');\nconst { helper } = require('./m');\nfunction run(){ helper(); return lib.load(); }\nmodule.exports = run;\n","m.js":"function load(){ return 1; }\nfunction helper(){ return 2; }\nfunction init(){ module.exports.load = load; module.exports.helper = helper; }\ninit();\n"}, ["m.js:helper"], "unmodeled use of module.exports"],
+    ["namedcb", {"c.js":"const lib = require('./m');\nconst { helper } = require('./m');\nfunction run(){ helper(); return lib.load(); }\nmodule.exports = run;\n","m.js":"function load(){ return 1; }\nfunction helper(){ return 2; }\nfunction install(name){ module.exports[name] = name === 'load' ? load : helper; }\n['load','helper'].forEach(install);\n"}, ["m.js:helper"], "unmodeled use of module.exports"],
+    ["clobber", {"c.js":"const lib = require('./m');\nconst { load } = require('./m');\nfunction run(){ load(); return lib.load(); }\nmodule.exports = run;\n","m.js":"class Impl { load(){ return 1; } }\nexports.load = 42;\nObject.assign(exports, { impl: new Impl() });\n"}, ["m.js:Impl::load"], "incomplete: unmodeled builtin write"],
+    ["fwdesm", {"c.js":"const lib = require('./m');\nconst { helper } = require('./m');\nfunction run(){ helper(); return lib.load(); }\nmodule.exports = run;\n","impl.js":"export function load(){ return 1; }\nexport function helper(){ return 2; }\n","m.js":"module.exports = require('./impl');\n"}, ["impl.js:helper","impl.js:load"], null],
+  ] as const)('%s', async (_name, files, expected, reason) => {
+    const m = Object.keys(files).find(file => file === 'm.js');
+    if (reason && m) expect(collect(files[m as keyof typeof files] as string, m)).toMatchObject({ commonJs: false, unmodeled: reason });
+    expect(calls(await index(files), 'run')).toEqual(expected);
+  });
+});
+
+describe('files the value model keeps', () => {
+  it.each([
+    ["frozen object", {"c.js":"const m=require('./m');\nfunction run(){ return m.load(); }\nmodule.exports=run;\n","m.js":"const api = { load(){ return 1; } };\nObject.freeze(api);\nmodule.exports = api;\n"}, ["m.js:api::load"]],
+    ["legacy octal", {"c.js":"const util = require('./m');\nconst { mkdir } = require('./m');\nfunction run(){ mkdir('x'); return util.load(); }\nmodule.exports = run;\n","m.js":"var fs = require('fs');\nfunction mkdir(p){ return fs.mkdirSync(p, 0755); }\nfunction load(){ return 1; }\nmodule.exports = { mkdir: mkdir, load: load };\n"}, ["m.js:load","m.js:mkdir"]],
+    ["hashbang", {"c.js":"const cli=require('./m');\nconst { helper } = require('./m');\nfunction run(){ helper(); return cli.main(); }\nmodule.exports=run;\n","m.js":"#!/usr/bin/env node\nfunction main(){ return 1; }\nfunction helper(){ return 2; }\nmodule.exports = { main, helper };\n"}, ["m.js:helper","m.js:main"]],
+    ["literal-key data descriptor", {"c.js":"const api = require('./m');\nconst { load } = require('./m');\nfunction run(){ load(); return api.load(); }\nmodule.exports = run;\n","m.js":"function load(){ return 42; }\nObject.defineProperty(module.exports, 'load', { value: load, enumerable: true });\n"}, ["m.js:load","m.js:load"]],
+    ["hoisted function first read in an if arm", {"c.js":"const cli = require('./m');\nconst { parse } = require('./m');\nfunction run(){ parse('y'); return cli.main(); }\nmodule.exports = run;\n","m.js":"if (require.main === module) {\n  main();\n}\nmodule.exports = { main, parse };\nfunction main(){ return parse('x'); }\nfunction parse(s){ return s; }\n"}, ["m.js:main","m.js:parse"]],
+    ["__esModule marker keeps an unexported helper unlinked (R13-4)", {"m.js":"\"use strict\";\nObject.defineProperty(exports, \"__esModule\", { value: true });\nexports.main = void 0;\nfunction helper(){ return 2; }\nfunction main(){ return helper(); }\nexports.main = main;\n","use.js":"const svc=require(\"./m\");\nconst {helper}=require(\"./m\");\nfunction run(){ svc.helper(); helper(); return svc.main(); }\n"}, ["m.js:main"]],
+    ["a closure that only reads module stays modeled (S8)", {"c.js":"const lib = require('./m');\nconst { load } = require('./m');\nfunction run(){ load(); return lib.load(); }\nmodule.exports = run;\n","m.js":"class Impl { load(){ return 1; } }\nexports.load = 42;\nprocess.nextTick(() => { if (require.main === module) console.log('main'); });\n"}, []],
+    ["constructor function with prototype methods", {"c.js":"const { load } = require('./m');\nfunction run(){ return load(); }\nmodule.exports=run;\n","m.js":"function Foo(){}\nFoo.prototype.load = function load(){ return 1; };\nconst foo = new Foo();\nmodule.exports = { load: foo.load };\n"}, ["m.js:load"]],
+  ] as const)('%s', async (_label, files, expected) => {
+    expect(collect(files['m.js' as keyof typeof files] as string, 'm.js').commonJs).toBe(true);
+    expect(calls(await index(files), 'run')).toEqual(expected);
   });
 });

@@ -16,7 +16,14 @@ export interface CommonJsExportEvidence {
   exported: CommonJsValue;
   members: Record<string, Declaration[]>;
   forwards: string[];
+  /** Modules the whole exported value forwards into (`module.exports = require(…)`). */
+  exportForwards: string[];
   unknown: boolean;
+  /**
+   * Why this file is outside the model, when it is. Such a record has
+   * commonJs false, so every resolver takes its pre-model path for the file.
+   */
+  unmodeled?: string;
   importShadows: Array<{ name: string; startLine: number; startColumn: number; endLine: number; endColumn: number }>;
 }
 
@@ -28,6 +35,35 @@ const records = new WeakMap<ResolutionContext, Map<string, { source: string; rec
 export function clearCommonJsExportEvidence(context: ResolutionContext): void { records.delete(context); }
 
 export function commonJsExportEvidence(file: string, context: ResolutionContext): CommonJsExportEvidence | undefined {
+  const record = commonJsExportEvidenceOf(file, context);
+  return record && forwardsOutside(file, record, context);
+}
+
+const outsideCopies = new WeakMap<CommonJsExportEvidence, CommonJsExportEvidence>();
+/**
+ * A modelled file whose exports forward into a file outside the model (ESM,
+ * unparsed, unmodelled) is outside it too: the model cannot answer for the
+ * forwarded part, and the pre-model path can. Checked on every read, since it
+ * depends on other files.
+ */
+function forwardsOutside(file: string, record: CommonJsExportEvidence, context: ResolutionContext, seen = new Set<string>()): CommonJsExportEvidence {
+  if (!record.commonJs || !record.exportForwards.length) return record;
+  seen.add(file);
+  for (const source of record.exportForwards) {
+    const next = context.resolveModuleFile?.(source, file, 'javascript');
+    if (!next || seen.has(next) || seen.size >= 8) continue;
+    const target = commonJsExportEvidenceOf(next, context);
+    if (target && forwardsOutside(next, target, context, seen).commonJs) continue;
+    if (!/\.[cm]?[jt]sx?$/.test(next) || /\.d\.[cm]?ts$/.test(next)) continue;
+    let copy = outsideCopies.get(record);
+    if (!copy) outsideCopies.set(record, copy = { ...record, commonJs: false, unmodeled: 'forward outside the model', unknown: true });
+    return copy;
+  }
+  return record;
+}
+
+/** The cached record of one file, without the cross-file forward check. */
+function commonJsExportEvidenceOf(file: string, context: ResolutionContext): CommonJsExportEvidence | undefined {
   if (!/\.[cm]?[jt]sx?$/.test(file) || /\.d\.[cm]?ts$/.test(file)) return undefined;
   const source = context.readFile(file);
   if (source === null) return undefined;
@@ -45,28 +81,16 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
   const ts = api();
   const result: CommonJsExportEvidence = {
     version: 2, graph: new CommonJsValueGraph(), exported: { kind: 'unknown', reason: 'not analyzed' }, sourceHash: createHash('sha256').update(source).digest('hex'),
-    commonJs: true, defaults: [], members: Object.create(null) as Record<string, Declaration[]>, forwards: [], unknown: false, importShadows: [],
+    commonJs: true, defaults: [], members: Object.create(null) as Record<string, Declaration[]>, forwards: [], exportForwards: [], unknown: false, importShadows: [],
   };
   const unwrap = (expression: TS.Expression): TS.Expression => {
     while (ts.isParenthesizedExpression(expression) || ts.isAsExpression(expression) || ts.isNonNullExpression(expression)) expression = expression.expression;
     return expression;
   };
-  const touchesWrapperExports = (body: TS.Node, b: { isBinding: (expression: TS.Expression, name: string) => boolean }): boolean => {
-    let found = false;
-    const scan = (child: TS.Node): void => {
-      if (found) return;
-      const propertyName = (ts.isPropertyAccessExpression(child.parent) && child.parent.name === child) ||
-        ((ts.isPropertyAssignment(child.parent) || ts.isMethodDeclaration(child.parent)) && child.parent.name === child);
-      if (!propertyName && ts.isIdentifier(child) && (b.isBinding(child, 'module') || b.isBinding(child, 'exports'))) { found = true; return; }
-      ts.forEachChild(child, scan);
-    };
-    scan(body);
-    return found;
-  };
   const bind = (text: string) => {
     // A hashbang is legal only at offset 0, which the wrapper moves; blank it
-    // in place so every later offset is unchanged (F18).
-    text = text.replace(/^#![^\n]*/, line => ' '.repeat(line.length));
+    // in place (after any BOM) so every later offset is unchanged.
+    text = text.replace(/^(\uFEFF?)#![^\n\r\u2028\u2029]*/, (line, bom: string) => bom + ' '.repeat(line.length - bom.length));
     const prefix = 'function __codegraph_cjs(exports, require, module, __filename, __dirname) {\n';
     const filename = `/${file}`;
     const tree = ts.createSourceFile(filename, `${prefix}${text}\n}`, ts.ScriptTarget.Latest, true,
@@ -90,6 +114,149 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
       !(diagnostic.code >= 8002 && diagnostic.code <= 8017)), prefix: prefix.length };
   };
   type Bound = ReturnType<typeof bind>;
+  const functionLike = (node: TS.Node): boolean => ts.isFunctionLike(node) || ts.isClassStaticBlockDeclaration(node) ||
+    ts.isPropertyDeclaration(node);
+  /**
+   * Rule 1, an allowlist over uses of the CommonJS bindings (webpack/esbuild
+   * bail out the same way): every reference to `module`, `exports`,
+   * `module.exports` or a top-level alias of them must sit in a position this
+   * analysis models. Any other use leaves the model, so a shape nobody listed
+   * bails instead of reading as complete absence.
+   */
+  const bindingUses = (body: TS.Block, b: Bound): string | undefined => {
+    const skip = (node: TS.Node): TS.Node => {
+      let parent = node.parent;
+      while (parent && (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent) || ts.isNonNullExpression(parent))) { node = parent; parent = node.parent; }
+      return node;
+    };
+    // aliases: other names for the exports object; values: top-level values
+    // written into it, whose members a nested function must not write either.
+    const aliases = new Set<TS.Symbol>(), values = new Set<TS.Symbol>();
+    const exportsObject = (expression: TS.Expression): boolean => {
+      expression = unwrap(expression);
+      if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.EqualsToken) return exportsObject(expression.left) || exportsObject(expression.right);
+      if (moduleExports(expression)) return true;
+      if (!ts.isIdentifier(expression)) return false;
+      const symbol = b.symbol(expression);
+      return b.isBinding(expression, 'exports') || (symbol !== undefined && aliases.has(symbol));
+    };
+    function moduleExports(expression: TS.Expression): boolean {
+      expression = unwrap(expression);
+      const name = ts.isPropertyAccessExpression(expression) ? expression.name.text :
+        ts.isElementAccessExpression(expression) && ts.isStringLiteralLike(unwrap(expression.argumentExpression)) ? (unwrap(expression.argumentExpression) as TS.StringLiteralLike).text : undefined;
+      return name === 'exports' && b.isBinding((expression as TS.PropertyAccessExpression).expression, 'module');
+    }
+    const rootOf = (expression: TS.Expression): TS.Expression => {
+      expression = unwrap(expression);
+      while (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+        if (moduleExports(expression)) return expression;
+        expression = unwrap(expression.expression);
+      }
+      return expression;
+    };
+    let changed = true;
+    const collect = (node: TS.Node): void => {
+      if (functionLike(node)) return;
+      const add = (set: Set<TS.Symbol>, name: TS.Node): void => {
+        const symbol = ts.isIdentifier(name) ? b.symbol(name) : undefined;
+        if (symbol && !set.has(symbol)) { set.add(symbol); changed = true; }
+      };
+      if (ts.isVariableDeclaration(node) && node.initializer && exportsObject(node.initializer)) add(aliases, node.name);
+      if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+        if (ts.isIdentifier(unwrap(node.left)) && exportsObject(node.right) && !exportsObject(node.left)) add(aliases, unwrap(node.left));
+        const root = rootOf(node.left);
+        if (exportsObject(root)) {
+          const value = unwrap(node.right);
+          if (ts.isIdentifier(value)) add(values, value);
+          else if (ts.isObjectLiteralExpression(value)) for (const item of value.properties) {
+            if (ts.isShorthandPropertyAssignment(item)) add(values, item.name);
+            else if (ts.isPropertyAssignment(item) && ts.isIdentifier(unwrap(item.initializer))) add(values, unwrap(item.initializer));
+          }
+        }
+      }
+      ts.forEachChild(node, collect);
+    };
+    for (let round = 0; changed && round < 4; round++) { changed = false; collect(body); }
+    const writeTarget = (node: TS.Node): boolean => {
+      const parent = skip(node).parent;
+      return (ts.isBinaryExpression(parent) && parent.left === skip(node) && parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+          parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment) ||
+        ((ts.isPrefixUnaryExpression(parent) || ts.isPostfixUnaryExpression(parent)) &&
+          (parent.operator === ts.SyntaxKind.PlusPlusToken || parent.operator === ts.SyntaxKind.MinusMinusToken));
+    };
+    /** Whether one use of the exports object `node` is modelled. */
+    const allowed = (node: TS.Expression, nested: boolean): boolean => {
+      const outer = skip(node), parent = outer.parent;
+      // A member: reads anywhere; writes only where the walk sees them.
+      if ((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === outer) {
+        let member: TS.Node = parent;
+        while ((ts.isPropertyAccessExpression(skip(member).parent) || ts.isElementAccessExpression(skip(member).parent)) &&
+          (skip(member).parent as TS.PropertyAccessExpression).expression === skip(member)) member = skip(member).parent;
+        if (ts.isDeleteExpression(skip(member).parent)) return false;
+        return !(nested && writeTarget(member));
+      }
+      if (ts.isTypeOfExpression(parent)) return true;
+      if (ts.isBinaryExpression(parent) && [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken,
+        ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken].includes(parent.operatorToken.kind)) return true;
+      if (nested) return false;
+      // Top level: assignments, aliases, and call arguments (an opaque call
+      // makes its arguments' members unknown, which the walk records).
+      if (ts.isBinaryExpression(parent) && parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment) return true;
+      if (ts.isVariableDeclaration(parent) && parent.initializer === outer) return true;
+      if ((ts.isCallExpression(parent) || ts.isNewExpression(parent)) && parent.arguments?.includes(outer as TS.Expression)) return true;
+      return ts.isExpressionStatement(parent);
+    };
+    let found: string | undefined;
+    const fail = (reason: string): void => { found ??= reason; };
+    const scan = (node: TS.Node, nested: boolean, thisBound: boolean): void => {
+      if (found) return;
+      // `this` at top level (or in a top-level arrow) is module.exports.
+      if (!thisBound && node.kind === ts.SyntaxKind.ThisKeyword) return fail('top-level this');
+      // A top-level return ends the module where the walk keeps going.
+      if (!nested && ts.isReturnStatement(node)) return fail('top-level return');
+      // A declaration's own name is not a use of what it is initialised to.
+      const declared = (ts.isVariableDeclaration(node.parent) || ts.isParameter(node.parent) || ts.isBindingElement(node.parent) ||
+        ts.isFunctionDeclaration(node.parent) || ts.isFunctionExpression(node.parent) || ts.isClassDeclaration(node.parent) ||
+        ts.isClassExpression(node.parent)) && node.parent.name === node;
+      if (ts.isIdentifier(node) && !declared && !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node) &&
+          !((ts.isPropertyAssignment(node.parent) || ts.isMethodDeclaration(node.parent) || ts.isPropertyDeclaration(node.parent)) && node.parent.name === node)) {
+        const symbol = b.symbol(node);
+        if (b.isBinding(node, 'module')) {
+          const parent = skip(node).parent;
+          if ((ts.isPropertyAccessExpression(parent) || ts.isElementAccessExpression(parent)) && parent.expression === skip(node)) {
+            if (moduleExports(parent)) { if (!allowed(parent, nested)) return fail('unmodeled use of module.exports'); }
+            else if (ts.isDeleteExpression(skip(parent).parent)) return fail('unmodeled use of module');
+          } else if (!ts.isTypeOfExpression(parent) && !(ts.isBinaryExpression(parent) && [ts.SyntaxKind.EqualsEqualsEqualsToken,
+            ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken].includes(parent.operatorToken.kind)) &&
+            !(!nested && (ts.isCallExpression(parent) || ts.isNewExpression(parent)) && parent.arguments?.includes(skip(node) as TS.Expression))) return fail('unmodeled use of module');
+        } else if (b.isBinding(node, 'exports') || (symbol && aliases.has(symbol))) {
+          if (!allowed(node, nested)) return fail('unmodeled use of exports');
+        } else if (symbol && values.has(symbol) && nested) {
+          // A member of an exported value written where the walk does not go.
+          let member: TS.Node = skip(node);
+          while ((ts.isPropertyAccessExpression(member.parent) || ts.isElementAccessExpression(member.parent)) &&
+            (member.parent as TS.PropertyAccessExpression).expression === member) member = skip(member.parent);
+          if (member !== skip(node) && (writeTarget(member) || ts.isDeleteExpression(member.parent))) return fail('unmodeled write to an exported value');
+        }
+      }
+      ts.forEachChild(node, child => { scan(child, nested || functionLike(child), thisBound || (functionLike(child) && !ts.isArrowFunction(child))); });
+    };
+    scan(body, false, false);
+    return found;
+  };
+  /** `Object.defineProperty(target, 'name', { value })` with a literal key and a plain data descriptor. */
+  const dataDefinition = (node: TS.CallExpression): { target: TS.Expression; name: string; value: TS.Expression } | undefined => {
+    const [target, key, descriptor] = node.arguments.map(unwrap);
+    if (node.arguments.length !== 3 || !target || !key || !descriptor || !ts.isStringLiteralLike(key) ||
+        key.text === '__proto__' || key.text === 'prototype' || !ts.isObjectLiteralExpression(descriptor)) return undefined;
+    let value: TS.Expression | undefined;
+    for (const item of descriptor.properties) {
+      if (!ts.isPropertyAssignment(item) || !(ts.isIdentifier(item.name) || ts.isStringLiteralLike(item.name))) return undefined;
+      if (item.name.text === 'value') value = item.initializer;
+      else if (!['enumerable', 'writable', 'configurable'].includes(item.name.text)) return undefined;
+    }
+    return value ? { target, name: key.text, value } : undefined;
+  };
   const bound = bind(source);
   const position = (offset: number) => {
     const before = source.slice(0, Math.max(0, offset));
@@ -142,11 +309,20 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
     result.commonJs = false;
     return result;
   }
-  if (bound.diagnostics.length || !bound.wrapper.body) {
-    result.unknown = true;
-    result.exported = result.graph.unknown('unparsed source');
+  const unmodeled = (reason: string): CommonJsExportEvidence => {
+    result.commonJs = false; result.unmodeled = reason; result.unknown = true;
+    result.graph = new CommonJsValueGraph(); result.exported = { kind: 'unknown', reason };
+    result.defaults = []; result.members = Object.create(null) as Record<string, Declaration[]>; result.forwards = []; result.exportForwards = [];
     return result;
-  }
+  };
+  if (bound.diagnostics.length || !bound.wrapper.body) return unmodeled('unparsed source');
+  const uses = bindingUses(bound.wrapper.body, bound);
+  if (uses) return unmodeled(uses);
+  // Function declarations are hoisted: bind them before any branch forks the
+  // graph, so one first read inside an `if` arm is not a one-armed binding.
+  const hoist = (statement: TS.Statement): void => {
+    if (ts.isFunctionDeclaration(statement) && statement.name) { const symbol = bound.symbol(statement.name); if (symbol) symbolValue(symbol, bound, offset => offset); }
+  };
   let graph = result.graph;
   const module = graph.allocate('object', `${file}:module`);
   const namespace = graph.allocate('object', `${file}:namespace`);
@@ -174,6 +350,15 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
     return selector ? `${file}:binding:${selector.line}:${selector.column}` : `${file}:synthetic:${symbol.name}`;
   };
   const processed = new Set<string>();
+  const emptyBodies = new Set<string>();
+  /** A constructible function owns a prototype object, as a class does. */
+  const constructorFunction = (fn: CommonJsValue, selector: Declaration, body: TS.Node | undefined): CommonJsValue => {
+    if (fn.kind !== 'identity') return fn;
+    if (body && ts.isBlock(body) && !body.statements.length) emptyBodies.add(fn.id);
+    const object = graph.objects.get(fn.id)!;
+    if (!object.properties.has('prototype')) graph.write(fn, 'prototype', graph.allocate('object', `${identity(selector)}:prototype`));
+    return fn;
+  };
   const unsupportedClasses = new Set<string>();
   const seeding = new Set<string>();
   const typeValue = (type: TS.Type, at: TS.Node, b: Bound, map: (offset: number) => number, id: string): CommonJsValue => {
@@ -195,7 +380,10 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
   const seedType = (owner: CommonJsValue, type: TS.Type, _at: TS.Node, b: Bound, map: (offset: number) => number): void => {
     if (owner.kind !== 'identity' || seeding.has(owner.id)) return;
     seeding.add(owner.id);
-    if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) graph.objects.get(owner.id)!.closed = false;
+    if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) {
+      const object = graph.objects.get(owner.id)!;
+      object.closed = false; (object.openReasons ??= new Set()).add('unresolved type');
+    }
     for (const property of type.getProperties()) {
       if (property.name === 'prototype' || property.name.startsWith('__@') || graph.objects.get(owner.id)!.properties.has(property.name)) continue;
       const values: CommonJsValue[] = [];
@@ -221,7 +409,7 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
     const selector = node && declaration(node, b, map);
     let value: CommonJsValue = graph.unknown('binding has no established value');
     if (node && selector && (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node))) {
-      value = graph.allocate('function', identity(selector), selector, true);
+      value = constructorFunction(graph.allocate('function', identity(selector), selector, true), selector, node.body);
       graph.bind(key, value, selector);
       seedType(value, b.checker.getTypeOfSymbolAtLocation(symbol, node), node, b, map);
     } else if (node && selector && (ts.isClassDeclaration(node) || ts.isClassExpression(node))) {
@@ -282,7 +470,9 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
     }
     if (ts.isFunctionExpression(expression) || ts.isArrowFunction(expression)) {
       const selector = declaration(expression, b, map);
-      return selector ? graph.allocate('function', identity(selector), selector, ts.isFunctionExpression(expression)) : graph.unknown('unindexed synthetic declaration');
+      if (!selector) return graph.unknown('unindexed synthetic declaration');
+      const fn = graph.allocate('function', identity(selector), selector, ts.isFunctionExpression(expression));
+      return ts.isFunctionExpression(expression) ? constructorFunction(fn, selector, expression.body) : fn;
     }
     const member = property(expression, b, map);
     if (member) {
@@ -300,8 +490,6 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
           const selector = declaration(item, b, map);
           if (selector?.name) graph.write(value, selector.name, graph.allocate('function', identity(selector), selector));
         } else {
-          // `...require('./a')` still names a module the value may come from.
-          if (ts.isSpreadAssignment(item)) valueOf(item.expression, b, map);
           graph.invalidate(value, ts.isSpreadAssignment(item) ? 'object spread' : 'unmodeled object member');
         }
       }
@@ -315,6 +503,11 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
         const unsupported = !selector || unsupportedClasses.has(cls.id);
         if (unsupported) return graph.unknown('custom construction/inheritance outside contract');
         graph.setPrototype(value, graph.read(cls, 'prototype'));
+      } else if (cls.kind === 'identity' && graph.objects.get(cls.id)?.kind === 'function' && graph.objects.get(cls.id)?.constructible) {
+        // `new Foo()` on a constructor function: Foo.prototype's members,
+        // plus whatever its body writes to `this`, which the walk does not see.
+        graph.setPrototype(value, graph.read(cls, 'prototype'));
+        if (!emptyBodies.has(cls.id)) graph.invalidate(value, 'constructor function body');
       }
       else seedType(value, b.checker.getTypeAtLocation(expression), expression, b, map);
       return value;
@@ -335,8 +528,13 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
       bindPattern(element.name, key === undefined ? graph.unknown('binding pattern') : graph.read(value, key), b, map);
     }
   };
-  const write = (left: TS.Expression, value: CommonJsValue, b: Bound, map: (offset: number) => number, weak: boolean): void => {
+  const write = (left: TS.Expression, value: CommonJsValue, b: Bound, map: (offset: number) => number, weak: boolean, name?: string): void => {
     left = unwrap(left);
+    if (name !== undefined) {
+      const owner = valueOf(left, b, map);
+      graph.write(owner, name, weak ? graph.union([graph.read(owner, name), value]) : value);
+      return;
+    }
     if (ts.isIdentifier(left)) {
       const symbol = b.symbol(left); if (!symbol) return;
       const key = binding(symbol, b, map), prior = graph.get(key);
@@ -396,12 +594,13 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
       const callee = unwrap(node.expression);
       const intrinsicEval = ts.isIdentifier(callee) && callee.text === 'eval' && !b.symbol(callee);
       if (!(intrinsicEval && !node.questionDotToken) && !b.isBinding(callee, 'require')) {
-        // `Object.freeze(api)` changes no member; `Object.assign(exports, …)`
-        // writes members this analysis does not model, so ordinary matching may
-        // still answer for them (FALLBACK_CAUSES).
         const builtin = ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && callee.expression.text === 'Object' &&
           !b.symbol(callee.expression) ? callee.name.text : undefined;
-        if (!(builtin && OBJECT_READS.has(builtin))) for (const argument of node.arguments)
+        const definition = builtin === 'defineProperty' ? dataDefinition(node) : undefined;
+        // `Object.freeze(api)` changes no member. A literal-key data
+        // descriptor (the `__esModule` marker) is one ordinary write.
+        if (definition) write(definition.target, valueOf(definition.value, b, map), b, map, weak, definition.name);
+        if (!definition && !(builtin && OBJECT_READS.has(builtin))) for (const argument of node.arguments)
           graph.escape(valueOf(argument, b, map), builtin && OBJECT_WRITES.has(builtin) ? 'unmodeled builtin write' : 'opaque call argument');
         const receiver = property(callee, b, map);
         if (receiver) graph.escape(receiver.owner, 'opaque method receiver');
@@ -422,11 +621,6 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
             effects(declaration.body);
           }
         }
-        // An IIFE, UMD factory or callback that writes module/exports runs
-        // code this walk does not enter; its writes are unknown, not absent (F19a).
-        const closures = [callee, ...node.arguments.map(unwrap)].filter((fn): fn is TS.FunctionExpression | TS.ArrowFunction =>
-          ts.isFunctionExpression(fn) || ts.isArrowFunction(fn));
-        if (closures.some(fn => touchesWrapperExports(fn.body, b))) graph.invalidate(graph.read(module, 'exports'), 'unmodeled closure write');
         const calleeValue = valueOf(callee, b, map);
         if (capturesExports || (calleeValue.kind === 'unknown' && calleeValue.reason === 'intrinsic eval') || intrinsicEval || (!localHarmless && node.arguments.some(argument => ts.isIdentifier(unwrap(argument)) && (unwrap(argument) as TS.Identifier).text === 'eval'))) {
           graph.invalidate(graph.read(module, 'exports'), 'indirect eval effects');
@@ -450,12 +644,35 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
       }
     }
   };
+  for (const statement of bound.wrapper.body.statements) hoist(statement);
   visit(bound.wrapper.body, bound, offset => offset);
   for (const pending of deferredEval) visit(pending.node, pending.b, pending.map);
+  const exportedValue = graph.read(module, 'exports');
+  // A default import of an `__esModule` module means exports.default, which
+  // the import paths do not read (F21).
+  const marker = graph.read(exportedValue, '__esModule');
+  if (marker.kind === 'data' && marker.value === true && graph.read(exportedValue, 'default').kind !== 'absent') return unmodeled('ES module interop default');
+  // Rule 2: the answer is complete or the file leaves the model. Any unknown
+  // reachable from the exports, other than the opaque escapes the model is
+  // ruled to block on, means a member the model cannot answer for.
+  const incomplete = (value: CommonJsValue, depth = 0, seen = new Set<string>()): string | undefined => {
+    if (depth > 8) return undefined;
+    if (value.kind === 'union') { for (const alternative of value.values) { const reason = incomplete(alternative, depth, seen); if (reason) return reason; } return undefined; }
+    if (value.kind === 'unknown') return BLOCKING_UNKNOWNS.has(value.reason) ? undefined : value.reason;
+    if (value.kind !== 'identity' || seen.has(value.id)) return undefined;
+    seen.add(value.id);
+    const object = graph.objects.get(value.id)!;
+    for (const reason of object.openReasons ?? []) if (!BLOCKING_UNKNOWNS.has(reason)) return reason;
+    for (const [name, child] of object.properties) { if (name === 'prototype' && object.kind !== 'object') continue; const reason = incomplete(child, depth + 1, seen); if (reason) return reason; }
+    return object.prototype ? incomplete(object.prototype, depth + 1, seen) : undefined;
+  };
+  const gap = incomplete(exportedValue);
+  if (gap) return unmodeled(`incomplete: ${gap}`);
   result.graph = graph; result.exported = graph.read(module, 'exports');
   result.forwards = [...new Set([...graph.objects.values()].flatMap(object => object.source ? [object.source] : []))];
   const reference = graph.answer(result.exported).reference;
   result.defaults = reference.status === 'positive' && reference.selector ? [reference.selector] : [];
+  const exportForwards = new Set<string>();
   const paths = (value: CommonJsValue, prefix = '', depth = 0, seen = new Set<string>()): void => {
     if (value.kind === 'union') { for (const alternative of value.values) paths(alternative, prefix, depth, new Set(seen)); return; }
     if (value.kind !== 'identity' || seen.has(value.id) || depth > 3) return;
@@ -469,6 +686,13 @@ export function collectCommonJsExportEvidence(source: string, file: string): Com
     }
   };
   paths(result.exported);
+  // Only a whole-export forward: a member forwarded into an unmodelled file
+  // (express's `exports.application`) answers blocked for that member alone.
+  for (const value of result.exported.kind === 'union' ? result.exported.values : [result.exported]) {
+    const source = value.kind === 'forward' && !value.path.length ? value.source : value.kind === 'identity' ? graph.objects.get(value.id)?.source : undefined;
+    if (source) exportForwards.add(source);
+  }
+  result.exportForwards = [...exportForwards];
   return result;
 }
 
@@ -495,52 +719,22 @@ export function commonJsExportResult(record: CommonJsExportEvidence, member: str
   return record.graph.answer(value);
 }
 
-/**
- * What an export answers for one intent. `blocked` is a complete negative
- * (absent, non-callable, or disagreeing positives) and licenses no other
- * target. `unknown` is the analyzer giving up; callers fall back to their
- * prior matching, limited to the module's evidence files.
- */
-/**
- * Whether a fallback target found by ordinary matching may stand for an
- * unknown CommonJS answer: inside the module's evidence files, and code that
- * can run (or be constructed) rather than the storage holding it.
- */
-export function commonJsFallbackAllows(target: Node | null | undefined, files: ReadonlySet<string>, kind: string): boolean {
-  if (!target || !files.has(target.filePath)) return false;
-  if (kind === 'calls') return target.kind === 'function' || target.kind === 'method';
-  if (kind === 'instantiates') return target.kind === 'class' || target.kind === 'function';
-  return true;
-}
-
-const OBJECT_READS = new Set(['freeze', 'seal', 'preventExtensions', 'isFrozen', 'isSealed', 'isExtensible', 'keys', 'values', 'entries', 'getOwnPropertyNames', 'getOwnPropertyDescriptor', 'getPrototypeOf']);
+const OBJECT_READS = new Set(['freeze', 'seal', 'preventExtensions', 'isFrozen', 'isSealed', 'isExtensible', 'keys', 'values', 'entries',
+  'getOwnPropertyNames', 'getOwnPropertyDescriptor', 'getPrototypeOf']);
 const OBJECT_WRITES = new Set(['assign', 'defineProperty', 'defineProperties', 'setPrototypeOf']);
-/**
- * Unknowns from code this analysis does not model, as opposed to an opaque
- * call or dynamic write that may have changed a known value. Only these let
- * ordinary matching answer (inside the module's evidence files).
- */
-const FALLBACK_CAUSES = new Set(['custom construction/inheritance outside contract', 'unmodeled builtin write', 'object spread',
-  'unparsed source', 'unmodeled closure write']);
-/** Sloppy-mode syntax the parser reports but parses intact: legacy octal literals and escapes. */
-const SLOPPY_SYNTAX = new Set([1121, 1487]);
-
-export type CommonJsExportDecision = { status: 'positive'; node: Node } | { status: 'blocked' } | { status: 'unknown' };
+/** Unknowns the model answers as blocked (F17 ruling: an opaque escape or dynamic write on a known value; F12/F13: eval). */
+const BLOCKING_UNKNOWNS = new Set(['opaque call argument', 'opaque method receiver', 'dynamic property write', 'dynamic object property',
+  'dynamic eval', 'indirect eval effects']);
+/** Sloppy-mode syntax the parser reports but parses intact: legacy octal literals, escapes and leading-zero decimals. */
+const SLOPPY_SYNTAX = new Set([1121, 1487, 1488, 1489]);
 
 export function commonJsExportNode(file: string, member: string | null, context: ResolutionContext,
-  intent: CommonJsIntent = 'reference'): Node | undefined {
-  const decision = commonJsExportDecision(file, member, context, intent);
-  return decision.status === 'positive' ? decision.node : undefined;
-}
-
-export function commonJsExportDecision(file: string, member: string | null, context: ResolutionContext,
-  intent: CommonJsIntent = 'reference', seen = new Set<string>()): CommonJsExportDecision {
-  const blocked: CommonJsExportDecision = { status: 'blocked' };
+  intent: CommonJsIntent = 'reference', seen = new Set<string>()): Node | undefined {
   const key = `${file}\0${member ?? ''}\0${intent}`;
-  if (seen.has(key) || seen.size >= 8) return blocked;
+  if (seen.has(key) || seen.size >= 8) return undefined;
   seen.add(key);
   const record = commonJsExportEvidence(file, context);
-  if (!record?.commonJs) return blocked;
+  if (!record?.commonJs) return undefined;
   let value = record.exported;
   for (const name of member?.split('.') ?? []) value = record.graph.read(value, name);
   const indexed = (declaration: Declaration): Node | undefined => {
@@ -553,22 +747,19 @@ export function commonJsExportDecision(file: string, member: string | null, cont
     matches.sort((a, b) => (a.endLine - a.startLine) - (b.endLine - b.startLine) || b.startColumn - a.startColumn);
     return matches[0];
   };
-  const select = (candidate: CommonJsValue): CommonJsExportDecision => {
+  const select = (candidate: CommonJsValue): Node | undefined => {
     if (candidate.kind === 'union') {
-      const decisions = candidate.values.map(select);
-      const first = decisions[0];
-      return first?.status === 'positive' && decisions.every(d => d.status === 'positive' && d.node.id === first.node.id) ? first : blocked;
+      const nodes = candidate.values.map(select);
+      return nodes.length && nodes.every(node => node && node.id === nodes[0]?.id) ? nodes[0] : undefined;
     }
     const source = candidate.kind === 'forward' ? candidate.source : candidate.kind === 'identity' ? record.graph.objects.get(candidate.id)?.source : undefined;
     if (source && !(intent === 'reference' && candidate.reference)) {
       const next = context.resolveModuleFile?.(source, file, 'javascript');
       const path = candidate.kind === 'forward' ? candidate.path.join('.') || null : null;
-      return next ? commonJsExportDecision(next, path, context, intent, new Set(seen)) : blocked;
+      return next ? commonJsExportNode(next, path, context, intent, new Set(seen)) : undefined;
     }
-    if (candidate.kind === 'unknown') return FALLBACK_CAUSES.has(candidate.cause ?? candidate.reason) ? { status: 'unknown' } : blocked;
     const decision = record.graph.answer(candidate)[intent];
-    const node = decision.status === 'positive' && decision.selector ? indexed(decision.selector) : undefined;
-    return node ? { status: 'positive', node } : blocked;
+    return decision.status === 'positive' && decision.selector ? indexed(decision.selector) : undefined;
   };
   return select(value);
 }
