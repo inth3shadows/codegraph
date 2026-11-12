@@ -11,7 +11,7 @@ import { Language, Node, IMPLICIT_RECORD_ACCESSOR_DOC } from '../types';
 import { escapeRegExp, escapesRoot } from '../utils';
 import { UnresolvedRef, ResolvedRef, ResolutionContext, ImportMapping, isSupertypeTarget, CPP_DEFINE_SIGNATURE, isInheritanceRef, isImportableKind } from './types';
 import { blankStringContents, stripCommentsForRegex } from './strip-comments';
-import { readCommonJsExportMembers } from './commonjs-export-members';
+import { readCommonJsExportMembers, readCommonJsForwarder } from './commonjs-export-members';
 import { isJsSuperCallSite } from './js-super-calls';
 import { JS_ARRAY_METHODS, JS_BROWSER_HOST_GLOBALS, JS_BUILT_INS, JS_BUILTIN_METHODS, TS_PRIMITIVE_TYPES } from './js-builtins';
 import { SWIFT_TYPE_PATH_CALL, resolveSwiftTypePathCall } from './swift-type-visibility';
@@ -27390,11 +27390,9 @@ function defaultModuleNamespace(source: string, from: string, language: Language
     // make the effective default uncertain. Named module.exports.x writes
     // still describe the namespace, whereas any other use of module may
     // replace it (including computed writes or assignment through an alias).
-    // Comments are blanked first: a license header or trailing note is not code.
-    const forwarded = /^\s*(?:['"]use strict['"];\s*)?(?:exports\s*=\s*)?module\.exports\s*=\s*(?:exports\s*=\s*)?require\(\s*['"]([^'"]+)['"]\s*\)\s*;?\s*$/
-      .exec(stripCommentsForRegex(code, language === 'typescript' || language === 'tsx' ? 'typescript' : 'javascript'));
-    if (forwarded) {
-      const next = defaultModuleNamespace(forwarded[1]!, file, language, context, seen);
+    const forwarded = readCommonJsForwarder(code, language === 'typescript' || language === 'tsx');
+    if (forwarded !== null) {
+      const next = defaultModuleNamespace(forwarded, file, language, context, seen);
       info = { ...next, files: new Set([...files, ...next.files]) };
     } else {
       const exported = readCommonJsExportMembers(code, /\.(?:[cm]?js|[jt]sx)$/.test(file));

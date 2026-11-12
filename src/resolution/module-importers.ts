@@ -27,6 +27,7 @@ import { resurrectRefFromDroppedEdge } from './resurrect-ref';
 import { defaultExportBinding, extractLocalExportAliases } from './alias-binding';
 import { isDeclarationFile, scanAmbientModules } from './ambient-modules';
 import { moduleReferenceKeys } from '../db/reference-tail';
+import { readCommonJsForwarder } from './commonjs-export-members';
 
 /**
  * Languages whose import bindings name what their references are written as:
@@ -833,4 +834,38 @@ function pythonImportNamesFor(modulePath: string): string[] {
     for (const name of absolute) names.add(prefix + name);
   }
   return [...names];
+}
+
+const COMMONJS_FORWARDER_LANGUAGES = new Set<Language>(['javascript', 'jsx', 'typescript', 'tsx']);
+
+/**
+ * The module keys of the whole-file CommonJS forwarders (`module.exports =
+ * require('./m')`) that hand one of `files` on, followed up as deep as the
+ * resolver follows them. A member call through `require('./index')` whose
+ * answer depends on what `m.js` is waits under `module:index`, which an edit
+ * to `m.js` alone never names; the sync's failed-reference retry adds these.
+ */
+export function commonJsForwarderKeys(
+  queries: QueryBuilder,
+  readFile: (file: string) => string | null,
+  files: readonly string[],
+): string[] {
+  const keys = new Set<string>();
+  const seen = new Set(files);
+  let level = [...files];
+  for (let depth = 0; depth < 8 && level.length > 0; depth++) {
+    const next: string[] = [];
+    for (const file of level) {
+      for (const i of queries.getImportsInto(`file:${file}`, file)) {
+        if (seen.has(i.filePath) || !COMMONJS_FORWARDER_LANGUAGES.has(i.language)) continue;
+        seen.add(i.filePath);
+        const code = readFile(i.filePath);
+        if (code === null || readCommonJsForwarder(code, i.language === 'typescript' || i.language === 'tsx') === null) continue;
+        for (const key of moduleReferenceKeys(i.filePath)) keys.add(key);
+        next.push(i.filePath);
+      }
+    }
+    level = next;
+  }
+  return [...keys];
 }

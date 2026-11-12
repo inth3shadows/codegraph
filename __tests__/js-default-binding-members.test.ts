@@ -206,6 +206,41 @@ describe('a member read through a default binding', () => {
     expect(callsOf(cg, 'run')).toEqual([]);
   });
 
+  it.each([
+    ['a Flow generic function type', 'type Fn = <T>(x: T) => T;'],
+    ['a Flow generic arrow', 'const id = <T>(x: T): T => x;'],
+  ])('keeps the stated value of a .js module containing %s', async (_shape, line) => {
+    const cg = await indexProject({
+      'decoy.js': 'class Decoy { second() {} }\nmodule.exports.Decoy = Decoy;\n',
+      'm.js': `// @flow\nconst { Decoy } = require('./decoy');\n${line}\nmodule.exports = new Decoy();\n`,
+      'use.js': CALLER("const named = require('./m');", ['second']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 decoy.js:Decoy::second']);
+  });
+
+  it.each([
+    ['directly', {}, './m'],
+    ['through a forwarding module', { 'index.js': "module.exports = require('./m');\n" }, './index'],
+    ['through two forwarding modules', {
+      'index.js': "module.exports = require('./mid');\n", 'mid.js': "module.exports = require('./m');\n",
+    }, './index'],
+  ])('re-resolves a blocked call %s when the module stops being a namespace', async (_how, extra, spec) => {
+    const files = {
+      'decoy.js': 'class Decoy { second() {} }\nmodule.exports.Decoy = Decoy;\n',
+      ...extra,
+      'm.js': 'exports.known = function known() {};\n',
+      'use.js': CALLER(`const named = require('${spec}');`, ['second']),
+    };
+    const cg = await indexProject(files);
+    expect(callsOf(cg, 'run')).toEqual([]);
+    const value = "const { Decoy } = require('./decoy');\nmodule.exports = new Decoy();\n";
+    fs.writeFileSync(path.join(roots[roots.length - 1]!, 'm.js'), value);
+    await cg.sync();
+    const fresh = await indexProject({ ...files, 'm.js': value });
+    expect(callsOf(fresh, 'run')).toEqual(['3 decoy.js:Decoy::second']);
+    expect(callsOf(cg, 'run')).toEqual(callsOf(fresh, 'run'));
+  });
+
   it('takes what `module.exports =` states over a neighbour assigned to it', async () => {
     const cg = await indexProject({
       'm.js': 'function main() {}\nmodule.exports = main;\nmodule.exports.extra = function () {};\n',

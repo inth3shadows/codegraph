@@ -11,6 +11,7 @@ export { hasSynthesisPattern, isJsxChildCandidate } from './resolution/callback-
 export { aliasMayName } from './resolution/const-alias-synthesizer';
 export { ESM_IMPORT_LANGUAGES } from './resolution/import-resolver';
 export {
+  commonJsForwarderKeys,
   createImportReader,
   reopenNameMatchedImports,
   reopenReferencesThroughAddedFiles,

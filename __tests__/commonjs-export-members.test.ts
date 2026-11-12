@@ -76,4 +76,13 @@ describe('CommonJS export member discovery', () => {
     expect([...result.members]).toEqual(['load']);
     expect(result.uncertain).toBe(false);
   });
+
+  it.each([
+    'type Fn = <T>(x: T) => T;\nfunction a() {}\nmodule.exports = { a };\n',
+    'const id = <T>(x: T): T => x;\nmodule.exports = id;',
+    'const id = <T,>(x: T) => x;\nexports.id = id;\nmodule.exports = { id }',
+    'type Fn = <T>(x: T) => T;\nmodule.exports = function () { return 1; }',
+  ])('is uncertain when a generic leaves JSX mode reading the rest as text: %j', (source) => {
+    expect(readCommonJsExportMembers(source, true).uncertain).toBe(true);
+  });
 });

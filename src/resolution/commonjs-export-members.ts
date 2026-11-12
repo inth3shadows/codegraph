@@ -1,4 +1,17 @@
 import jsTokens from 'js-tokens';
+import { stripCommentsForRegex } from './strip-comments';
+
+/**
+ * The module a whole-file CommonJS forwarder (`module.exports =
+ * require('./m')`, optionally after `'use strict'`) hands on, or null when
+ * the file holds anything else. Comments are blanked first: a license header
+ * or trailing note is not code.
+ */
+export function readCommonJsForwarder(code: string, typescript: boolean): string | null {
+  const text = stripCommentsForRegex(code, typescript ? 'typescript' : 'javascript');
+  return /^\s*(?:['"]use strict['"];\s*)?(?:exports\s*=\s*)?module\.exports\s*=\s*(?:exports\s*=\s*)?require\(\s*['"]([^'"]+)['"]\s*\)\s*;?\s*$/
+    .exec(text)?.[1] ?? null;
+}
 
 interface LexicalToken { type: string; value: string; closed?: boolean }
 interface Property { name: string | null; next: number }
@@ -6,11 +19,26 @@ interface Property { name: string | null; next: number }
 const TRIVIA = new Set(['WhiteSpace', 'LineTerminatorSequence', 'SingleLineComment', 'MultiLineComment', 'HashbangComment']);
 const EXPRESSION_PREFIX_WORDS = new Set(['return', 'throw', 'case', 'delete', 'void', 'typeof', 'new', 'in', 'instanceof', 'else', 'do', 'await', 'yield']);
 
+/** Does the token stream end with a JSX element or fragment still open? */
+function unclosedJsx(tokens: readonly LexicalToken[]): boolean {
+  let depth = 0;
+  const punct = (t: LexicalToken | undefined, value: string): boolean => t?.type === 'JSXPunctuator' && t.value === value;
+  for (let i = 0; i < tokens.length; i++) {
+    if (punct(tokens[i], '<')) depth += punct(tokens[i + 1], '/') ? -1 : 1;
+    // `/>` ends a self-closing element; the `/` of `</` is the closing tag above.
+    else if (punct(tokens[i], '/') && punct(tokens[i + 1], '>') && !punct(tokens[i - 1], '<')) depth--;
+  }
+  return depth > 0;
+}
+
 /** Syntactic CommonJS writes, without interpreting their values or executing code. */
 export function readCommonJsExportMembers(source: string, jsx = false): { members: ReadonlySet<string>; uncertain: boolean } {
   const tokens: LexicalToken[] = [...jsTokens(source, { jsx })].filter((t) => !TRIVIA.has(t.type));
   const members = new Set<string>();
-  let uncertain = false;
+  // JSX mode reads `<T>(x) =>` (a Flow or TS generic) as an element that never
+  // closes, so the rest of the file, a `module.exports =` included, becomes
+  // its text. A file that ends with an element still open was not read as code.
+  let uncertain = jsx && unclosedJsx(tokens);
   const moduleApi = (token: LexicalToken | undefined): boolean => token?.type === 'StringLiteral' &&
     (token.value.slice(1, -1) === 'module' || token.value.slice(1, -1) === 'node:module');
 
