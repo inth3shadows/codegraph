@@ -106,12 +106,222 @@ describe('a member read through a default binding', () => {
     expect(callsOf(cg, 'run')).toEqual([]);
   });
 
+  it.each([
+    ["const named = require('./m');", 'Decoy'],
+    ["import named from './m.js';", 'Decoy'],
+    ["const named = require('./m');", 'named'],
+  ])('does not borrow an unimported method after %s, even from class %s', async (binding, className) => {
+    const cg = await indexProject({
+      'm.js': 'exports.known = function known() {};\n',
+      'decoy.js': `export class ${className} { static missing() {} }\n`,
+      'use.js': CALLER(binding, ['missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
+  it('keeps real exports beside an unimported method and through a forwarding module', async () => {
+    const cg = await indexProject({
+      'm.js': 'exports.second = function second() {};\n',
+      'index.js': "module.exports = require('./m');\n",
+      'decoy.js': 'export class Decoy { second() {} missing() {} }\n',
+      'use.js': CALLER("const named = require('./index');", ['second', 'missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:second']);
+  });
+
+  it.each([
+    "/* license */\nmodule.exports = require('./m');\n",
+    "module.exports = require('./m');\n// trailing note\n",
+    "'use strict'; // forward\nmodule.exports = require('./m');\n/* end */\n",
+  ])('follows a forwarding module through its comments: %j', async (index) => {
+    const cg = await indexProject({
+      'm.js': 'exports.second = function second() {};\n',
+      'index.js': index,
+      'decoy.js': 'export class Decoy { second() {} missing() {} }\n',
+      'use.js': CALLER("const named = require('./index');", ['second', 'missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:second']);
+  });
+
+  it('keeps CommonJS stated class, object, instance and callable exports', async () => {
+    const cg = await indexProject({
+      'class.js': 'class Widget { static make() {} }\nmodule.exports = Widget;\n',
+      'object.js': 'const api = { read() {} };\nmodule.exports = api;\n',
+      'instance.js': 'class Store { load() {} }\nmodule.exports = new Store();\n',
+      'callable.js': 'function create() {}\nmodule.exports = create;\nmodule.exports.extra = function extra() {};\n',
+      'decoy.js': 'export class Decoy { make() {} read() {} load() {} extra() {} }\n',
+      'use.js': "const Widget = require('./class');\nconst object = require('./object');\nconst store = require('./instance');\nconst create = require('./callable');\nfunction run() {\n  Widget.make();\n  object.read();\n  store.load();\n  create();\n  create.extra();\n}\nmodule.exports = run;\n",
+    });
+    expect(callsOf(cg, 'run')).toEqual([
+      '10 callable.js:extra', '6 class.js:Widget::make', '7 object.js:api::read',
+      '8 instance.js:Store::load', '9 callable.js:create',
+    ]);
+  });
+
+  it('keeps typed parameters and local objects that shadow a default binding', async () => {
+    const cg = await indexProject({
+      'm.ts': 'export function known() {}\n',
+      'use.ts': "import named from './m';\nclass Local { missing() {} }\nexport function typed(named: Local) {\n  named.missing();\n}\nexport function literal() {\n  const named = { present() {} };\n  named.present();\n}\n",
+      'decoy.ts': 'export class Decoy { missing() {} present() {} }\n',
+    });
+    expect(callsOf(cg, 'typed')).toEqual(['4 use.ts:Local::missing']);
+    expect(callsOf(cg, 'literal')).toEqual(['8 use.ts:literal::named::present']);
+  });
+
+  it.each([
+    "import named from './m';",
+    "import * as named from './m';",
+  ])('keeps a lexical class shadow after %s', async (binding) => {
+    const cg = await indexProject({
+      'm.ts': 'export function known() {}\n',
+      'use.ts': `${binding}\nexport function outer() {\n  class named { static missing() {} }\n  function run() { named.missing(); }\n  return run;\n}\n`,
+    });
+    expect(callsOf(cg, 'run')).toEqual(['4 use.ts:outer::named::missing']);
+  });
+
+  it.each([
+    'module.exports = new Store();',
+    'export default new Store();',
+  ])('keeps the instance stated by %s', async (statement) => {
+    const cg = await indexProject({
+      'm.js': `class Store { load() {} }\n${statement}\n`,
+      'decoy.js': 'export class Decoy { missing() {} }\n',
+      'use.js': CALLER("const named = require('./m');", ['load']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+  });
+
+  it('keeps a missing member unresolved when a decoy is added by sync', async () => {
+    const cg = await indexProject({
+      'm.js': 'exports.known = function known() {};\n',
+      'use.js': CALLER("const named = require('./m');", ['missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+    const decoy = path.join(roots[roots.length - 1]!, 'decoy.js');
+    fs.writeFileSync(decoy, 'export class Decoy { missing() {} }\n');
+    await cg.sync();
+    expect(callsOf(cg, 'run')).toEqual([]);
+    fs.unlinkSync(decoy);
+    await cg.sync();
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
   it('takes what `module.exports =` states over a neighbour assigned to it', async () => {
     const cg = await indexProject({
       'm.js': 'function main() {}\nmodule.exports = main;\nmodule.exports.extra = function () {};\n',
       'use.js': "const named = require('./m');\nfunction run() {\n  named();\n  named.extra();\n}\nmodule.exports.run = run;\n",
     });
     expect(callsOf(cg, 'run')).toEqual(['3 m.js:main', '4 m.js:extra']);
+  });
+
+  it.each([
+    ['./m', 'named'], ['./index', 'named'],
+    ['./m', 'Store'], ['./index', 'Store'],
+  ])('rechecks calls through %s as %s when it changes between a value and a namespace', async (specifier, alias) => {
+    const value = 'class Store { load() {} }\nmodule.exports = new Store();\n';
+    const namespace = 'class Store { load() {} }\nexports.known = function known() {};\n';
+    const files = {
+      'm.js': value,
+      'index.js': "module.exports = require('./m');\n",
+      'use.js': CALLER(`const named = require('${specifier}');`, ['load']).replace(/\bnamed\b/g, alias),
+    };
+    const cg = await indexProject(files);
+    const moduleFile = path.join(roots[roots.length - 1]!, 'm.js');
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+    for (const source of [namespace, value, namespace]) {
+      fs.writeFileSync(moduleFile, source);
+      await cg.sync();
+      const fresh = await indexProject({ ...files, 'm.js': source });
+      expect(callsOf(cg, 'run')).toEqual(callsOf(fresh, 'run'));
+      expect(callsOf(cg, 'run')).toEqual(source === value ? ['3 m.js:Store::load'] : []);
+    }
+  });
+
+  it.each(['exports.load', 'module.exports.load', "exports['load']", "module.exports['load']"])(
+    'keeps the callable alias in %s without borrowing an absent member', async (assignment) => {
+      const cg = await indexProject({
+        'm.js': `class Store { load() {} }\n${assignment} = Store.prototype.load;\n`,
+        'decoy.js': 'export class Decoy { missing() {} }\n',
+        'use.js': CALLER("const named = require('./m');", ['load', 'missing']),
+      });
+      expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+    }
+  );
+
+  it('drops an exported callable alias when sync removes only the assignment', async () => {
+    const cg = await indexProject({
+      'm.js': 'class Store { load() {} }\nexports.load = Store.prototype.load;\n',
+      'use.js': CALLER("const named = require('./m');", ['load']),
+    });
+    const moduleFile = path.join(roots[roots.length - 1]!, 'm.js');
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
+    fs.writeFileSync(moduleFile, 'class Store { load() {} }\nexports.known = function known() {};\n');
+    await cg.sync();
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
+  it.each([
+    "const named = require('./m');",
+    "import named from './m';",
+    "import * as named from './m';",
+  ])('sees a block-local class only inside its block after %s', async (binding) => {
+    const cg = await indexProject({
+      'm.ts': 'export function known() {}\n',
+      'use.ts': `${binding}\nexport function run() {\n  if (true) {\n    class named { static missing() {} }\n    function inside() { named.missing(); }\n  }\n  named.missing();\n}\n`,
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+    expect(callsOf(cg, 'inside')).toEqual(['5 use.ts:run::named::missing']);
+  });
+
+  it('does not mistake a class inside a TypeScript namespace for an import shadow', async () => {
+    const cg = await indexProject({
+      'm.ts': 'export function known() {}\n',
+      'use.ts': "import named from './m';\nnamespace Parent {\n  export class named { static missing() {} }\n}\nexport function run() { named.missing(); }\n",
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
+  it.each([
+    '// exports.missing = fake;',
+    '/* exports.missing = fake; */',
+    'const text = "exports.missing = fake;";',
+    'const text = `exports.missing = fake;`;',
+    'const pattern = /exports.missing = fake/;',
+    'function setup(holder) { holder.exports.missing = 42; }',
+    'function setup(holder) { holder . exports . missing = 42; }',
+    'function setup(holder) { holder.module.exports.missing = 42; }',
+  ])('does not treat non-export text as a member: %s', async (extra) => {
+    const cg = await indexProject({
+      'm.js': `exports.known = function known() {};\n${extra}\n`,
+      'decoy.js': 'export class Decoy { missing() {} }\n',
+      'use.js': CALLER("const named = require('./m');", ['missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
+  it.each([
+    'wrap(eval)("ignored");',
+    'wrap((eval))(("ignored"));',
+  ])('does not mistake a wrapped eval argument for a direct eval call: %s', async (call) => {
+    const cg = await indexProject({
+      'm.js': `exports.known = function known() {};\nfunction wrap(value) { return function ignore(code) {}; }\n${call}\n`,
+      'decoy.js': 'export class Decoy { missing() {} }\n',
+      'use.js': CALLER("const named = require('./m');", ['missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual([]);
+  });
+
+  it.each([
+    "eval('exports.load = Store.prototype.load;');",
+    'eval(`exports.load = Store.prototype.load;`);',
+    "(eval)('exports.load = Store.prototype.load;');",
+    'require.cache[__filename].exports = new Store();',
+  ])('keeps uncertain runtime export APIs: %s', async (mutation) => {
+    const cg = await indexProject({
+      'm.js': `class Store { load() {} }\n${mutation}\n`,
+      'use.js': CALLER("const named = require('./m');", ['load']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:Store::load']);
   });
 
   it('links the member a sync brings, and drops the one it takes away', async () => {

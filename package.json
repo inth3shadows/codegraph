@@ -54,6 +54,7 @@
     "fast-string-width": "^3.0.2",
     "fast-wrap-ansi": "^0.2.0",
     "ignore": "^7.0.14",
+    "js-tokens": "9.0.1",
     "jsonc-parser": "^3.3.1",
     "picomatch": "^4.0.3",
     "sisteransi": "^1.0.5",
