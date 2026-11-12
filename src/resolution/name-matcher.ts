@@ -25435,7 +25435,9 @@ function defaultModuleNamespace(source: string, from: string, language: Language
     // make the effective default uncertain. Named module.exports.x writes
     // still describe the namespace, whereas any other use of module may
     // replace it (including computed writes or assignment through an alias).
-    const forwarded = /^\s*(?:['"]use strict['"];\s*)?(?:exports\s*=\s*)?module\.exports\s*=\s*(?:exports\s*=\s*)?require\(\s*['"]([^'"]+)['"]\s*\)\s*;?\s*$/.exec(code);
+    // Comments are blanked first: a license header or trailing note is not code.
+    const forwarded = /^\s*(?:['"]use strict['"];\s*)?(?:exports\s*=\s*)?module\.exports\s*=\s*(?:exports\s*=\s*)?require\(\s*['"]([^'"]+)['"]\s*\)\s*;?\s*$/
+      .exec(stripCommentsForRegex(code, language === 'typescript' || language === 'tsx' ? 'typescript' : 'javascript'));
     if (forwarded) {
       const next = defaultModuleNamespace(forwarded[1]!, file, language, context, seen);
       info = { ...next, files: new Set([...files, ...next.files]) };
