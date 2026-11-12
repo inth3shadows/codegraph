@@ -7,6 +7,9 @@
 > - **Impact is fast again.** `codegraph impact`, `codegraph_impact` and the viewer's blast
 >   radius had become 2–3x slower on busy symbols; the answer itself was unchanged
 >   (upstream [#3249](https://github.com/colbymchenry/codegraph/pull/3249), fixes #3248).
+> - **Undeclared packages stay packages.** A JS/TS import of a package your `package.json` doesn't list
+>   but your project has installed (hoisted in a monorepo, say) no longer links to an unrelated
+>   project function of the same name (upstream [#3278](https://github.com/colbymchenry/codegraph/pull/3278), fixes #3271).
 > - **Much more TypeScript parses.** The TypeScript grammar is built from
 >   [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript),
 >   a maintained fork of the stalled upstream grammar, with two fixes from
