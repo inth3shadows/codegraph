@@ -129,6 +129,20 @@ describe('a member read through a default binding', () => {
     expect(callsOf(cg, 'run')).toEqual(['3 m.js:second']);
   });
 
+  it.each([
+    "/* license */\nmodule.exports = require('./m');\n",
+    "module.exports = require('./m');\n// trailing note\n",
+    "'use strict'; // forward\nmodule.exports = require('./m');\n/* end */\n",
+  ])('follows a forwarding module through its comments: %j', async (index) => {
+    const cg = await indexProject({
+      'm.js': 'exports.second = function second() {};\n',
+      'index.js': index,
+      'decoy.js': 'export class Decoy { second() {} missing() {} }\n',
+      'use.js': CALLER("const named = require('./index');", ['second', 'missing']),
+    });
+    expect(callsOf(cg, 'run')).toEqual(['3 m.js:second']);
+  });
+
   it('keeps CommonJS stated class, object, instance and callable exports', async () => {
     const cg = await indexProject({
       'class.js': 'class Widget { static make() {} }\nmodule.exports = Widget;\n',
