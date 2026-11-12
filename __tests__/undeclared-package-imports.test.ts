@@ -3,9 +3,9 @@
  * that the project has installed — hoisted to a parent `node_modules` in a
  * monorepo, or pulled in by another package — is the package's. It must not
  * link to an unrelated project export of the same name that the file never
- * imports. An undeclared specifier with no install
- * evidence may be an alias the resolver doesn't read (a bundler's `ui`, an
- * import map's `helpers`) or a sibling package, and keeps linking as before.
+ * imports. An undeclared specifier with no install evidence may be an alias
+ * the resolver doesn't read (a bundler's `ui`, an import map's `helpers`) or
+ * a sibling package, and keeps linking as before.
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
@@ -145,6 +145,19 @@ describe('a name imported from an installed package the manifest does not list',
     fs.symlinkSync(path.join(tempDir, 'gone'), path.join(tempDir, 'app/node_modules/react-hook-form'), 'junction');
     cg = await CodeGraph.init(path.join(tempDir, 'app'), { index: true });
     expect(edgesFrom(cg, 'main.ts')).toEqual([]);
+  });
+
+  it('links to no project export when a fixture folder of the project shares the package name', async () => {
+    const graph = await index({
+      ...installed('react-hook-form'),
+      'test/fixtures/react-hook-form/package.json': JSON.stringify({ name: 'react-hook-form', private: true }),
+      'test/fixtures/react-hook-form/index.ts': 'export const fixture = 1;\n',
+      'tools/react-hook-form/package.json': JSON.stringify({ name: 'react-hook-form', version: '0.0.1' }),
+      'tools/react-hook-form/index.ts': 'export const tool = 1;\n',
+      'main.ts': MAIN,
+      'decoy.ts': DECOY,
+    });
+    expect(edgesFrom(graph, 'main.ts')).toEqual([]);
   });
 
   it('still lets an inner declaration shadow the import', async () => {
@@ -316,6 +329,31 @@ describe('an undeclared specifier with no install evidence keeps linking', () =>
     fs.symlinkSync(path.join(tempDir, 'work/app'), path.join(tempDir, 'home/link'), 'junction');
     cg = await CodeGraph.init(path.join(tempDir, 'home/link'), { index: true });
     expect(edgesFrom(cg, 'src/app.ts')).toContain('calls src/ds/index.ts:Button');
+  });
+
+  it('a sibling package an install copied into node_modules', async () => {
+    // yarn v1's `file:` and npm's install-links copy the folder instead of linking it.
+    const graph = await index({
+      'packages/kit/package.json': JSON.stringify({ name: 'acme-kit', version: '1.2.0', main: 'src/index.ts' }),
+      'packages/kit/src/index.ts': 'export function makeKit() { return 1; }\n',
+      'node_modules/acme-kit/package.json': JSON.stringify({ name: 'acme-kit', version: '1.2.0', main: 'src/index.ts' }),
+      'node_modules/acme-kit/src/index.ts': 'export function makeKit() { return 1; }\n',
+      'apps/web/package.json': JSON.stringify({ name: 'web' }),
+      'apps/web/src/main.ts': "import { makeKit } from 'acme-kit';\nexport function run() {\n  return makeKit();\n}\n",
+    });
+    expect(edgesFrom(graph, 'apps/web/src/main.ts')).toContain('calls packages/kit/src/index.ts:makeKit');
+  });
+
+  it('a sibling package when the project itself lives inside a node_modules folder', async () => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codegraph-undeclared-pkg-'));
+    write(tempDir, {
+      'node_modules/@acme/core/package.json': JSON.stringify({ name: '@acme/core', main: 'src/index.ts' }),
+      'node_modules/@acme/core/src/index.ts': 'export function useCore() { return 1; }\n',
+      'node_modules/@acme/ui/package.json': JSON.stringify({ name: '@acme/ui' }),
+      'node_modules/@acme/ui/src/main.ts': "import { useCore } from '@acme/core';\nexport function entry() {\n  return useCore();\n}\n",
+    });
+    cg = await CodeGraph.init(path.join(tempDir, 'node_modules/@acme'), { index: true });
+    expect(edgesFrom(cg, 'ui/src/main.ts')).toContain('calls core/src/index.ts:useCore');
   });
 
   it('a workspace package the importing package does not declare', async () => {

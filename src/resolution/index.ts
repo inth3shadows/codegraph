@@ -748,6 +748,9 @@ export class ReferenceResolver {
     this.installedPackages.clear();
     this.directoryListings.clear();
     this.searchedModules.clear();
+    this.realModulesDirs.clear();
+    this.ownPackageVersions = null;
+    this.projectPackageCopies.clear();
     this.knownNames = null;
     this.knownLowerNames = null;
     this.knownFiles = null;
@@ -4673,6 +4676,12 @@ export class ReferenceResolver {
   private directoryListings = new Map<string, Set<string> | null>();
   /** Per importing directory: the `node_modules` folders Node searches from it, nearest first. */
   private searchedModules = new Map<string, string[]>();
+  /** Per `node_modules` folder: its real path. */
+  private realModulesDirs = new Map<string, string>();
+  /** Per package name: the versions the project's own manifests give it (see isProjectPackageCopy). */
+  private ownPackageVersions: Map<string, Set<string>> | null = null;
+  /** isProjectPackageCopy's answers, by `node_modules` folder and package name. */
+  private projectPackageCopies = new Map<string, boolean>();
 
   /**
    * Is `source` a package from outside the repository? Only when the importing
@@ -4701,10 +4710,10 @@ export class ReferenceResolver {
    * it sits in a `node_modules` folder the import would search: hoisted in a
    * monorepo, or pulled in by another package (#3271). An alias this resolver
    * doesn't read (a bundler's `ui`, an import map's `helpers`) has no such
-   * folder, so it keeps the project's, as does a `node_modules` entry that
-   * links to a folder of its own, which is a sibling package. Only a valid
-   * npm package name qualifies, so `$lib/…`, `~/…`, `@/…` and `#…` keep the
-   * project's.
+   * folder, so it keeps the project's. So does a package of the project's
+   * own: one a `node_modules` entry links to (see isRegistryCopy), or a copy
+   * of one (see isProjectPackageCopy). Only a valid npm package name
+   * qualifies, so `$lib/…`, `~/…`, `@/…` and `#…` keep the project's.
    */
   private isInstalledPackage(source: string, fromFile: string): boolean {
     const segments = source.split('/');
@@ -4717,17 +4726,66 @@ export class ReferenceResolver {
     const scope = this.manifestScope(fromDir);
     if (scope.own.has(name) || this.context.getWorkspacePackages?.()?.byName.has(name)) return false;
     for (const modules of this.modulesSearchedFrom(fromDir)) {
+      if (this.listing(modules) === null) continue;
       const copy = this.isRegistryCopy(modules, name);
-      if (copy !== undefined) return copy;
+      if (copy !== undefined) return copy && !this.isProjectPackageCopy(modules, name);
     }
     return false;
   }
 
   /**
-   * The `node_modules` folders Node searches from project directory `dir`,
-   * nearest first: one in every directory at or above where `dir` really is,
-   * past the project root too (a subdirectory indexed on its own installs into
-   * its parent).
+   * Is the package `name` installed in `modules` a copy of one of the
+   * project's own packages? It is when a package.json of the project, at or
+   * above a directory the index holds files in, gives the same name and
+   * version: an install that copies a sibling instead of linking it (yarn's
+   * `file:`, npm's install-links), or a project that lives inside a
+   * `node_modules` folder. A fixture or tool folder that only shares the name
+   * gives a different version, or none, so the registry copy stays the
+   * package's.
+   */
+  private isProjectPackageCopy(modules: string, name: string): boolean {
+    const key = modules + '\0' + name;
+    const memo = this.projectPackageCopies.get(key);
+    if (memo !== undefined) return memo;
+    let version = '';
+    try {
+      const json = JSON.parse(fs.readFileSync(path.join(modules, name, 'package.json'), 'utf-8')) as { version?: unknown } | null;
+      if (json && typeof json.version === 'string') version = json.version;
+    } catch { /* no readable package.json: compared as having no version */ }
+    if (!this.ownPackageVersions) {
+      // Read only when a name would otherwise count as installed.
+      const versions = new Map<string, Set<string>>();
+      const dirs = new Set<string>();
+      for (const file of this.knownFiles ?? this.queries.getAllFilePaths()) {
+        let dir = file.replace(/\\/g, '/');
+        do {
+          dir = dir.includes('/') ? dir.slice(0, dir.lastIndexOf('/')) : '';
+          if (dirs.has(dir)) break;
+          dirs.add(dir);
+        } while (dir !== '');
+      }
+      for (const dir of dirs) {
+        try {
+          const json = JSON.parse(this.context.readFile(dir ? `${dir}/package.json` : 'package.json') ?? 'null') as { name?: unknown; version?: unknown } | null;
+          if (!json || typeof json !== 'object' || typeof json.name !== 'string') continue;
+          const own = versions.get(json.name) ?? new Set<string>();
+          own.add(typeof json.version === 'string' ? json.version : '');
+          versions.set(json.name, own);
+        } catch { /* no or unreadable package.json */ }
+      }
+      this.ownPackageVersions = versions;
+    }
+    const copy = this.ownPackageVersions.get(name)?.has(version) === true;
+    this.projectPackageCopies.set(key, copy);
+    return copy;
+  }
+
+  /**
+   * The `node_modules` folders Node would search from project directory
+   * `dir`, nearest first: one in every directory at or above where `dir`
+   * really is, past the project root too (a subdirectory indexed on its own
+   * installs into its parent). Paths only; the caller lists each one as it
+   * gets to it, so a nearer answer leaves the rest unread.
    */
   private modulesSearchedFrom(dir: string): string[] {
     const memo = this.searchedModules.get(dir);
@@ -4736,8 +4794,7 @@ export class ReferenceResolver {
     try { real = fs.realpathSync(real); } catch { /* searched where it is written */ }
     const found: string[] = [];
     for (let at = real; ; at = path.dirname(at)) {
-      const modules = path.join(at, 'node_modules');
-      if (path.basename(at) !== 'node_modules' && this.listing(modules) !== null) found.push(modules);
+      if (path.basename(at) !== 'node_modules') found.push(path.join(at, 'node_modules'));
       if (path.dirname(at) === at) break;
     }
     this.searchedModules.set(dir, found);
@@ -4763,7 +4820,11 @@ export class ReferenceResolver {
       : this.listing(modules)?.has(name);
     if (listed) {
       try {
-        const realModules = fs.realpathSync(modules);
+        let realModules = this.realModulesDirs.get(modules);
+        if (realModules === undefined) {
+          realModules = fs.realpathSync(modules);
+          this.realModulesDirs.set(modules, realModules);
+        }
         const rel = path.relative(path.dirname(realModules), fs.realpathSync(path.join(modules, name)));
         answer = rel.split(path.sep).includes('node_modules');
       } catch { /* a broken link */ }
