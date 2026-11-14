@@ -10,6 +10,10 @@
 > - **Undeclared packages stay packages.** A JS/TS import of a package your `package.json` doesn't list
 >   but your project has installed (hoisted in a monorepo, say) no longer links to an unrelated
 >   project function of the same name (upstream [#3278](https://github.com/colbymchenry/codegraph/pull/3278), fixes #3271).
+> - **Claude Code gets all of CodeGraph's guidance.** Claude Code cuts an MCP server's
+>   instructions at 4,096 characters, so the rules for stale-index warnings and unindexed
+>   projects never reached the agent; the guidance now fits, with those rules first
+>   (upstream [#1529](https://github.com/colbymchenry/codegraph/pull/1529) by zyrill).
 > - **Much more TypeScript parses.** The TypeScript grammar is built from
 >   [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript),
 >   a maintained fork of the stalled upstream grammar, with two fixes from
