@@ -35,6 +35,9 @@ const SCRIPT_DIR_FORMS: readonly RegExp[] = [
 /** Bats sets this to the directory of the test file being run. */
 const BATS_TEST_DIRNAME = 'BATS_TEST_DIRNAME';
 
+/** The file-reference prefix of a `.bash` helper's `load` (resolution/bash-resolution.ts places it). */
+const BATS_HELPER_LOAD = 'bats-load:';
+
 function isBatsFile(filePath: string): boolean {
   return /\.bats$/i.test(filePath);
 }
@@ -228,6 +231,18 @@ function batsLoadPath(arg: SyntaxNode, ctx: ExtractorContext): string | null {
   return /\.(?:bash|sh)$/.test(target) ? target : `${target}.bash`;
 }
 
+/**
+ * What a `load` in a `.bash` helper names, relative to the test directory
+ * Bats will read it against: a plain relative word, or `$BATS_TEST_DIRNAME/x`.
+ * Anything else (an absolute path, another variable) is null.
+ */
+function batsHelperLoadPath(arg: SyntaxNode, ctx: ExtractorContext): string | null {
+  const literal = staticShellWord(arg, ctx.source);
+  if (literal !== null) return !literal.startsWith('/') && /^[\w./-]+$/.test(literal) ? literal : null;
+  const m = /^\$(?:BATS_TEST_DIRNAME|\{BATS_TEST_DIRNAME\})\/([\w./-]+)$/.exec(unquote(getNodeText(arg, ctx.source)));
+  return m ? m[1]! : null;
+}
+
 /** The description of a Bats `@test "…" {` header, or null for any other statement. */
 function batsTestName(statement: SyntaxNode, source: string): string | null {
   if (statement.type !== 'command') return null;
@@ -316,6 +331,15 @@ function handleCommand(node: SyntaxNode, ctx: ExtractorContext): void {
     if (target) emitImport(ctx, node, unquote(getNodeText(args[0]!, ctx.source)), target, true);
     visitCommandChildren(node, ctx);
     return;
+  }
+
+  // In a `.bash` helper, `load` is Bats's only when a test loads the helper,
+  // and its path is read against that test's directory: the resolver decides
+  // both. The command stays a call too, so a helper that defines its own
+  // `load` keeps that edge.
+  if (name === 'load' && /\.bash$/i.test(ctx.filePath)) {
+    const rel = args[0] && batsHelperLoadPath(args[0], ctx);
+    if (rel) emitImport(ctx, node, unquote(getNodeText(args[0]!, ctx.source)), `${BATS_HELPER_LOAD}${rel}`, true);
   }
 
   // `bash ./script.sh`, `sh ../lib/tool`, and wrapper forms such as
