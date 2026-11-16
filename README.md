@@ -25,6 +25,12 @@
 >   `go.mod`, `.gitignore`, `codegraph.json`, a `.vbproj`, or a lock file in `.codegraph/`) made
 >   `codegraph init`, `index` and `sync` wait forever; it is now skipped
 >   (upstream [#3309](https://github.com/colbymchenry/codegraph/pull/3309), fixes #3308).
+> - **Bash and shell scripts are indexed.** `.sh`, `.bash`, `.bats` and shebang scripts get their
+>   functions, variables and `source` edges, and a call links only to a function the shell would
+>   run there: one the script defines or sources, the last definition read winning, never a
+>   same-named script, variable or unsourced file (upstream
+>   [#3098](https://github.com/colbymchenry/codegraph/pull/3098) by Omar-Elwazeery, with the
+>   resolution fixed on the fork).
 > - **Much more TypeScript parses.** The TypeScript grammar is built from
 >   [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript),
 >   a maintained fork of the stalled upstream grammar, with two fixes from
