@@ -19,11 +19,22 @@
  *   `./lib.sh` that `resolveShellPath` can't place never falls back to some
  *   other `lib.sh` by name.
  *
- * Not followed (missing edges, never wrong ones): a library function calling a
- * sibling library that only its entry script sources; files sourced through a
- * variable the extractor can't read; a `source` inside a function or an `if`
- * counts as if it always ran.
+ * - A call in a library's function body that the library can't reach on its
+ *   own falls back to the scripts that source the library: the function every
+ *   one of them sees by its end, when it is the same one (a sibling library
+ *   the entry script sources). One that lacks the name, or sees another, gives
+ *   no edge. It never feeds back into what a file defines.
+ * - A `.bash` helper's `load` is Bats's only when a test loads the helper, and
+ *   is read against that test's directory; tests that read it differently
+ *   give no file. A project that defines a `load` function of its own gets no
+ *   helper loads at all, since any helper might be running that one.
+ *
+ * Not followed (missing edges, never wrong ones): a sibling reached only
+ * through the importer's importer; files sourced through a variable the
+ * extractor can't read; a `source` inside a function or an `if` counts as if
+ * it always ran.
  */
+import * as path from 'path';
 import type { Node } from '../types';
 import type { ResolutionContext, ResolvedRef, UnresolvedRef } from './types';
 import { resolveImportPath } from './import-resolver';
@@ -36,7 +47,11 @@ export function isBashRef(ref: UnresolvedRef): boolean {
 /** The resolution of a Bash call or import; null leaves it unresolved (no other strategy runs). */
 export function resolveBashRef(ref: UnresolvedRef, context: ResolutionContext): ResolvedRef | null {
   if (ref.referenceKind === 'imports') {
-    const file = resolveImportPath(ref.referenceName, ref.filePath, 'bash', context);
+    const helperLoad = context.getNodesInFile(ref.filePath).some((n) =>
+      isHelperLoad(n) && n.startLine === ref.line && n.startColumn === ref.column);
+    const file = helperLoad
+      ? helperLoadTarget(ref.filePath, ref.referenceName, memoFor(context), context)
+      : resolveImportPath(ref.referenceName, ref.filePath, 'bash', context);
     const node = file ? context.getNodesInFile(file).find((n) => n.kind === 'file') : undefined;
     return node ? { original: ref, targetNodeId: node.id, confidence: 0.95, resolvedBy: 'import' } : null;
   }
@@ -49,7 +64,7 @@ export function resolveBashRef(ref: UnresolvedRef, context: ResolutionContext): 
     fn.kind === 'function' && fn.language === 'bash' &&
     before([fn.startLine, fn.startColumn], pos) && before(pos, [fn.endLine ?? fn.startLine, fn.endColumn ?? Number.MAX_SAFE_INTEGER]));
   const target = inFunction
-    ? endState(ref.filePath, memo, context).get(ref.referenceName)
+    ? endState(ref.filePath, memo, context).get(ref.referenceName) ?? siblingDefinition(ref.filePath, ref.referenceName, memo, context)
     : lastBefore(ref.filePath, ref.referenceName, pos, memo, context);
   return target ? { original: ref, targetNodeId: target.id, confidence: 0.9, resolvedBy: 'import' } : null;
 }
@@ -90,13 +105,22 @@ interface BashMemo {
   defs: Map<string, Node[]>;
   ends: Map<string, Map<string, Node>>;
   reading: Set<string>;
+  /** File -> the files that source or load it. */
+  importers: Map<string, string[]> | null;
+  /** `file\0name` -> the definition every importer agrees on (null: none or disagreement). */
+  siblings: Map<string, Node | null>;
+  /** File -> the directories of the Bats tests that load it, directly or through helpers. */
+  batsDirs: Map<string, Set<string>> | null;
 }
 
 const memos = new WeakMap<ResolutionContext, BashMemo>();
 
 function memoFor(context: ResolutionContext): BashMemo {
   let memo = memos.get(context);
-  if (!memo) memos.set(context, (memo = { names: null, sources: new Map(), defs: new Map(), ends: new Map(), reading: new Set() }));
+  if (!memo) memos.set(context, (memo = {
+    names: null, sources: new Map(), defs: new Map(), ends: new Map(), reading: new Set(),
+    importers: null, siblings: new Map(), batsDirs: null,
+  }));
   return memo;
 }
 
@@ -119,7 +143,10 @@ function sourcesOf(file: string, memo: BashMemo, context: ResolutionContext): Ar
   out = [];
   for (const imp of context.getNodesInFile(file)) {
     if (imp.kind !== 'import' || imp.language !== 'bash') continue;
-    const target = resolveImportPath(imp.qualifiedName || imp.name, file, 'bash', context);
+    const written = imp.qualifiedName || imp.name;
+    const target = isHelperLoad(imp)
+      ? helperLoadTarget(file, written, memo, context)
+      : resolveImportPath(written, file, 'bash', context);
     if (target && target !== file) out.push({ pos: [imp.startLine, imp.startColumn], target });
   }
   out.sort((a, b) => (before(a.pos, b.pos) ? -1 : before(b.pos, a.pos) ? 1 : 0));
@@ -184,4 +211,127 @@ function endState(file: string, memo: BashMemo, context: ResolutionContext): Map
   } finally {
     memo.reading.delete(file);
   }
+}
+
+/**
+ * A `load` in a file that is not a Bats test: the extractor keeps its path as
+ * written (relative to the test directory), for the resolver to place against
+ * the tests that load the helper (extraction/languages/bash.ts).
+ */
+/** `load x`, after any `NAME=value` assignments the command starts with. */
+const HELPER_LOAD_SIGNATURE = /^(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|[^\s"']+)*\s+)*load\s/;
+
+function isHelperLoad(imp: Node): boolean {
+  return imp.kind === 'import' && imp.language === 'bash' && !/\.bats$/i.test(imp.filePath) && HELPER_LOAD_SIGNATURE.test(imp.signature ?? '');
+}
+
+/** Every Bash file that sources or loads something, with what it names. */
+function bashImports(context: ResolutionContext): Map<string, Array<{ written: string; helperLoad: boolean }>> {
+  const out = new Map<string, Array<{ written: string; helperLoad: boolean }>>();
+  for (const imp of context.getNodesByKind('import')) {
+    if (imp.language !== 'bash') continue;
+    let list = out.get(imp.filePath);
+    if (!list) out.set(imp.filePath, (list = []));
+    list.push({ written: imp.qualifiedName || imp.name, helperLoad: isHelperLoad(imp) });
+  }
+  return out;
+}
+
+/**
+ * The function `name` that every script sourcing `file` sees by its end, when
+ * all of them see the same one; a script that lacks it would fail on the call,
+ * so no edge. Only for a call in a function body, which runs after the entry
+ * script has read everything; memoized per file and name.
+ */
+function siblingDefinition(file: string, name: string, memo: BashMemo, context: ResolutionContext): Node | undefined {
+  const key = `${file}\0${name}`;
+  if (memo.siblings.has(key)) return memo.siblings.get(key) ?? undefined;
+  let found: Node | null = null;
+  for (const importer of importersOf(file, memo, context)) {
+    const def = endState(importer, memo, context).get(name);
+    // A function defined inside one Bats test (a mock) exists only while that
+    // test runs: library code never reaches it through the test file.
+    if (!def || insideTest(def, context) || (found && found.id !== def.id)) { found = null; break; }
+    found = def;
+  }
+  memo.siblings.set(key, found);
+  return found ?? undefined;
+}
+
+function insideTest(def: Node, context: ResolutionContext): boolean {
+  return context.getNodesInFile(def.filePath).some((fn) =>
+    fn.id !== def.id && fn.kind === 'function' && !!fn.decorators?.includes('@test') &&
+    before([fn.startLine, fn.startColumn], [def.startLine, def.startColumn]) &&
+    before([def.startLine, def.startColumn], [fn.endLine ?? fn.startLine, fn.endColumn ?? Number.MAX_SAFE_INTEGER]));
+}
+
+function importersOf(file: string, memo: BashMemo, context: ResolutionContext): string[] {
+  if (!memo.importers) {
+    const importers = new Map<string, string[]>();
+    for (const from of bashImports(context).keys()) {
+      for (const { target } of sourcesOf(from, memo, context)) {
+        let list = importers.get(target);
+        if (!list) importers.set(target, (list = []));
+        if (!list.includes(from)) list.push(from);
+      }
+    }
+    memo.importers = importers;
+  }
+  return memo.importers.get(file) ?? [];
+}
+
+/**
+ * The file a `.bash` helper's `load rel` reads: `rel` against the directory of
+ * each Bats test that loads the helper, when every such reading that names an
+ * indexed file names the same one. Null when no test loads the helper, or the
+ * project defines a `load` function.
+ */
+function helperLoadTarget(file: string, rel: string, memo: BashMemo, context: ResolutionContext): string | null {
+  if (isBashFunctionName('load', memo, context)) return null;
+  let target: string | null = null;
+  for (const dir of batsDirsOf(memo, context).get(file) ?? []) {
+    const candidate = loadFromDir(dir, rel, context);
+    if (!candidate) continue;
+    if (target && target !== candidate) return null;
+    target = candidate;
+  }
+  return target;
+}
+
+/** `load rel` read from test directory `dir`, as Bats names the file; null unless it is indexed. */
+function loadFromDir(dir: string, rel: string, context: ResolutionContext): string | null {
+  const joined = path.posix.normalize(path.posix.join(dir, rel));
+  if (joined === '..' || joined.startsWith('../') || path.posix.isAbsolute(joined)) return null;
+  const file = /\.(?:bash|sh)$/.test(joined) ? joined : `${joined}.bash`;
+  return context.getNodesInFile(file).some((n) => n.kind === 'file') ? file : null;
+}
+
+/**
+ * For each Bash file, the directories of the Bats tests that read it: a test's
+ * own directory, carried along every `source` and `load` from it, a helper's
+ * `load` going to the file it names from each of those directories.
+ */
+function batsDirsOf(memo: BashMemo, context: ResolutionContext): Map<string, Set<string>> {
+  if (memo.batsDirs) return memo.batsDirs;
+  const dirs = new Map<string, Set<string>>();
+  memo.batsDirs = dirs;
+  const imports = bashImports(context);
+  const userLoad = isBashFunctionName('load', memo, context);
+  const queue: Array<[file: string, dir: string]> = [];
+  const add = (file: string, dir: string): void => {
+    let set = dirs.get(file);
+    if (!set) dirs.set(file, (set = new Set()));
+    if (!set.has(dir)) { set.add(dir); queue.push([file, dir]); }
+  };
+  for (const file of imports.keys()) if (/\.bats$/i.test(file)) add(file, path.posix.dirname(file));
+  while (queue.length > 0) {
+    const [file, dir] = queue.pop()!;
+    for (const { written, helperLoad } of imports.get(file) ?? []) {
+      const target = helperLoad
+        ? (userLoad ? null : loadFromDir(dir, written, context))
+        : resolveImportPath(written, file, 'bash', context);
+      if (target && target !== file) add(target, dir);
+    }
+  }
+  return dirs;
 }

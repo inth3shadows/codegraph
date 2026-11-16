@@ -161,13 +161,13 @@ describe('Bash call scope', () => {
     expect(got).toEqual(['main.sh:main.sh -> lib2.sh:f (function)', 'main.sh:main.sh -> main.sh:f (function)']);
   });
 
-  it('a library function does not reach a sibling library only its entry script sources (known limit: no edge)', async () => {
+  it('a library function reaches a sibling library its entry script sources', async () => {
     const graph = await index({
       'lib/a.sh': 'log() { echo "$@"; }\n',
       'lib/b.sh': 'run_b() { log x; }\n',
       'main.sh': 'source "$(dirname "$0")/lib/a.sh"\nsource "$(dirname "$0")/lib/b.sh"\nrun_b\n',
     });
-    expect(edges(graph, 'calls').filter((e) => e.startsWith('lib/b.sh'))).toEqual([]);
+    expect(edges(graph, 'calls').filter((e) => e.startsWith('lib/b.sh'))).toEqual(['lib/b.sh:run_b -> lib/a.sh:log (function)']);
     expect(edges(graph, 'calls')).toContain('main.sh:main.sh -> lib/b.sh:run_b (function)');
   });
 
