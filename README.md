@@ -14,6 +14,13 @@
 >   instructions at 4,096 characters, so the rules for stale-index warnings and unindexed
 >   projects never reached the agent; the guidance now fits, with those rules first
 >   (upstream [#1529](https://github.com/colbymchenry/codegraph/pull/1529) by zyrill).
+> - **Python overloads link to the code that runs.** A call to a function or method declared with
+>   `typing.overload` links to the implementation instead of the first `@overload` stub
+>   (upstream [#3216](https://github.com/colbymchenry/codegraph/pull/3216) by nilotpal-n7, fixes #2963).
+> - **Java static calls follow the wildcard import.** With `import com.x.b.*;`, `Util.log("x")`
+>   links to `com.x.b.Util` instead of a same-named class in a package the file doesn't import
+>   (upstream [#3138](https://github.com/colbymchenry/codegraph/pull/3138) by johnhldiver-beep,
+>   fixes #2976's static call).
 > - **Much more TypeScript parses.** The TypeScript grammar is built from
 >   [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript),
 >   a maintained fork of the stalled upstream grammar, with two fixes from
