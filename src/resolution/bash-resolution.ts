@@ -218,8 +218,11 @@ function endState(file: string, memo: BashMemo, context: ResolutionContext): Map
  * written (relative to the test directory), for the resolver to place against
  * the tests that load the helper (extraction/languages/bash.ts).
  */
+/** `load x`, after any `NAME=value` assignments the command starts with. */
+const HELPER_LOAD_SIGNATURE = /^(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|[^\s"']+)*\s+)*load\s/;
+
 function isHelperLoad(imp: Node): boolean {
-  return imp.kind === 'import' && imp.language === 'bash' && !/\.bats$/i.test(imp.filePath) && /^load\s/.test(imp.signature ?? '');
+  return imp.kind === 'import' && imp.language === 'bash' && !/\.bats$/i.test(imp.filePath) && HELPER_LOAD_SIGNATURE.test(imp.signature ?? '');
 }
 
 /** Every Bash file that sources or loads something, with what it names. */
@@ -246,11 +249,20 @@ function siblingDefinition(file: string, name: string, memo: BashMemo, context: 
   let found: Node | null = null;
   for (const importer of importersOf(file, memo, context)) {
     const def = endState(importer, memo, context).get(name);
-    if (!def || (found && found.id !== def.id)) { found = null; break; }
+    // A function defined inside one Bats test (a mock) exists only while that
+    // test runs: library code never reaches it through the test file.
+    if (!def || insideTest(def, context) || (found && found.id !== def.id)) { found = null; break; }
     found = def;
   }
   memo.siblings.set(key, found);
   return found ?? undefined;
+}
+
+function insideTest(def: Node, context: ResolutionContext): boolean {
+  return context.getNodesInFile(def.filePath).some((fn) =>
+    fn.id !== def.id && fn.kind === 'function' && !!fn.decorators?.includes('@test') &&
+    before([fn.startLine, fn.startColumn], [def.startLine, def.startColumn]) &&
+    before([def.startLine, def.startColumn], [fn.endLine ?? fn.startLine, fn.endColumn ?? Number.MAX_SAFE_INTEGER]));
 }
 
 function importersOf(file: string, memo: BashMemo, context: ResolutionContext): string[] {

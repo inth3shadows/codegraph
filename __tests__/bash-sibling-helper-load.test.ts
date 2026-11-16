@@ -67,6 +67,14 @@ describe('Bash sibling libraries', () => {
     expect(edges(graph, 'calls')).toContain('lib/a.sh:run_a -> lib/b.sh:helper_b (function)');
   });
 
+  it('never links library code to a mock defined inside a test, even with one importer', async () => {
+    const graph = await index({
+      'lib/deploy.sh': 'deploy() { git push origin main; }\n',
+      'test/deploy.bats': 'setup() { source "$BATS_TEST_DIRNAME/../lib/deploy.sh"; }\n@test "pushes" {\n  git() { echo mock; }\n  deploy\n}\n@test "other" {\n  deploy\n}\n',
+    });
+    expect(edges(graph, 'calls').filter((e) => e.startsWith('lib/deploy.sh'))).toEqual([]);
+  });
+
   it('links nothing when one entry script does not see the name', async () => {
     const graph = await index({
       'bin/one.sh': '#!/bin/bash\n' + S('../lib/a.sh') + S('../lib/b.sh') + 'run_a\n',
@@ -168,6 +176,18 @@ describe('Bats load inside a .bash helper', () => {
     });
     expect(edges(graph, 'imports').filter((e) => e.startsWith('test/h_use.bash'))).toEqual([]);
     expect(edges(graph, 'calls')).not.toContain('test/h_use.bash:go -> test/assert.bash:assert_ok (function)');
+  });
+
+  it('reads a helper load behind an assignment against the test directory', async () => {
+    const graph = await index({
+      'test/t.bats': 'load helpers/h\n@test "x" {\n  go\n}\n',
+      'test/helpers/h.bash': 'FOO=1 load ../assert.sh\ngo() { assert_ok; }\n',
+      'assert.sh': 'assert_ok() { :; }\n',
+      // Read against the helper's own directory, the path names this file: never chosen.
+      'test/assert.sh': 'assert_ok() { :; }\n',
+    });
+    expect(edges(graph, 'calls')).toContain('test/helpers/h.bash:go -> assert.sh:assert_ok (function)');
+    expect(edges(graph, 'calls')).not.toContain('test/helpers/h.bash:go -> test/assert.sh:assert_ok (function)');
   });
 
   it('keeps a helper load\'s path as written, with no internal marker', async () => {
