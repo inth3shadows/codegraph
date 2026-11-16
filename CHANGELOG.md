@@ -496,7 +496,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - In Rust, a call through a generic type parameter, like `Key::get(…)`, now links to the method its trait bound declares, and `T::default()` under `T: Default` no longer links to one of your types' `default` functions.
 - In Rust, `String::from("…")` no longer links to your own `impl From<YourType> for String` unless it passes a `YourType`, and `files.iter()` links to your trait's implementation only where the trait is imported.
 - In Rust, a method called through `self: Pin<&mut Self>`, `self: Box<Self>`, `self: Rc<Self>` or `self: Arc<Self>` now links the way Rust looks it up, to the type's own method before a trait's of the same name.
-- In Rust, a method called on what `.as_mut()` or `.as_ref()` hands back now links by the type its receiver is declared with, and one on an `Option` or a generic type no longer links to an unrelated project method.
+- In Rust, a method called on what `.as_mut()` or `.as_ref()` hands back now links by the type its receiver is declared with, or for a generic type to the method of the trait that bounds it, and one on an `Option` no longer links to an unrelated project method.
 - In Rust, an item declared without `pub` now links only from its own module and those inside it, and a name a `use` brings in from a workspace crate links only to that crate or one it depends on.
 - In Rust, a name a `use` brings in, like `use crate::sync::watch::Receiver`, now links to the item in the module its path leads to, found the way Rust finds it, not to any item of that name in the crate.
 - In Rust, a name brought in only by a glob `use`, like dioxus's `use dioxus::prelude::*`, now links to the item that module passes on, following its re-exports, and only to what the module makes public.
@@ -561,6 +561,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - In CFML, `<cfinclude template="formlistshared.cfm">` and its script forms now link the component, function or template they are in to the file they include. Thanks @HarryMuc for the report. (#2651)
 - In PHP, a class written through a namespace alias in a different case than its `use` statement now links to that class, since PHP reads namespace names without regard to case. Thanks @danusha2345. (#2369)
 - In PHP, a call on a variable now reaches the method its class really has, found through the file's namespace and `use` imports, and a Laravel facade's static call reaches the class its `getFacadeAccessor()` names.
+- In PHP, `parent::`, `self::` and `$this->` inside an anonymous class, like `new class extends ArrayStore { … }`, now reach what that class extends and the traits it uses, not those of the class whose method creates it.
 - In Drupal, an import of a class whose short name another class shares, like `use Drupal\commerce_price\Price`, no longer also links to that other class.
 - In Erlang, a comment inside an argument or parameter list no longer counts as an argument, so the call links to the function of its real arity. Thanks @Dshuishui. (#1619)
 - In COBOL, asking `codegraph_explore` about a copybook by name, like `CVACT01Y`, now answers with its source and every `COPY` or `EXEC SQL INCLUDE` that includes it, instead of "No relevant code found". Thanks @popolusiak. (#2342)
