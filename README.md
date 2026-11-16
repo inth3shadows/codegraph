@@ -30,7 +30,9 @@
 >   run there: one the script defines or sources, the last definition read winning, never a
 >   same-named script, variable or unsourced file (upstream
 >   [#3098](https://github.com/colbymchenry/codegraph/pull/3098) by Omar-Elwazeery, with the
->   resolution fixed on the fork).
+>   resolution fixed on the fork). Fork-only on top: a library function reaches a sibling library
+>   when every script that sources it sees the same function, and a Bats `load` inside a `.bash`
+>   helper is read against the directory of the test that loads it.
 > - **Much more TypeScript parses.** The TypeScript grammar is built from
 >   [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript),
 >   a maintained fork of the stalled upstream grammar, with two fixes from
