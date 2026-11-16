@@ -3799,6 +3799,25 @@ function javaFileScope(file: string, context: ResolutionContext): { pkg: string;
   return scope;
 }
 
+/**
+ * Whether the file a Java `Receiver.member` call is written in can see the
+ * class the receiver names — the file's own package, an explicit import, or
+ * a package an on-demand import covers (#2976) — the same visibility the
+ * `new` path applies to a bare type name (isJavaTypeVisible). A class in a
+ * package the file neither is in nor imports is no candidate for the call.
+ * The call sites judge a SIMPLE receiver only: a fully-qualified one
+ * (`com.x.b.Util.log`) names its class without an import.
+ */
+function javaReceiverClassVisible(candidate: Node, ref: UnresolvedRef, context: ResolutionContext): boolean {
+  if (ref.language !== 'java' || candidate.language !== 'java') return true;
+  if (candidate.filePath === ref.filePath) return true;
+  const pkg = javaFileScope(candidate.filePath, context).pkg;
+  const here = javaFileScope(ref.filePath, context);
+  if (pkg === here.pkg) return true;
+  const top = candidate.qualifiedName.split('::')[pkg ? 1 : 0] ?? '';
+  return here.single.has(`${pkg}.${top}`) || here.demand.has(pkg);
+}
+
 /** The simple names a Java type's own header extends or implements. */
 function javaHeaderSupertypes(decl: Node, context: ResolutionContext): string[] {
   const lines = context.getFileLines?.(decl.filePath) ?? context.readFile(decl.filePath)?.split(/\r?\n/) ?? [];
@@ -15176,7 +15195,15 @@ export function matchByQualifiedName(
     const partialCandidates = cppQualifierSpecializationPool(cppSpecializationPool(keepForRef(context.getNodesByName(lastName))
       .filter((candidate) => endsAtScopeBoundary(candidate.qualifiedName, ref.referenceName)), ref, context), ref, context);
     const ownLanguage = partialCandidates.filter((candidate) => sameLanguageFamily(candidate.language, ref.language));
-    const pool = ownLanguage.length > 0 ? ownLanguage : partialCandidates;
+    let pool = ownLanguage.length > 0 ? ownLanguage : partialCandidates;
+    // A Java static call resolves on the class its file can see: its own
+    // package, an explicit import, a wildcard import's package (#2976) —
+    // the visibility the `new` path applies, which the receiver's class
+    // must pass before a same-tail candidate is picked.
+    if (ref.language === 'java' && parts.length === 2 && /^[A-Z]/.test(parts[0]!)) {
+      const visible = pool.filter((c) => javaReceiverClassVisible(c, ref, context));
+      if (visible.length > 0) pool = visible;
+    }
     const chosen = preferCallSiteFile(pool, ref.filePath)[0];
     if (chosen) {
       return {
@@ -24962,6 +24989,13 @@ export function matchMethodCall(
     if (ref.language === 'php' && classCandidates.length > 1) {
       const named = classCandidates.filter((c) => phpFileNamesClass(c, ref.filePath, context));
       classCandidates = [...named, ...classCandidates.filter((c) => !named.includes(c))];
+    }
+    // A Java class the file can see by its simple name — its own package, an
+    // explicit import, a wildcard import's package — before one it cannot
+    // (#2976), the visibility the `new` path applies to a bare type name.
+    if (ref.language === 'java' && !objectOrClass!.includes('.') && /^[A-Z]/.test(objectOrClass!)) {
+      const visible = classCandidates.filter((c) => javaReceiverClassVisible(c, ref, context));
+      if (visible.length > 0) classCandidates = [...visible, ...classCandidates.filter((c) => !visible.includes(c))];
     }
 
     const productionCaller = !isTestPath(ref.filePath);
