@@ -35,9 +35,6 @@ const SCRIPT_DIR_FORMS: readonly RegExp[] = [
 /** Bats sets this to the directory of the test file being run. */
 const BATS_TEST_DIRNAME = 'BATS_TEST_DIRNAME';
 
-/** The file-reference prefix of a `.bash` helper's `load` (resolution/bash-resolution.ts places it). */
-const BATS_HELPER_LOAD = 'bats-load:';
-
 function isBatsFile(filePath: string): boolean {
   return /\.bats$/i.test(filePath);
 }
@@ -335,11 +332,11 @@ function handleCommand(node: SyntaxNode, ctx: ExtractorContext): void {
 
   // In a `.bash` helper, `load` is Bats's only when a test loads the helper,
   // and its path is read against that test's directory: the resolver decides
-  // both. The command stays a call too, so a helper that defines its own
-  // `load` keeps that edge.
+  // both, knowing the import by its `load` signature in a non-`.bats` file.
+  // The command stays a call too, for a project that defines its own `load`.
   if (name === 'load' && /\.bash$/i.test(ctx.filePath)) {
     const rel = args[0] && batsHelperLoadPath(args[0], ctx);
-    if (rel) emitImport(ctx, node, unquote(getNodeText(args[0]!, ctx.source)), `${BATS_HELPER_LOAD}${rel}`, true);
+    if (rel) emitImport(ctx, node, unquote(getNodeText(args[0]!, ctx.source)), rel, true);
   }
 
   // `bash ./script.sh`, `sh ../lib/tool`, and wrapper forms such as

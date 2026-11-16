@@ -57,15 +57,33 @@ describe('Bash sibling libraries', () => {
     expect(edges(graph, 'calls')).toContain('lib/a.sh:run_a -> lib/b.sh:helper_b (function)');
   });
 
-  it('agrees across entry scripts that source the same sibling', async () => {
+  it('links when every entry script sees the same sibling, in any order', async () => {
     const graph = await index({
       'bin/one.sh': '#!/bin/bash\n' + S('../lib/a.sh') + S('../lib/b.sh') + 'run_a\n',
       'bin/two.sh': '#!/bin/bash\n' + S('../lib/b.sh') + S('../lib/a.sh') + 'run_a\n',
-      'bin/three.sh': '#!/bin/bash\n' + S('../lib/a.sh') + 'run_a\n',
       'lib/a.sh': 'run_a() { helper_b; }\n',
       'lib/b.sh': 'helper_b() { echo b; }\n',
     });
     expect(edges(graph, 'calls')).toContain('lib/a.sh:run_a -> lib/b.sh:helper_b (function)');
+  });
+
+  it('links nothing when one entry script does not see the name', async () => {
+    const graph = await index({
+      'bin/one.sh': '#!/bin/bash\n' + S('../lib/a.sh') + S('../lib/b.sh') + 'run_a\n',
+      'bin/three.sh': '#!/bin/bash\n' + S('../lib/a.sh') + 'run_a\n',
+      'lib/a.sh': 'run_a() { helper_b; }\n',
+      'lib/b.sh': 'helper_b() { echo b; }\n',
+    });
+    expect(edges(graph, 'calls').filter((e) => e.startsWith('lib/a.sh'))).toEqual([]);
+  });
+
+  it('never links library code to a mock one test defines', async () => {
+    const graph = await index({
+      'lib/deploy.sh': 'deploy() { git push origin main; }\n',
+      'bin/release.sh': '#!/bin/bash\n' + S('../lib/deploy.sh') + 'deploy\n',
+      'test/deploy.bats': 'source "$BATS_TEST_DIRNAME/../lib/deploy.sh"\n@test "x" {\n  git() { echo mock; }\n  deploy\n}\n',
+    });
+    expect(edges(graph, 'calls').filter((e) => e.startsWith('lib/deploy.sh'))).toEqual([]);
   });
 
   it('links nothing when entry scripts disagree on the sibling', async () => {
@@ -139,6 +157,23 @@ describe('Bats load inside a .bash helper', () => {
     });
     expect(edges(graph, 'calls')).toContain('test/lib.bash:go -> test/lib.bash:load (function)');
     expect(edges(graph, 'imports').filter((e) => e.startsWith('test/lib.bash'))).toEqual([]);
+  });
+
+  it('reads no helper load when any helper defines its own load', async () => {
+    const graph = await index({
+      'test/t.bats': 'load h_load\nload h_use\n@test "x" {\n  go\n}\n',
+      'test/h_load.bash': 'load() { echo mine; }\n',
+      'test/h_use.bash': 'load assert\ngo() { assert_ok; }\n',
+      'test/assert.bash': 'assert_ok() { :; }\n',
+    });
+    expect(edges(graph, 'imports').filter((e) => e.startsWith('test/h_use.bash'))).toEqual([]);
+    expect(edges(graph, 'calls')).not.toContain('test/h_use.bash:go -> test/assert.bash:assert_ok (function)');
+  });
+
+  it('keeps a helper load\'s path as written, with no internal marker', async () => {
+    const graph = await index({ 'lib/x.bash': 'load assert\nrun() { :; }\n' });
+    const imports = graph.getNodesInFile('lib/x.bash').filter((n) => n.kind === 'import');
+    expect(imports.map((n) => [n.name, n.qualifiedName])).toEqual([['assert', 'assert']]);
   });
 
   it('does not treat load as Bats in a .bash file no test loads', async () => {
