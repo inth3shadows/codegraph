@@ -21,6 +21,10 @@
 >   links to `com.x.b.Util` instead of a same-named class in a package the file doesn't import
 >   (upstream [#3138](https://github.com/colbymchenry/codegraph/pull/3138) by johnhldiver-beep,
 >   fixes #2976's static call).
+> - **A named pipe can't stall indexing.** A FIFO named like a file CodeGraph reads (`package.json`,
+>   `go.mod`, `.gitignore`, `codegraph.json`, a `.vbproj`, or a lock file in `.codegraph/`) made
+>   `codegraph init`, `index` and `sync` wait forever; it is now skipped
+>   (upstream [#3309](https://github.com/colbymchenry/codegraph/pull/3309), fixes #3308).
 > - **Much more TypeScript parses.** The TypeScript grammar is built from
 >   [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript),
 >   a maintained fork of the stalled upstream grammar, with two fixes from
