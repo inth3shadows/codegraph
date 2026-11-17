@@ -207,15 +207,31 @@ describe('a member read through a default binding', () => {
   });
 
   it.each([
-    ['a Flow generic function type', 'type Fn = <T>(x: T) => T;'],
-    ['a Flow generic arrow', 'const id = <T>(x: T): T => x;'],
-  ])('keeps the stated value of a .js module containing %s', async (_shape, line) => {
+    ['a Flow generic function type', 'type Fn = <T>(x: T) => T;', ''],
+    ['a Flow generic arrow', 'const id = <T>(x: T): T => x;', ''],
+    // A closing tag later in the file must not make the swallowed text read as closed.
+    ['a generic and a closing tag in a comment', 'type Fn = <T>(x: T) => T;', '// renders </div> here\n'],
+    ['a generic and a closing tag in a string', 'type Fn = <T>(x: T) => T;', "const tag = '</p>';\n"],
+    ['a generic and a closing tag in a doc comment', 'type Fn = <T>(x: T) => T;', '/** @example </Foo> */\n'],
+  ])('keeps the stated value of a .js module containing %s', async (_shape, line, tail) => {
     const cg = await indexProject({
       'decoy.js': 'class Decoy { second() {} }\nmodule.exports.Decoy = Decoy;\n',
-      'm.js': `// @flow\nconst { Decoy } = require('./decoy');\n${line}\nmodule.exports = new Decoy();\n`,
+      'm.js': `// @flow\nconst { Decoy } = require('./decoy');\n${line}\nmodule.exports = new Decoy();\n${tail}`,
       'use.js': CALLER("const named = require('./m');", ['second']),
     });
     expect(callsOf(cg, 'run')).toEqual(['3 decoy.js:Decoy::second']);
+  });
+
+  it.each([
+    ['its own function', 'function second() {}\nexports.second = second;', '3 m.js:second'],
+    ["a class's method", "const { Decoy } = require('./decoy');\nexports.second = Decoy.prototype.second;", '3 decoy.js:Decoy::second'],
+  ])('keeps an export of %s that a Flow generic hides from the JSX read, behind a later closing tag', async (_shape, body, edge) => {
+    const cg = await indexProject({
+      'decoy.js': 'class Decoy { second() {} }\nmodule.exports.Decoy = Decoy;\n',
+      'm.js': `// @flow\ntype Fn = <T>(x: T) => T;\n${body}\n// renders </div> here\n`,
+      'use.js': CALLER("const named = require('./m');", ['second']),
+    });
+    expect(callsOf(cg, 'run')).toEqual([edge]);
   });
 
   it.each([

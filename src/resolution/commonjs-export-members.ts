@@ -8,6 +8,8 @@ import { stripCommentsForRegex } from './strip-comments';
  * or trailing note is not code.
  */
 export function readCommonJsForwarder(code: string, typescript: boolean): string | null {
+  // Blanking comments never creates these, so a file without both is no forwarder.
+  if (!code.includes('require(') || !code.includes('exports')) return null;
   const text = stripCommentsForRegex(code, typescript ? 'typescript' : 'javascript');
   return /^\s*(?:['"]use strict['"];\s*)?(?:exports\s*=\s*)?module\.exports\s*=\s*(?:exports\s*=\s*)?require\(\s*['"]([^'"]+)['"]\s*\)\s*;?\s*$/
     .exec(text)?.[1] ?? null;
@@ -31,14 +33,31 @@ function unclosedJsx(tokens: readonly LexicalToken[]): boolean {
   return depth > 0;
 }
 
-/** Syntactic CommonJS writes, without interpreting their values or executing code. */
+/**
+ * Syntactic CommonJS writes, without interpreting their values or executing code.
+ *
+ * JSX mode reads `<T>(x) =>` (a Flow or TS generic) as an element, so what
+ * follows, a `module.exports =` included, can become its text. A file that
+ * ends with an element still open was not read as code; neither was one where
+ * a `</div>` in a later comment or string closes that element. So a file with
+ * any JSX is read in plain mode too: what either read finds uncertain is
+ * uncertain, and a member either read sees is a member. Both directions only
+ * hand the file back to the resolution it had without this reader.
+ */
 export function readCommonJsExportMembers(source: string, jsx = false): { members: ReadonlySet<string>; uncertain: boolean } {
   const tokens: LexicalToken[] = [...jsTokens(source, { jsx })].filter((t) => !TRIVIA.has(t.type));
+  if (!jsx || !tokens.some((t) => t.type.startsWith('JSX'))) return readTokens(tokens);
+  const jsxRead = readTokens(tokens);
+  const plainRead = readCommonJsExportMembers(source, false);
+  return {
+    members: new Set([...jsxRead.members, ...plainRead.members]),
+    uncertain: jsxRead.uncertain || plainRead.uncertain || unclosedJsx(tokens),
+  };
+}
+
+function readTokens(tokens: readonly LexicalToken[]): { members: ReadonlySet<string>; uncertain: boolean } {
   const members = new Set<string>();
-  // JSX mode reads `<T>(x) =>` (a Flow or TS generic) as an element that never
-  // closes, so the rest of the file, a `module.exports =` included, becomes
-  // its text. A file that ends with an element still open was not read as code.
-  let uncertain = jsx && unclosedJsx(tokens);
+  let uncertain = false;
   const moduleApi = (token: LexicalToken | undefined): boolean => token?.type === 'StringLiteral' &&
     (token.value.slice(1, -1) === 'module' || token.value.slice(1, -1) === 'node:module');
 

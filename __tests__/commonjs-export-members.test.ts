@@ -70,10 +70,12 @@ describe('CommonJS export member discovery', () => {
     expect(readCommonJsExportMembers(source).uncertain).toBe(true);
   });
 
-  it('ignores JSX text but keeps assignments in JSX expressions', () => {
+  it('keeps assignments in JSX expressions, and counts a write in JSX text too', () => {
+    // The plain-mode read (see the generic cases below) sees JSX text as code.
+    // An extra member only hands that name back to ordinary resolution.
     const source = '<div title="exports.missing = fake">exports.missing = fake{exports.load = Store.prototype.load}</div>';
     const result = readCommonJsExportMembers(source, true);
-    expect([...result.members]).toEqual(['load']);
+    expect([...result.members].sort()).toEqual(['load', 'missing']);
     expect(result.uncertain).toBe(false);
   });
 
@@ -84,5 +86,19 @@ describe('CommonJS export member discovery', () => {
     'type Fn = <T>(x: T) => T;\nmodule.exports = function () { return 1; }',
   ])('is uncertain when a generic leaves JSX mode reading the rest as text: %j', (source) => {
     expect(readCommonJsExportMembers(source, true).uncertain).toBe(true);
+  });
+
+  it.each([
+    'type Fn = <T>(x: T) => T;\nmodule.exports = new Store();\n// renders </div> here',
+    "type Fn = <T>(x: T) => T;\nmodule.exports = new Store();\nconst tag = '</p>';",
+    'type Fn = <T>(x: T) => T;\nmodule.exports = new Store();\n/** @example </Foo> */',
+    'const id = <T>(x: T): T => x;\nmodule[name] = id;\nconst el = <a></a>;',
+  ])('stays uncertain when a later closing tag balances a generic: %j', (source) => {
+    expect(readCommonJsExportMembers(source, true).uncertain).toBe(true);
+  });
+
+  it('counts a write a generic hides from the JSX read', () => {
+    const source = 'type Fn = <T>(x: T) => T;\nexports.second = second;\n// </div>';
+    expect(readCommonJsExportMembers(source, true).members.has('second')).toBe(true);
   });
 });
