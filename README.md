@@ -42,6 +42,11 @@
 >   `dirname(__FILE__) . '/inc/b.php'` and `dirname(__DIR__) . '/config/c.php'` now link to the
 >   file PHP loads, and a `./` or `../` include links only to the exact path written (upstream
 >   [#3327](https://github.com/colbymchenry/codegraph/pull/3327), fixes #3298).
+> - **A Rust method passed as a value counts as a use.** `g.map(Graph::counts)`, `.map(Self::helper)`
+>   and `.or_else(fs::default_sep)` now show in that function's callers and impact, resolved as the
+>   same path written as a call; a method of an `impl Trait for T` block gets no edge, since the
+>   impl Rust picks for a value is past what the index can tell (upstream
+>   [#3330](https://github.com/colbymchenry/codegraph/pull/3330), fixes #3254).
 > - **A member call on an imported function isn't a call of the function.** `express.static()` no
 >   longer links to `createApplication`, nor `User.all()` to `User`, and such a call never falls back
 >   to an unrelated class's method of the same name (fork fix).
