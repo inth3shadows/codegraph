@@ -30,9 +30,14 @@
 >   run there: one the script defines or sources, the last definition read winning, never a
 >   same-named script, variable or unsourced file (upstream
 >   [#3098](https://github.com/colbymchenry/codegraph/pull/3098) by Omar-Elwazeery, with the
->   resolution fixed on the fork). Fork-only on top: a library function reaches a sibling library
+>   resolution fixed on the fork; `$(dirname "$0")` in a sourced file and one-line Bats tests
+>   from its later commit). Fork-only on top: a library function reaches a sibling library
 >   when every script that sources it sees the same function, and a Bats `load` inside a `.bash`
 >   helper is read against the directory of the test that loads it.
+> - **A member a CommonJS module doesn't export links nowhere.** `utils.missing()` on a
+>   `require('./utils')` that has no `missing` no longer links to an unrelated class's method of
+>   that name, while a module whose `module.exports` is an instance or class keeps its members
+>   (fork fix for upstream #3272).
 > - **Much more TypeScript parses.** The TypeScript grammar is built from
 >   [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript),
 >   a maintained fork of the stalled upstream grammar, with two fixes from
