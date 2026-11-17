@@ -205,3 +205,36 @@ describe('Bats load inside a .bash helper', () => {
     expect(edges(graph, 'imports').filter((e) => e.startsWith('lib/x.bash'))).toEqual([]);
   });
 });
+
+describe('$0 paths beside sibling libraries and helper loads', () => {
+  it('leaves a $0 path unresolved in a library a helper load reaches: under Bats, $0 is the runner', async () => {
+    const graph = await index({
+      'test/x.bats': 'load test_helper/common\n@test "x" {\n  run_lib\n}\n',
+      'test/test_helper/common.bash': 'load lib\n',
+      'test/lib.bash': S('z.sh') + 'run_lib() { echo lib; }\n',
+      'test/z.sh': 'zed() { echo z; }\n',
+    });
+    expect(edges(graph, 'imports').filter((e) => e.startsWith('test/lib.bash:'))).toEqual([]);
+    expect(edges(graph, 'imports')).toContain('test/test_helper/common.bash:common.bash -> test/lib.bash:lib.bash (file)');
+  });
+
+  it('links a sibling library that a sourced library reaches through $0, from the entry script', async () => {
+    const graph = await index({
+      'bin/main.sh': '#!/bin/bash\n' + S('../lib/a.sh') + 'run_a\n',
+      'lib/a.sh': S('b.sh') + 'run_a() { helper_b; }\n',
+      'bin/b.sh': 'helper_b() { echo bin; }\n',
+      'lib/b.sh': 'helper_b() { echo lib; }\n',
+    });
+    expect(edges(graph, 'calls')).toContain('lib/a.sh:run_a -> bin/b.sh:helper_b (function)');
+    expect(edges(graph, 'calls')).not.toContain('lib/a.sh:run_a -> lib/b.sh:helper_b (function)');
+  });
+
+  it('links a one-line Bats test to a function its helper loads', async () => {
+    const graph = await index({
+      'test/x.bats': 'load test_helper/common\n@test "x" { run_lib; }\n',
+      'test/test_helper/common.bash': 'load lib\n',
+      'test/lib.bash': 'run_lib() { echo lib; }\n',
+    });
+    expect(edges(graph, 'calls')).toContain('test/x.bats:x -> test/lib.bash:run_lib (function)');
+  });
+});
