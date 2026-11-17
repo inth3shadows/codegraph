@@ -38,6 +38,10 @@
 >   `require('./utils')` that has no `missing` no longer links to an unrelated class's method of
 >   that name, while a module whose `module.exports` is an instance or class keeps its members
 >   (fork fix for upstream #3272).
+> - **PHP includes from the file's own directory link.** `require_once __DIR__ . '/inc/a.php'`,
+>   `dirname(__FILE__) . '/inc/b.php'` and `dirname(__DIR__) . '/config/c.php'` now link to the
+>   file PHP loads, and a `./` or `../` include links only to the exact path written (upstream
+>   [#3327](https://github.com/colbymchenry/codegraph/pull/3327), fixes #3298).
 > - **A member call on an imported function isn't a call of the function.** `express.static()` no
 >   longer links to `createApplication`, nor `User.all()` to `User`, and such a call never falls back
 >   to an unrelated class's method of the same name (fork fix).
