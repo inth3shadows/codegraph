@@ -38,6 +38,9 @@
 >   `require('./utils')` that has no `missing` no longer links to an unrelated class's method of
 >   that name, while a module whose `module.exports` is an instance or class keeps its members
 >   (fork fix for upstream #3272).
+> - **A member call on an imported function isn't a call of the function.** `express.static()` no
+>   longer links to `createApplication`, nor `User.all()` to `User`, and such a call never falls back
+>   to an unrelated class's method of the same name (fork fix).
 > - **Much more TypeScript parses.** The TypeScript grammar is built from
 >   [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript),
 >   a maintained fork of the stalled upstream grammar, with two fixes from
