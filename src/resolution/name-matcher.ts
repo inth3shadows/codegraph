@@ -23209,6 +23209,7 @@ export function clearNameMatcherMemos(context: ResolutionContext): void {
   CSHARP_PARAMETERS.delete(context);
   JS_ASSIGNED_MEMBERS.delete(context);
   JS_MODULE_NAMESPACES.delete(context);
+  JS_FUNCTION_DEFAULTS.delete(context);
   CFML_CHAINS.delete(context);
   NO_RECEIVER_LINES.delete(context);
   OBJC_SUPERS.delete(context);
@@ -27355,7 +27356,35 @@ function isImportedModuleReceiver(receiver: string, member: string, ref: Unresol
   const firstMember = receiver.includes('.') ? receiver.slice(root.length + 1).split('.')[0]! : member;
   return binding.isNamespace ||
     (module?.namespace === true && !module.members.has(firstMember)) ||
+    (binding.isDefault && importsOwnFunction(binding.source, ref, context)) ||
     context.isOutOfRepoImport?.(binding.source, ref.filePath, ref.language) === true;
+}
+
+const JS_FUNCTION_DEFAULTS = new WeakMap<ResolutionContext, Map<string, boolean>>();
+const FUNCTION_DEFAULT_EXPORT = /(?:^|[;\n])[ \t]*(?:(?:exports\s*=\s*)?module\.exports\s*=\s*(?:exports\s*=\s*)?|export\s+default\s+)([A-Za-z_$][\w$]*)\s*;?[ \t]*(?=\r?\n|$)/;
+
+/**
+ * Whether the module a default binding reads sets its default to a function
+ * it declares (`module.exports = Model`, `export default createApplication`).
+ * A member call through it that import resolution could not place is a
+ * property of that function (`Model.init = function init…`, `express.static =
+ * require('serve-static')`), never a method some unrelated class declares.
+ */
+function importsOwnFunction(source: string, ref: UnresolvedRef, context: ResolutionContext): boolean {
+  const file = context.resolveModuleFile?.(source, ref.filePath, ref.language);
+  if (!file || !/\.[cm]?[jt]sx?$/.test(file)) return false;
+  let memo = JS_FUNCTION_DEFAULTS.get(context);
+  if (!memo) JS_FUNCTION_DEFAULTS.set(context, (memo = new Map()));
+  const cached = memo.get(file);
+  if (cached !== undefined) return cached;
+  const code = context.readFile(file);
+  const name = code && /module\.exports|export\s+default/.test(code)
+    ? FUNCTION_DEFAULT_EXPORT.exec(stripCommentsForRegex(code, 'typescript'))?.[1]
+    : undefined;
+  const own = !!name && (context.getNodesInFileNamed?.(file, name) ?? context.getNodesInFile(file).filter((n) => n.name === name))
+    .some((n) => n.kind === 'function' && n.qualifiedName === n.name);
+  memo.set(file, own);
+  return own;
 }
 
 interface ModuleNamespaceInfo {

@@ -3530,6 +3530,13 @@ export function resolveViaImport(
             // A member of the guess at a module's first export is no member of
             // the module: the receiver isn't known, so there is nothing to name.
             if (guessed) continue;
+
+            // A JS/TS call of a member none of the above finds, on an imported
+            // function, is a call of that member, never of the function:
+            // `express.static()` is serve-static, not `createApplication`, and
+            // `User.all()` the function assigned to `User.all`, not `User`. (An
+            // imported value keeps its edge below, as the receiver it is.)
+            if (ref.referenceKind === 'calls' && targetNode.kind === 'function' && ESM_IMPORT_LANGUAGES.has(ref.language)) continue;
           }
 
           return {
