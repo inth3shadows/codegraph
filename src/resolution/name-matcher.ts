@@ -12242,6 +12242,25 @@ export function isRustForeignImplCallable(target: Node, ref: UnresolvedRef, cont
 }
 
 /**
+ * Whether a Rust method passed as a value through its path (`map(T::m)`,
+ * #3254) sits in an `impl Trait for T` block, where the index can't say it is
+ * the one Rust picks: a derived or macro-written impl it doesn't hold
+ * (`#[derive(Default)]`, thiserror's `#[from]`), another impl the argument's
+ * type would choose (`From<A>` beside `From<B>`, std's own `From<&str> for
+ * String`), or the type's own method of the name (`Path::exists` beside a
+ * project trait's). A one-line `impl Default for A { fn default() … }` is
+ * read up to the method's column.
+ */
+export function isRustTraitImplMember(method: Node, context: ResolutionContext): boolean {
+  if (method.language !== 'rust' || method.kind !== 'method') return false;
+  const own = (context.getFileLines?.(method.filePath) ?? context.readFile(method.filePath)?.split(/\r?\n/))?.[method.startLine - 1] ?? '';
+  const before = own.slice(0, Math.max(0, method.startColumn));
+  const impls = [...before.matchAll(/\bimpl\b/g)];
+  if (impls.length > 0) return /\sfor\s/.test(before.slice(impls[impls.length - 1]!.index));
+  return isRustTraitImplMethod(method, context);
+}
+
+/**
  * Whether a Rust call through a type's path can mean `target` (#2614). A
  * type the path names from std or a dependency — through the file's `use`
  * (`J::from(i)` under `use serde_json::Value as J`, `Value::default()` under
