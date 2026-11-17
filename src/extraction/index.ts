@@ -3730,8 +3730,9 @@ export class ExtractionOrchestrator {
    * touched, although neither end of the edge changed: a python attribute typed
    * through a factory or a base class in another file records those files as
    * `metadata.typeFrom`, as does a TS/JS receiver typed by the signature of a
-   * function in another file (a callback's parameter). The definition delta
-   * cannot see these — editing what a factory returns, what a base `__init__`
+   * function in another file (a callback's parameter), and a JS/TS default
+   * import's namespace ownership (the export assignment it was read from). The
+   * definition delta cannot see these — editing what a factory returns, what a base `__init__`
    * assigns or the type a callee gives its callback adds or removes no
    * definition — so without this a synced index keeps the old type forever.
    * The edges go back to pending refs; returns the files they come from, whose

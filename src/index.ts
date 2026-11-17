@@ -1135,6 +1135,7 @@ export class CodeGraph {
       aliasMayName,
       changedModuleConfigs,
       changedRoutes,
+      commonJsForwarderKeys,
       createImportReader,
       hasSynthesisPattern,
       isJsxChildCandidate,
@@ -1469,6 +1470,12 @@ export class CodeGraph {
             const retryable = this.queries.getRetryableFailedReferences([...new Set([
               ...this.queries.getNodeNamesByFiles(result.changedFilePaths),
               ...result.changedFilePaths.flatMap(moduleReferenceKeys),
+              // And through a whole-file `module.exports = require(...)`
+              // forwarder of a changed file, which a member call through the
+              // forwarder waits under (`module:index` for `m.js`).
+              ...commonJsForwarderKeys(this.queries, (file) => {
+                try { return fs.readFileSync(path.join(this.projectRoot, file), 'utf8'); } catch { return null; }
+              }, result.changedFilePaths),
             ])]);
             // A failed import waits for a file, a folder or a namespace, not a
             // symbol: `package:app/b.dart` for a file named `b.dart`, `./ui`
