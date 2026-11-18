@@ -1,5 +1,5 @@
 diff --git a/common/define-grammar.js b/common/define-grammar.js
-index 016c151..9d9f03d 100644
+index 016c151..3727fa2 100644
 --- a/common/define-grammar.js
 +++ b/common/define-grammar.js
 @@ -1,5 +1,16 @@
@@ -19,10 +19,11 @@ index 016c151..9d9f03d 100644
  module.exports = function defineGrammar(dialect) {
    return grammar(JavaScript, {
      name: dialect,
-@@ -7,6 +18,15 @@ module.exports = function defineGrammar(dialect) {
+@@ -7,7 +18,41 @@ module.exports = function defineGrammar(dialect) {
      externals: ($, previous) => previous.concat([
        $._function_signature_automatic_semicolon,
        $.__error_recovery,
+-    ]),
 +      // never produced. It is valid only between a member's
 +      // name and its signature, so the scanner can tell that a `<` or `(` on
 +      // the next line continues that member (tsc reads `find\n<T>(id): T` as
@@ -32,10 +33,71 @@ index 016c151..9d9f03d 100644
 +      // ends, so the scanner knows a member named `in` may start on the next
 +      // line (and not in a `for (var k\n in o)` header, where `in` is the operator).
 +      $._member_end_marker,
-     ]),
++      // never produced. Valid right after `new` and a statement-level `export`,
++      // where tsc continues the construct across any line break.
++      $._no_asi_marker,
++      // never produced. Valid right after `let`: tsc continues the declaration
++      // across a line break only before a binding identifier, `[` or `{`.
++      $._let_marker,
++      // never produced. Valid right after a class or interface member's `static`:
++      // tsc continues the member before a property name.
++      $._modifier_marker,
++      // never produced. Valid right after an export clause, so the scanner lets
++      // `from` on the next line continue the statement.
++      $._from_marker,
++      // never produced. Valid right after a member's `get` or `set` (also `abstract
++      // get`/`set`): as `_modifier_marker`, but `*` on the next line starts a new
++      // member (tsc's canFollowGetOrSetKeyword does not take `*`).
++      $._accessor_marker,
++      // never produced. Valid after an object-type member that may be the last one,
++      // so the scanner knows a `}` closes an object type (whose last member needs
++      // no semicolon), not a class body (whose last field does).
++      $._type_member_end_marker,
++      // `global` at a statement start when `{` follows: a global augmentation.
++      $._global_keyword,
++      // `asserts` in a return type only when an identifier or keyword follows on
++      // the same line, as in tsc; otherwise `asserts` is an identifier (#87).
++      $._asserts_keyword,
++    ], dialect === 'tsx' ? [$._jsx_string_marker] : []),
  
      supertypes: ($, previous) => previous.concat([
-@@ -47,23 +67,16 @@ module.exports = function defineGrammar(dialect) {
+       $.type,
+@@ -16,10 +61,16 @@ module.exports = function defineGrammar(dialect) {
+ 
+     precedences: ($, previous) => previous.concat([
+       [
++        // 'member' ranks above this row, as in JavaScript's ladder. It makes a
++        // postfix `!` bind before a type assertion, `<T>x!` is `<T>(x!)` (#98), and
++        // also ranks member_expression and the `?.` call above instantiation,
++        // type assertions and await; 'nested_type' (nested_type_identifier)
++        // ranks just below 'member' and above the rest (#102).
++        'member',
++        'nested_type',
+         'call',
+         'instantiation',
+         'unary',
+-        'binary',
+         $.await_expression,
+         $.arrow_function,
+       ],
+@@ -28,13 +79,14 @@ module.exports = function defineGrammar(dialect) {
+         'instantiation',
+       ],
+       [
++        $.readonly_type,
+         $.intersection_type,
+         $.union_type,
+         $.conditional_type,
+         $.function_type,
+-        'binary',
++        $.constructor_type,
++        'binary_relation',
+         $.type_predicate,
+-        $.readonly_type,
+       ],
+       [$.mapped_type_clause, $.primary_expression],
+       [$.accessibility_modifier, $.primary_expression],
+@@ -47,40 +99,38 @@ module.exports = function defineGrammar(dialect) {
        [$.tuple_type, $.array_type, $.pattern, $.type],
        [$.readonly_type, $.pattern],
        [$.readonly_type, $.primary_expression],
@@ -45,11 +107,11 @@ index 016c151..9d9f03d 100644
        [$.nested_type_identifier, $.generic_type, $.primary_type, $.lookup_type, $.index_type_query, $.type],
        [$.as_expression, $.satisfies_expression, $.primary_type],
 -      [$._type_query_member_expression, $.member_expression],
-       [$.member_expression, $._type_query_member_expression_in_type_annotation],
+-      [$.member_expression, $._type_query_member_expression_in_type_annotation],
 -      [$._type_query_member_expression, $.primary_expression],
 -      [$._type_query_subscript_expression, $.subscript_expression],
 -      [$._type_query_subscript_expression, $.primary_expression],
-       [$._type_query_call_expression, $.primary_expression],
+-      [$._type_query_call_expression, $.primary_expression],
 -      [$._type_query_instantiation_expression, $.primary_expression],
 -      [$.type_query, $.primary_expression],
        [$.override_modifier, $.primary_expression],
@@ -57,10 +119,10 @@ index 016c151..9d9f03d 100644
        [$.literal_type, $.pattern],
        [$.predefined_type, $.pattern],
 -      [$.call_expression, $._type_query_call_expression],
-       [$.call_expression, $._type_query_call_expression_in_type_annotation],
+-      [$.call_expression, $._type_query_call_expression_in_type_annotation],
        [$.new_expression, $.primary_expression],
        [$.meta_property, $.primary_expression],
-@@ -71,6 +84,12 @@ module.exports = function defineGrammar(dialect) {
+       [$.construct_signature, $._property_name],
      ]),
  
      conflicts: ($, previous) => previous.concat([
@@ -73,7 +135,20 @@ index 016c151..9d9f03d 100644
        [$.call_expression, $.instantiation_expression, $.binary_expression],
        [$.call_expression, $.instantiation_expression, $.binary_expression, $.unary_expression],
        [$.call_expression, $.instantiation_expression, $.binary_expression, $.update_expression],
-@@ -93,6 +112,13 @@ module.exports = function defineGrammar(dialect) {
+       [$.call_expression, $.instantiation_expression, $.binary_expression, $.await_expression],
++      // A generic call on a primary callee forks against every reading that first
++      // reduces the callee to an expression; dynamic precedence picks (#77).
++      [$.expression, $.call_expression],
+ 
+       // This appears to be necessary to parse a parenthesized class expression
+       [$.class],
+ 
+       [$.nested_identifier, $.nested_type_identifier, $.primary_expression],
+-      [$.nested_identifier, $.nested_type_identifier],
+ 
+       [$._call_signature, $.function_type],
+       [$._call_signature, $.constructor_type],
+@@ -93,6 +143,13 @@ module.exports = function defineGrammar(dialect) {
        [$.primary_expression, $.primary_type],
        [$.primary_expression, $.generic_type],
        [$.primary_expression, $.predefined_type],
@@ -87,18 +162,28 @@ index 016c151..9d9f03d 100644
        [$.primary_expression, $.pattern, $.primary_type],
        [$._parameter_name, $.primary_type],
        [$.pattern, $.primary_type],
-@@ -111,6 +137,10 @@ module.exports = function defineGrammar(dialect) {
+@@ -111,6 +168,20 @@ module.exports = function defineGrammar(dialect) {
        [$.array_pattern, $.tuple_type],
  
        [$.template_literal_type, $.template_string],
 +
-+      // `f<typeof import('m')>()` is a call with a type argument, and `a < typeof import('m')` is a
-+      // comparison, so the parser keeps both until one of them fails.
-+      [$.call_expression, $._type_query_call_expression],
++      // `import('m'` starts a runtime call or an import type wherever an
++      // expression and a type can both start: after `(` in a type, which may
++      // open a parenthesized type or a function type's parameters
++      // (`(import("m").A)[]` vs `(p) => R`), and in `f<typeof import('m')>()`
++      // vs `a < typeof import('m')`. The parser keeps both until one fails.
++      [$.primary_expression, $.import_type],
++
++      // `using` followed by a name declares, but `using` is also an identifier:
++      // `using as = f()` vs `using as T` (#57, #69).
++      [$.primary_expression, $.using_declaration],
++      // `for (using as of y)` declares `as`. `for (using as T;;)` reads `using as T`
++      // as a cast, though tsc declares `as` there and errors (known limit).
++      [$._for_header, $.primary_expression, $.using_declaration],
      ]).concat(
        dialect === 'typescript' ? [
          [$.primary_type, $.type_parameter],
-@@ -127,10 +157,18 @@ module.exports = function defineGrammar(dialect) {
+@@ -127,10 +198,18 @@ module.exports = function defineGrammar(dialect) {
        ].includes(rule.name))
        .concat([
          $._type_identifier,
@@ -117,8 +202,12 @@ index 016c151..9d9f03d 100644
        public_field_definition: $ => seq(
          repeat(field('decorator', $.decorator)),
          optional(choice(
-@@ -141,9 +179,9 @@ module.exports = function defineGrammar(dialect) {
-           seq(optional('static'), optional($.override_modifier), optional('readonly')),
+@@ -138,12 +217,12 @@ module.exports = function defineGrammar(dialect) {
+           seq($.accessibility_modifier, optional('declare')),
+         )),
+         choice(
+-          seq(optional('static'), optional($.override_modifier), optional('readonly')),
++          seq(optional(seq('static', optional($._modifier_marker))), optional($.override_modifier), optional('readonly')),
            seq(optional('abstract'), optional('readonly')),
            seq(optional('readonly'), optional('abstract')),
 -          optional('accessor'),
@@ -129,22 +218,242 @@ index 016c151..9d9f03d 100644
          optional(choice('?', '!')),
          field('type', optional($.type_annotation)),
          optional($._initializer),
-@@ -176,6 +214,14 @@ module.exports = function defineGrammar(dialect) {
-           field('type_arguments', optional($.type_arguments)),
+@@ -173,9 +252,30 @@ module.exports = function defineGrammar(dialect) {
+       call_expression: $ => choice(
+         prec('call', seq(
+           field('function', choice($.expression, $.import)),
+-          field('type_arguments', optional($.type_arguments)),
            field('arguments', $.arguments),
          )),
-+        // A tagged template with type arguments, sql<{ id: number }>`SELECT ...`, is
-+        // ambiguous with `<` / `>` comparisons exactly like f<T>(x), so it takes the
-+        // generic call's precedence and conflicts rather than template_call's.
-+        prec('call', seq(
-+          field('function', choice($.expression, $.import)),
-+          field('type_arguments', $.type_arguments),
-+          field('arguments', $.template_string),
-+        )),
++        // A generic call, f<T>(x), or a tagged template with type arguments,
++        // sql<{ id: number }>`SELECT ...`. Each is ambiguous with `<` / `>`
++        // comparisons, and with an operator taking the callee, `(await f)<T>(x)` for
++        // `await f<T>(x)`; the GLR parse keeps every reading. tsc takes the call
++        // whenever the type arguments parse, so a primary (or `new`) callee carries
++        // dynamic precedence 1 and wins over both (#77). It has no static precedence
++        // before its arguments, or the call would statically shift past the
++        // `primary_expression -> expression` reduce that the other readings need.
++        // Any other callee keeps the static precedence that decides `new`,
++        // `extends` and type positions.
++        ...[$.arguments, $.template_string].flatMap((args) => [
++          prec.dynamic(1, seq(
++            field('function', choice($.primary_expression, $.new_expression, $.import)),
++            field('type_arguments', $.type_arguments),
++            prec('call', field('arguments', args)),
++          )),
++          prec('call', seq(
++            field('function', $.expression),
++            field('type_arguments', $.type_arguments),
++            field('arguments', args),
++          )),
++        ]),
          prec('template_call', seq(
            field('function', choice($.primary_expression, $.new_expression)),
            field('arguments', $.template_string),
-@@ -361,25 +407,18 @@ module.exports = function defineGrammar(dialect) {
+@@ -190,17 +290,34 @@ module.exports = function defineGrammar(dialect) {
+ 
+       new_expression: $ => prec.right('new', seq(
+         'new',
++        optional($._no_asi_marker),
+         field('constructor', $.primary_expression),
+         field('type_arguments', optional($.type_arguments)),
+         field('arguments', optional($.arguments)),
+       )),
+ 
+-      assignment_expression: $ => prec.right('assign', seq(
+-        optional('using'),
+-        field('left', choice($.parenthesized_expression, $._lhs_expression)),
+-        '=',
+-        field('right', $.expression),
+-      )),
++      // `using x = …` declares only when a binding follows `using` on the same line
++      // (tsc's isUsingDeclaration); elsewhere `using` is an ordinary identifier (#57).
++      // A line break after `using` ends the statement by automatic semicolon insertion
++      // (`using⏎x = 1` is two statements). The shape is tree-sitter-javascript's
++      // using_declaration (v0.25), with TypeScript's annotation and `x!` (#69).
++      using_declaration: $ => seq(
++        usingKind(),
++        alias($._using_declarator, $.variable_declarator),
++        repeat(seq(',', alias($._using_next_declarator, $.variable_declarator))),
++        $._semicolon,
++      ),
++
++      // variable_declarator with the names tsc allows after `using`. The first has no
++      // array pattern (`using [a] = b` assigns to `using[a]`); later ones may have one.
++      // `!` follows only an identifier, with or without a type or initializer.
++      _using_declarator: $ => usingDeclarator($, $.object_pattern),
++      _using_next_declarator: $ => usingDeclarator($, $._destructuring_pattern),
++
++      // A binding identifier after `using`. A keyword the parser cannot shift here
++      // (`type`, `let`, `new`) is read as an identifier, as after `let`. `of` is
++      // added where it cannot be the for-of operator.
++      _using_name: $ => choice($._binding_identifier, $.undefined),
+ 
+       _augmented_assignment_lhs: ($, previous) => choice(previous, $.non_null_expression),
+ 
+@@ -269,27 +386,55 @@ module.exports = function defineGrammar(dialect) {
+         '/>',
+       )),
+ 
+-      export_specifier: (_, previous) => seq(
+-        optional(choice('type', 'typeof')),
+-        previous,
+-      ),
+-
+-      _import_identifier: $ => choice($.identifier, alias('type', $.identifier)),
++      // The external text scanner stops at '&' so complete entities can keep
++      // their own nodes. A shorter literal fallback handles the other cases.
++      _jsx_child: ($, previous) => choice(previous, alias('&', $.jsx_text)),
+ 
+-      import_specifier: $ => seq(
+-        optional(choice('type', 'typeof')),
+-        choice(
+-          field('name', $._import_identifier),
+-          seq(
+-            field('name', choice($._module_export_name, alias('type', $.identifier))),
+-            'as',
+-            field('alias', $._import_identifier),
+-          ),
++      _jsx_string: $ => choice(
++        seq(
++          '"',
++          repeat(choice(
++            ...(dialect === 'tsx' ? [$._jsx_string_marker] : []),
++            alias($.unescaped_double_jsx_string_fragment, $.string_fragment),
++            alias($._jsx_character_reference, $.html_character_reference),
++            alias(token.immediate('&'), $.string_fragment),
++          )),
++          token.immediate('"'),
++        ),
++        seq(
++          '\'',
++          repeat(choice(
++            ...(dialect === 'tsx' ? [$._jsx_string_marker] : []),
++            alias($.unescaped_single_jsx_string_fragment, $.string_fragment),
++            alias($._jsx_character_reference, $.html_character_reference),
++            alias(token.immediate('&'), $.string_fragment),
++          )),
++          token.immediate('\''),
+         ),
+       ),
+ 
++      // Match the inherited entity pattern, but make every quoted-string
++      // content token and the closing quote immediate, so JavaScript comment
++      // extras cannot run anywhere inside the attribute value.
++      _jsx_character_reference: _ => token.immediate(/&(#([xX][0-9a-fA-F]{1,6}|[0-9]{1,5})|[A-Za-z]{1,30});/),
++
++      // End fragments before every ampersand. Looking one character past '&'
++      // can let a longer comment token win after that speculative match fails.
++      unescaped_double_jsx_string_fragment: _ => token.immediate(prec(1, /[^"&]+/)),
++      unescaped_single_jsx_string_fragment: _ => token.immediate(prec(1, /[^'&]+/)),
++
++      export_specifier: ($, previous) => specifier($, previous, $._module_export_name),
++
++      _import_identifier: $ => choice($.identifier, keywordName($, 'type')),
++
++      import_specifier: ($, previous) => specifier($, previous, $.identifier),
++
+       import_attribute: $ => seq(choice('with', 'assert'), $.object),
+ 
++      // A re-export takes import attributes as an import does:
++      // `export * from "./m.json" with { type: "json" }`.
++      _from_clause_with_attributes: $ => seq($._from_clause, optional($.import_attribute)),
++
+       import_clause: $ => choice(
+         $.namespace_import,
+         $.named_imports,
+@@ -317,69 +462,172 @@ module.exports = function defineGrammar(dialect) {
+         $._semicolon,
+       ),
+ 
+-      export_statement: ($, previous) => choice(
+-        previous,
++      // The JavaScript rule, with markers so a line break after `export` or before
++      // `from` does not end the statement (tsc reads both as one statement).
++      export_statement: $ => choice(
++        seq(
++          'export',
++          optional($._no_asi_marker),
++          choice(
++            seq('*', $._from_clause_with_attributes),
++            seq($.namespace_export, $._from_clause_with_attributes),
++            seq($.export_clause, choice($._from_clause_with_attributes, optional($._from_marker))),
++          ),
++          $._semicolon,
++        ),
++        seq(
++          repeat(field('decorator', $.decorator)),
++          'export',
++          optional($._no_asi_marker),
++          choice(
++            field('declaration', $.declaration),
++            seq(
++              'default',
++              choice(
++                field('declaration', $.declaration),
++                field('declaration', alias($._default_function_signature, $.function_signature)),
++                seq(
++                  field('value', $.expression),
++                  $._semicolon,
++                ),
++              ),
++            ),
++          ),
++        ),
+         seq(
+           'export',
+           'type',
+           $.export_clause,
+-          optional($._from_clause),
++          choice($._from_clause_with_attributes, optional($._from_marker)),
+           $._semicolon,
+         ),
+         seq(
+           'export',
+           'type',
+           '*',
+-          $._from_clause,
++          $._from_clause_with_attributes,
+           $._semicolon,
+         ),
+         seq(
+           'export',
+           'type',
+           $.namespace_export,
+-          $._from_clause,
++          $._from_clause_with_attributes,
+           $._semicolon,
+         ),
+         seq('export', '=', $.expression, $._semicolon),
+         seq('export', 'as', 'namespace', $.identifier, $._semicolon),
+       ),
+ 
+-      non_null_expression: $ => prec.left('unary', seq(
+-        $.expression, '!',
++      // tsc parses a postfix `!` with member access, so it binds to the operand
++      // before it: `a + b!` is `a + (b!)` and `!x!` is `!(x!)` (#98).
++      non_null_expression: $ => prec.left('member', seq(
++        choice($.expression, $.primary_expression), '!',
+       )),
+ 
++      lexical_declaration: $ => seq(
++        choice(seq(field('kind', 'let'), optional($._let_marker)), field('kind', 'const')),
++        commaSep1($.variable_declarator),
++        $._semicolon,
++      ),
++
+       variable_declarator: $ => choice(
+         seq(
+-          field('name', choice($.identifier, $._destructuring_pattern)),
++          field('name', choice($._binding_identifier, $._destructuring_pattern)),
+           field('type', optional($.type_annotation)),
+           optional($._initializer),
+         ),
+         prec('declaration', seq(
+-          field('name', $.identifier),
++          field('name', $._binding_identifier),
+           '!',
+           field('type', $.type_annotation),
          )),
        ),
  
@@ -158,24 +467,119 @@ index 016c151..9d9f03d 100644
 -        field('name', $._property_name),
 -        optional('?'),
 -        $._call_signature,
--      ),
++      // The name of a variable declarator or a for-in/of head. `as` and `satisfies`
++      // are keyword tokens wherever `as T` or `satisfies T` may follow, which
++      // includes right after `let` (`let as T`, with `let` as an identifier), and
++      // accepting one in a single declaration position changes which states share a
++      // lexer mode elsewhere (`for (var as of x)`), so all of these positions use
++      // this rule: `let as = 1`, `let satisfies!: T`, `for (var as of x)`.
++      _binding_identifier: $ => choice(
++        $.identifier,
++        keywordName($, 'as'),
++        keywordName($, 'satisfies'),
++      ),
++
++      // The JavaScript rule, with a using declaration as the initializer (#69).
++      for_statement: $ => seq(
++        'for',
++        '(',
++        choice(
++          field('initializer', choice($.lexical_declaration, $.variable_declaration, $.using_declaration)),
++          seq(field('initializer', $._expressions), ';'),
++          field('initializer', $.empty_statement),
++        ),
++        field('condition', choice(
++          seq($._expressions, ';'),
++          $.empty_statement,
++        )),
++        field('increment', optional($._expressions)),
++        ')',
++        field('body', $.statement),
+       ),
+ 
++      // The JavaScript rule, with _binding_identifier for the declared name.
++      _for_header: $ => seq(
++        '(',
++        choice(
++          field('left', choice(
++            $._lhs_expression,
++            $.parenthesized_expression,
++          )),
++          seq(
++            field('kind', 'var'),
++            field('left', choice(
++              $._binding_identifier,
++              $._destructuring_pattern,
++            )),
++            optional($._initializer),
++          ),
++          seq(
++            field('kind', choice('let', 'const')),
++            field('left', choice(
++              $._binding_identifier,
++              $._destructuring_pattern,
++            )),
++            optional($._automatic_semicolon),
++          ),
++          // `for (using x of y)`, `for (await using x of y)` (#69), shaped as in
++          // tree-sitter-javascript v0.25. After a bare `using`, `of` is not a name:
++          // `for (using of x)` iterates `x` with `using` as the left side. After
++          // `await using` it is, as in tsc: `for (await using of of y)`.
++          seq(
++            field('kind', 'using'),
++            field('left', choice($._using_name, $.object_pattern)),
++          ),
++          seq(
++            field('kind', seq('await', 'using')),
++            field('left', choice($._using_name, keywordName($, 'of'), $.object_pattern)),
++          ),
++        ),
++        field('operator', choice('in', 'of')),
++        field('right', $._expressions),
++        ')',
++      ),
++
 +      method_signature: $ => methodSignature($, $._property_name),
 +
 +      _class_method_signature: $ => methodSignature($, $._class_member_name),
- 
++
        abstract_method_signature: $ => seq(
          optional($.accessibility_modifier),
          'abstract',
          optional($.override_modifier),
-         optional(choice('get', 'set', '*')),
+-        optional(choice('get', 'set', '*')),
 -        field('name', $._property_name),
++        optional(choice(seq('get', optional($._accessor_marker)), seq('set', optional($._accessor_marker)), '*')),
 +        field('name', $._class_member_name),
          optional('?'),
 +        optional($._member_signature_marker),
          $._call_signature,
        ),
  
-@@ -439,7 +478,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -400,11 +648,22 @@ module.exports = function defineGrammar(dialect) {
+       function_signature: $ => seq(
+         optional('async'),
+         'function',
++        optional('*'),
+         field('name', $.identifier),
+         $._call_signature,
+         choice($._semicolon, $._function_signature_automatic_semicolon),
+       ),
+ 
++      // `export default function (a: T): R;`, which tsc --declaration emits for
++      // every anonymous default-exported function.
++      _default_function_signature: $ => seq(
++        optional('async'),
++        'function',
++        optional('*'),
++        $._call_signature,
++        choice($._semicolon, $._function_signature_automatic_semicolon),
++      ),
++
+       decorator: $ => seq(
+         '@',
+         choice(
+@@ -439,7 +698,7 @@ module.exports = function defineGrammar(dialect) {
          repeat(choice(
            seq(
              repeat(field('decorator', $.decorator)),
@@ -184,7 +588,7 @@ index 016c151..9d9f03d 100644
              optional($._semicolon),
            ),
            // As it happens for functions, the semicolon insertion should not
-@@ -450,16 +489,16 @@ module.exports = function defineGrammar(dialect) {
+@@ -450,37 +709,36 @@ module.exports = function defineGrammar(dialect) {
            //     }
            // The same rule applies for functions and that's why we use
            // "_function_signature_automatic_semicolon".
@@ -204,9 +608,10 @@ index 016c151..9d9f03d 100644
            ),
            ';',
          )),
-@@ -467,15 +506,12 @@ module.exports = function defineGrammar(dialect) {
+         '}',
        ),
  
++      // Object-literal methods: no markers, so `{ get\n x }` as a block keeps ASI.
        method_definition: $ => prec.left(seq(
 -        optional($.accessibility_modifier),
 -        optional('static'),
@@ -217,7 +622,7 @@ index 016c151..9d9f03d 100644
 -        field('name', $._property_name),
 -        optional('?'),
 -        $._call_signature,
-+        methodSignature($, $._property_name),
++        methodSignature($, $._property_name, false),
 +        field('body', $.statement_block),
 +      )),
 +
@@ -226,15 +631,137 @@ index 016c151..9d9f03d 100644
          field('body', $.statement_block),
        )),
  
-@@ -724,6 +760,7 @@ module.exports = function defineGrammar(dialect) {
-         field('property', choice(
-           $.private_property_identifier,
-           alias($.identifier, $.property_identifier),
-+          alias('abstract', $.property_identifier),
-         )),
+       declaration: ($, previous) => choice(
+         previous,
++        $.using_declaration,
+         $.function_signature,
+         $.abstract_class_declaration,
+         $.module,
+@@ -497,13 +755,17 @@ module.exports = function defineGrammar(dialect) {
+         $.expression,
+       )),
+ 
+-      as_expression: $ => prec.left('binary', seq(
++      // `as` and `satisfies` take tsc's relational precedence, JavaScript's
++      // 'binary_relation' (#95): tighter than `==`, `&&`, `||` and `??`, looser
++      // than `+` and `**`, and below `await` ('unary_void'), so `await x as T`
++      // casts the awaited value (#92).
++      as_expression: $ => prec.left('binary_relation', seq(
+         $.expression,
+         'as',
+         choice('const', $.type),
+       )),
+ 
+-      satisfies_expression: $ => prec.left('binary', seq(
++      satisfies_expression: $ => prec.left('binary_relation', seq(
+         $.expression,
+         'satisfies',
+         $.type,
+@@ -552,6 +814,19 @@ module.exports = function defineGrammar(dialect) {
+         ),
        ),
-       _type_query_call_expression_in_type_annotation: $ => seq(
-@@ -749,17 +786,17 @@ module.exports = function defineGrammar(dialect) {
+ 
++      // A global augmentation needs no `declare` inside an ambient module
++      // (`declare module "m" { global { ... } }`), and tsc parses one in any
++      // statement position. The scanner produces the keyword only before `{`,
++      // so `global` stays a plain identifier everywhere else. It is a
++      // statement, not a declaration, so `export default global {}` stays an
++      // error as in tsc.
++      statement: ($, previous) => choice(
++        previous,
++        alias($._global_augmentation, $.ambient_declaration),
++      ),
++
++      _global_augmentation: $ => seq(alias($._global_keyword, 'global'), $.statement_block),
++
+       class: $ => prec('literal', seq(
+         repeat(field('decorator', $.decorator)),
+         'class',
+@@ -606,7 +881,12 @@ module.exports = function defineGrammar(dialect) {
+         $._semicolon,
+       ),
+ 
+-      nested_type_identifier: $ => prec('member', seq(
++      // 'nested_type' sits just below 'member', which nested_identifier has:
++      // after `x as a.b`, a `.` continues the qualified name instead of ending
++      // the type, so `x as a.b.C` casts to `a.b.C`, as in tsc, not
++      // `(x as a.b).C` (#102). This replaces a declared conflict between the
++      // two, which forked here and let the wrong reading win.
++      nested_type_identifier: $ => prec('nested_type', seq(
+         field('module', choice($.identifier, $.nested_identifier)),
+         '.',
+         field('name', $._type_identifier),
+@@ -626,6 +906,7 @@ module.exports = function defineGrammar(dialect) {
+           $._type_identifier,
+           $.nested_type_identifier,
+           $.generic_type,
++          $.import_type,
+         ))),
+       ),
+ 
+@@ -700,42 +981,32 @@ module.exports = function defineGrammar(dialect) {
+         field('pattern', choice($.pattern, $.this)),
+       ),
+ 
+-      omitting_type_annotation: $ => seq('-?:', $.type),
+-      adding_type_annotation: $ => seq('+?:', $.type),
+-      opting_type_annotation: $ => seq('?:', $.type),
++      // `-?:`, `+?:` and `?:` are separate tokens, as in tsc: bundled
++      // declarations print `]? : T`.
++      omitting_type_annotation: $ => seq('-', '?', ':', $.type),
++      adding_type_annotation: $ => seq('+', '?', ':', $.type),
++      opting_type_annotation: $ => seq('?', ':', $.type),
+       type_annotation: $ => seq(
+         ':',
+         $.type,
+       ),
+ 
+-      // Oh boy
+-      // The issue is these special type queries need a lower relative precedence than the normal ones,
+-      // since these are used in type annotations whereas the other ones are used where `typeof` is
+-      // required beforehand. This allows for parsing of annotations such as
+-      // foo: import('x').y.z;
+-      // but was a nightmare to get working.
+-      _type_query_member_expression_in_type_annotation: $ => seq(
+-        field('object', choice(
+-          $.import,
+-          alias($._type_query_member_expression_in_type_annotation, $.member_expression),
+-          alias($._type_query_call_expression_in_type_annotation, $.call_expression),
+-        )),
+-        '.',
+-        field('property', choice(
+-          $.private_property_identifier,
+-          alias($.identifier, $.property_identifier),
+-        )),
+-      ),
+-      _type_query_call_expression_in_type_annotation: $ => seq(
+-        field('function', choice(
+-          $.import,
+-          alias($._type_query_member_expression_in_type_annotation, $.member_expression),
+-        )),
+-        field('arguments', $.arguments),
+-      ),
++      // An import type, as tsc's ImportType: `import('m')`, `import('m').A.B<T>`,
++      // `import('m', { with: { 'resolution-mode': 'import' } }).A`. A runtime
++      // `import('m')` stays a call_expression; `typeof import('m').c` is a
++      // type_query around an import_type.
++      import_type: $ => prec.right(seq(
++        $.import,
++        '(',
++        field('source', choice($.string, $.template_literal_type)),
++        optional(seq(',', field('attributes', $.object))),
++        ')',
++        optional(seq('.', field('qualifier', choice($._type_identifier, $.nested_type_identifier)))),
++        optional(field('type_arguments', $.type_arguments)),
++      )),
+ 
+       asserts: $ => seq(
+-        'asserts',
++        alias($._asserts_keyword, 'asserts'),
+         choice($.type_predicate, $.identifier, $.this),
+       ),
+ 
+@@ -749,17 +1020,17 @@ module.exports = function defineGrammar(dialect) {
          $.readonly_type,
          $.constructor_type,
          $.infer_type,
@@ -246,22 +773,30 @@ index 016c151..9d9f03d 100644
 +      // [symbol: string], [string: number, number?: string].
        tuple_parameter: $ => seq(
 -        field('name', choice($.identifier, $.rest_pattern)),
-+        field('name', choice($.identifier, ...TUPLE_LABEL_KEYWORDS.map((k) => alias(k, $.identifier)), $.rest_pattern)),
++        field('name', choice($.identifier, ...TUPLE_LABEL_KEYWORDS.map((k) => keywordName($, k)), $.rest_pattern)),
          field('type', $.type_annotation),
        ),
  
        optional_tuple_parameter: $ => seq(
 -        field('name', $.identifier),
-+        field('name', choice($.identifier, ...TUPLE_LABEL_KEYWORDS.map((k) => alias(k, $.identifier)))),
++        field('name', choice($.identifier, ...TUPLE_LABEL_KEYWORDS.map((k) => keywordName($, k)))),
          '?',
          field('type', $.type_annotation),
        ),
-@@ -805,6 +842,30 @@ module.exports = function defineGrammar(dialect) {
+@@ -781,7 +1052,7 @@ module.exports = function defineGrammar(dialect) {
+         field('type_parameters', optional($.type_parameters)),
+         field('parameters', $.formal_parameters),
+         '=>',
+-        field('type', $.type),
++        field('type', choice($.type, $.asserts, $.type_predicate)),
+       )),
+ 
+       primary_type: $ => choice(
+@@ -805,6 +1076,29 @@ module.exports = function defineGrammar(dialect) {
          $.intersection_type,
          $.union_type,
          'const',
-+        prec(-1, alias($._type_query_member_expression_in_type_annotation, $.member_expression)),
-+        prec(-1, alias($._type_query_call_expression_in_type_annotation, $.call_expression)),
++        $.import_type,
 +      ),
 +
 +      // A tagged template may contain escapes that are invalid elsewhere (ES2018), e.g.
@@ -287,7 +822,7 @@ index 016c151..9d9f03d 100644
        ),
  
        template_type: $ => seq('${', choice($.primary_type, $.infer_type), '}'),
-@@ -814,6 +875,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -814,6 +1108,7 @@ module.exports = function defineGrammar(dialect) {
          repeat(choice(
            alias($._template_chars, $.string_fragment),
            $.escape_sequence,
@@ -295,15 +830,7 @@ index 016c151..9d9f03d 100644
            $.template_type,
          )),
          '`',
-@@ -842,6 +904,7 @@ module.exports = function defineGrammar(dialect) {
-         field('name', choice(
-           $._type_identifier,
-           $.nested_type_identifier,
-+          alias($._type_query_member_expression_in_type_annotation, $.member_expression),
-         )),
-         field('type_arguments', $.type_arguments),
-       )),
-@@ -866,18 +929,25 @@ module.exports = function defineGrammar(dialect) {
+@@ -866,18 +1161,24 @@ module.exports = function defineGrammar(dialect) {
        ),
  
        // Type query expressions are more restrictive than regular expressions
@@ -311,7 +838,7 @@ index 016c151..9d9f03d 100644
 +      // interpretation in competing type parses such as f<typeof abstract>(x).
 +      _type_query_identifier: $ => choice(
 +        $.identifier,
-+        alias('abstract', $.identifier),
++        keywordName($, 'abstract'),
 +      ),
 +
        _type_query_member_expression: $ => seq(
@@ -321,7 +848,7 @@ index 016c151..9d9f03d 100644
            $.this,
 -          alias($._type_query_subscript_expression, $.subscript_expression),
            alias($._type_query_member_expression, $.member_expression),
-           alias($._type_query_call_expression, $.call_expression),
+-          alias($._type_query_call_expression, $.call_expression),
          )),
 -        choice('.', '?.'),
 +        '.',
@@ -332,28 +859,27 @@ index 016c151..9d9f03d 100644
          )),
        ),
        _type_query_subscript_expression: $ => seq(
-@@ -888,38 +958,33 @@ module.exports = function defineGrammar(dialect) {
+@@ -886,44 +1187,31 @@ module.exports = function defineGrammar(dialect) {
+           $.this,
+           alias($._type_query_subscript_expression, $.subscript_expression),
            alias($._type_query_member_expression, $.member_expression),
-           alias($._type_query_call_expression, $.call_expression),
+-          alias($._type_query_call_expression, $.call_expression),
          )),
 -        optional('?.'),
          '[', field('index', choice($.predefined_type, $.string, $.number)), ']',
        ),
-       _type_query_call_expression: $ => seq(
+-      _type_query_call_expression: $ => seq(
 -        field('function', choice(
 -          $.import,
 -          $.identifier,
 -          alias($._type_query_member_expression, $.member_expression),
 -          alias($._type_query_subscript_expression, $.subscript_expression),
 -        )),
-+        // Only import calls belong in a type query. Other calls must keep
-+        // their runtime-expression branch, e.g. f < typeof abstract(x) > (x).
-+        field('function', $.import),
-         field('arguments', $.arguments),
-       ),
+-        field('arguments', $.arguments),
+-      ),
        _type_query_instantiation_expression: $ => seq(
          field('function', choice(
-           $.import,
+-          $.import,
 -          $.identifier,
 +          $._type_query_identifier,
            alias($._type_query_member_expression, $.member_expression),
@@ -367,7 +893,8 @@ index 016c151..9d9f03d 100644
          choice(
            alias($._type_query_subscript_expression, $.subscript_expression),
            alias($._type_query_member_expression, $.member_expression),
-           alias($._type_query_call_expression, $.call_expression),
+-          alias($._type_query_call_expression, $.call_expression),
++          $.import_type,
            alias($._type_query_instantiation_expression, $.instantiation_expression),
 -          $.identifier,
 +          $._type_query_identifier,
@@ -378,7 +905,22 @@ index 016c151..9d9f03d 100644
  
        index_type_query: $ => seq(
          'keyof',
-@@ -967,7 +1032,11 @@ module.exports = function defineGrammar(dialect) {
+-        $.primary_type,
++        choice($.primary_type, $.readonly_type, $.infer_type),
+       ),
+ 
+       lookup_type: $ => seq(
+@@ -934,7 +1222,8 @@ module.exports = function defineGrammar(dialect) {
+       ),
+ 
+       mapped_type_clause: $ => seq(
+-        field('name', $._type_identifier),
++        // tsc takes the keyword `type` as the key name (`[type in keyof T]`).
++        field('name', choice($._type_identifier, alias('type', $.type_identifier))),
+         'in',
+         field('type', $.type),
+         optional(seq('as', field('alias', $.type))),
+@@ -967,7 +1256,11 @@ module.exports = function defineGrammar(dialect) {
          'boolean',
          'string',
          'symbol',
@@ -391,25 +933,29 @@ index 016c151..9d9f03d 100644
          'void',
          'unknown',
          'string',
-@@ -987,7 +1056,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -987,8 +1280,11 @@ module.exports = function defineGrammar(dialect) {
          optional(seq(
            optional(choice(',', ';')),
            sepBy1(
 -            choice(',', $._semicolon),
 +            choice(',', seq(optional($._member_end_marker), $._semicolon)),
              choice(
++              // `export` may be a member name here: the scanner ignores the
++              // export statement's _no_asi_marker where _member_signature_marker
++              // and _member_end_marker are both valid.
                $.export_statement,
                $.property_signature,
-@@ -997,7 +1066,7 @@ module.exports = function defineGrammar(dialect) {
+               $.call_signature,
+@@ -997,7 +1293,7 @@ module.exports = function defineGrammar(dialect) {
                $.method_signature,
              ),
            ),
 -          optional(choice(',', $._semicolon)),
-+          optional(choice(',', seq(optional($._member_end_marker), $._semicolon))),
++          optional(choice(',', seq(optional($._member_end_marker), optional($._type_member_end_marker), $._semicolon))),
          )),
          choice('}', '|}'),
        ),
-@@ -1029,7 +1098,12 @@ module.exports = function defineGrammar(dialect) {
+@@ -1029,7 +1325,12 @@ module.exports = function defineGrammar(dialect) {
        type_parameter: $ => seq(
          optional('const'),
          optional($.variance),
@@ -423,7 +969,27 @@ index 016c151..9d9f03d 100644
          field('constraint', optional($.constraint)),
          field('value', optional($.default_type)),
        ),
-@@ -1099,6 +1173,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -1086,8 +1387,17 @@ module.exports = function defineGrammar(dialect) {
+       ),
+       readonly_type: $ => seq('readonly', $.type),
+ 
+-      union_type: $ => prec.left(seq(optional($.type), '|', $.type)),
+-      intersection_type: $ => prec.left(seq(optional($.type), '&', $.type)),
++      // tsc allows a leading `|` / `&` only at the start of a type, so a nested
++      // `b & &c` must not make `a < b && c > (d)` a generic call: the penalty
++      // outweighs the generic call's dynamic precedence (#77).
++      union_type: $ => choice(
++        prec.left(seq($.type, '|', $.type)),
++        prec.dynamic(-2, prec.left(seq('|', $.type))),
++      ),
++      intersection_type: $ => choice(
++        prec.left(seq($.type, '&', $.type)),
++        prec.dynamic(-2, prec.left(seq('&', $.type))),
++      ),
+ 
+       function_type: $ => prec.left(seq(
+         field('type_parameters', optional($.type_parameters)),
+@@ -1099,6 +1409,7 @@ module.exports = function defineGrammar(dialect) {
        _type_identifier: $ => alias($.identifier, $.type_identifier),
  
        _reserved_identifier: (_, previous) => choice(
@@ -431,25 +997,106 @@ index 016c151..9d9f03d 100644
          'declare',
          'namespace',
          'type',
-@@ -1123,13 +1198,34 @@ module.exports = function defineGrammar(dialect) {
+@@ -1116,20 +1427,114 @@ module.exports = function defineGrammar(dialect) {
+         'export',
+         'object',
+         'new',
+-        'readonly',
++        'using',
+         previous,
+       ),
+     },
    });
  };
  
++/**
++ * The whole import or export specifier rule. Specifiers whose first word is
++ * the keyword `type` or `typeof` are read as tsc's
++ * parseImportOrExportSpecifier reads them:
++ * `{ type }`, `{ type as x }` and `{ type as as }` name `type`; `{ type as }`
++ * and `{ type as as x }` are type-only specifiers of `as`; `{ typeof as x }`
++ * and `{ typeof }` name `typeof`. Flow's `typeof`
++ * modifier mirrors `type`: `{ typeof as }` and `{ typeof as as x }` keep it on
++ * a name `as`. After these keywords `as` lexes as the keyword, so every such
++ * name is an aliased keyword token.
++ * Specifiers with an ordinary first name use the inherited JavaScript rule,
++ * optionally after a `type` or `typeof` modifier.
++ *
++ * @param {GrammarSymbols<string>} $
++ * @param {RuleOrLiteral} previous the JavaScript import/export specifier rule
++ * @param {RuleOrLiteral} aliasName what may follow `as` besides `type`/`as`
++ * @returns {ChoiceRule}
++ */
++function specifier($, previous, aliasName) {
++  const typeName = keywordName($, 'type');
++  const asName = keywordName($, 'as');
++  const typeofName = keywordName($, 'typeof');
++  const aliasTail = seq('as', field('alias', choice(aliasName, typeName, asName)));
++  return choice(
++    seq(optional(choice('type', 'typeof')), previous),
++    seq(field('name', typeName), optional(aliasTail)),
++    seq('type', field('name', asName), optional(aliasTail)),
++    seq(field('name', typeofName), optional(aliasTail)),
++    seq('typeof', field('name', asName), optional(aliasTail)),
++  );
++}
++
++/**
++ * A keyword token used as a name: it keeps the `identifier` node kind.
++ *
++ * @param {GrammarSymbols<string>} $
++ * @param {string} word
++ * @returns {AliasRule}
++ */
++function keywordName($, word) {
++  return alias(word, $.identifier);
++}
++
++/**
++ * The `kind` of a using declaration: `using` or `await using` (#69).
++ *
++ * @returns {RuleOrLiteral}
++ */
++function usingKind() {
++  return field('kind', choice('using', seq('await', 'using')));
++}
++
++/**
++ * A declarator after `using`: an identifier (or `of`) that may take `!`, or a
++ * destructuring pattern from `patterns`, each with an optional type and initializer.
++ *
++ * @param {GrammarSymbols<string>} $
++ * @param {RuleOrLiteral} patterns
++ * @returns {RuleOrLiteral}
++ */
++function usingDeclarator($, patterns) {
++  return seq(
++    choice(
++      seq(field('name', choice($._using_name, keywordName($, 'of'))), optional('!')),
++      field('name', patterns),
++    ),
++    field('type', optional($.type_annotation)),
++    optional($._initializer),
++  );
++}
++
 +/**
 + * Share method syntax while keeping contextual keyword names local to classes.
 + *
 + * @param {GrammarSymbols<string>} $
 + * @param {RuleOrLiteral} name
++ * @param {boolean} [markers] the ASI markers after `static`, `get` and `set`
 + * @returns {SeqRule}
 + */
-+function methodSignature($, name) {
++function methodSignature($, name, markers = true) {
++  const modifier = (word, marker = $._modifier_marker) => markers ? seq(word, optional(marker)) : word;
 +  return seq(
 +    optional($.accessibility_modifier),
-+    optional('static'),
++    optional(modifier('static')),
 +    optional($.override_modifier),
 +    optional('readonly'),
 +    optional('async'),
-+    optional(choice('get', 'set', '*')),
++    optional(choice(modifier('get', $._accessor_marker), modifier('set', $._accessor_marker), '*')),
 +    field('name', name),
 +    optional('?'),
 +    optional($._member_signature_marker),
@@ -468,7 +1115,7 @@ index 016c151..9d9f03d 100644
   */
  function commaSep1(rule) {
    return sepBy1(',', rule);
-@@ -1140,8 +1236,7 @@ function commaSep1(rule) {
+@@ -1140,8 +1545,7 @@ function commaSep1(rule) {
   *
   * @param {RuleOrLiteral} rule
   *
@@ -478,7 +1125,7 @@ index 016c151..9d9f03d 100644
   */
  function commaSep(rule) {
    return sepBy(',', rule);
-@@ -1154,7 +1249,7 @@ function commaSep(rule) {
+@@ -1154,7 +1558,7 @@ function commaSep(rule) {
   *
   * @param {RuleOrLiteral} rule
   *
@@ -487,7 +1134,7 @@ index 016c151..9d9f03d 100644
   */
  function sepBy(sep, rule) {
    return optional(sepBy1(sep, rule));
-@@ -1167,7 +1262,7 @@ function sepBy(sep, rule) {
+@@ -1167,7 +1571,7 @@ function sepBy(sep, rule) {
   *
   * @param {RuleOrLiteral} rule
   *
@@ -497,19 +1144,88 @@ index 016c151..9d9f03d 100644
  function sepBy1(sep, rule) {
    return seq(rule, repeat(seq(sep, rule)));
 diff --git a/common/scanner.h b/common/scanner.h
-index ddefcdf..8997313 100644
+index ddefcdf..3aab467 100644
 --- a/common/scanner.h
 +++ b/common/scanner.h
-@@ -13,6 +13,8 @@ enum TokenType {
+@@ -1,5 +1,6 @@
+ #include "tree_sitter/parser.h"
+ 
++#include <string.h>
+ #include <wctype.h>
+ 
+ enum TokenType {
+@@ -13,12 +14,26 @@ enum TokenType {
      JSX_TEXT,
      FUNCTION_SIGNATURE_AUTOMATIC_SEMICOLON,
      ERROR_RECOVERY,
 +    MEMBER_SIGNATURE_MARKER,
 +    MEMBER_END_MARKER,
++    NO_ASI_MARKER,
++    LET_MARKER,
++    MODIFIER_MARKER,
++    FROM_MARKER,
++    ACCESSOR_MARKER,
++    TYPE_MEMBER_END_MARKER,
++    GLOBAL_KEYWORD,
++    ASSERTS_KEYWORD,
++    // TSX-only, never produced: quoted JSX must not scan HTML comments.
++    JSX_STRING_MARKER,
  };
  
  static void advance(TSLexer *lexer) { lexer->advance(lexer, false); }
-@@ -79,6 +81,77 @@ static bool scan_whitespace_and_comments(TSLexer *lexer, bool *scanned_comment)
+ 
+ static void skip(TSLexer *lexer) { lexer->advance(lexer, true); }
+ 
++static bool is_line_terminator(int32_t c) { return c == '\n' || c == '\r' || c == 0x2028 || c == 0x2029; }
++
+ static bool scan_template_chars(TSLexer *lexer) {
+     lexer->result_symbol = TEMPLATE_CHARS;
+     for (bool has_content = false;; has_content = true) {
+@@ -27,7 +42,13 @@ static bool scan_template_chars(TSLexer *lexer) {
+             case '`':
+                 return has_content;
+             case '\0':
+-                return false;
++                // A raw NUL byte is template content; only the real end of input
++                // ends the scan (#61, from vmikhailov and BrokkAi).
++                if (lexer->eof(lexer)) {
++                    return false;
++                }
++                advance(lexer);
++                break;
+             case '$':
+                 advance(lexer);
+                 if (lexer->lookahead == '{') {
+@@ -42,9 +63,18 @@ static bool scan_template_chars(TSLexer *lexer) {
+     }
+ }
+ 
++// Whitespace and line terminators above ASCII that the grammar's extras skip (Zs,
++// U+200B, U+2060, U+FEFF, U+2028/9), which iswspace does not report in the C
++// locale. U+0085 is left out: tsc skips it, but the grammar's identifier token
++// accepts it.
++static bool is_unicode_space(int32_t c) {
++    return c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200B) || c == 0x2028 || c == 0x2029 ||
++           c == 0x202F || c == 0x205F || c == 0x2060 || c == 0x3000 || c == 0xFEFF;
++}
++
+ static bool scan_whitespace_and_comments(TSLexer *lexer, bool *scanned_comment) {
+     for (;;) {
+-        while (iswspace(lexer->lookahead)) {
++        while (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead)) {
+             skip(lexer);
+         }
+ 
+@@ -53,7 +83,7 @@ static bool scan_whitespace_and_comments(TSLexer *lexer, bool *scanned_comment)
+ 
+             if (lexer->lookahead == '/') {
+                 skip(lexer);
+-                while (lexer->lookahead != 0 && lexer->lookahead != '\n') {
++                while (lexer->lookahead != 0 && !is_line_terminator(lexer->lookahead)) {
+                     skip(lexer);
+                 }
+                 *scanned_comment = true;
+@@ -79,6 +109,207 @@ static bool scan_whitespace_and_comments(TSLexer *lexer, bool *scanned_comment)
      }
  }
  
@@ -544,7 +1260,7 @@ index ddefcdf..8997313 100644
 +        if (c == '/') {
 +            skip(lexer);
 +            if (lexer->lookahead == '/') {
-+                while (!lexer->eof(lexer) && lexer->lookahead != '\n') {
++                while (!lexer->eof(lexer) && !is_line_terminator(lexer->lookahead)) {
 +                    skip(lexer);
 +                }
 +            } else if (lexer->lookahead == '*') {
@@ -584,10 +1300,364 @@ index ddefcdf..8997313 100644
 +    return false;
 +}
 +
++static bool is_identifier_start(int32_t c) {
++    return iswalpha(c) || c == '_' || c == '$' || c == '\\' || (c >= 0x80 && !is_unicode_space(c));
++}
++
++static bool is_identifier_part(int32_t c) { return is_identifier_start(c) || iswdigit(c); }
++
++// Skips the word at the lookahead and copies it into `word` when it is short and
++// ASCII lowercase (every keyword is); otherwise `word` is left empty.
++static void scan_word(TSLexer *lexer, char *word, unsigned size) {
++    unsigned length = 0;
++    bool keyword_like = true;
++    while (is_identifier_part(lexer->lookahead)) {
++        if (lexer->lookahead < 'a' || lexer->lookahead > 'z' || length + 1 >= size) {
++            keyword_like = false;
++        } else if (keyword_like) {
++            word[length++] = (char)lexer->lookahead;
++        }
++        skip(lexer);
++    }
++    word[keyword_like ? length : 0] = '\0';
++}
++
++static bool word_in(const char *word, const char *const *list) {
++    for (; *list; list++) {
++        if (strcmp(word, *list) == 0) {
++            return true;
++        }
++    }
++    return false;
++}
++
++// tsc's reserved words (isReservedWord): after `let` they make `let` an identifier
++// and end the statement. `in` and `instanceof` are left out: they continue `let`
++// as an operand, as on main.
++static const char *const RESERVED_WORDS[] = {
++    "break", "case",  "catch",  "class",   "const",    "continue", "debugger", "default", "delete",
++    "do",    "else",  "enum",   "export",  "extends",  "false",    "finally",  "for",     "function",
++    "if",    "import", "new",   "null",    "return",   "super",    "switch",   "this",    "throw",
++    "true",  "try",   "typeof", "var",     "void",     "while",    "with",     NULL,
++};
++
++// Modifiers the grammar does not accept after `static`, `get` or `set`. On the next
++// line, one of them ends the member that used the keyword as a name, unless what
++// follows it makes it the name itself (see the MODIFIER_MARKER block).
++static const char *const NON_FOLLOWING_MODIFIERS[] = {
++    "public", "private", "protected", "declare", "abstract", NULL,
++};
++
++// At a `}` where a semicolon may be inserted, after a member that may be an object
++// type's last (TYPE_MEMBER_END_MARKER). Where the parser cannot yet tell an object
++// type from something else that `{` opens, the semicolon decides: only the object
++// type can take it. Two such places:
++// - a function type's parameters, object type or object pattern: `({a}: T) => R`,
++//   `({a}?: T) => R`, `({a}?) => R`, `({a} = {}) => R`, also with `a\n}`;
++// - after `<` in an expression, type arguments or a comparison with an object:
++//   `f<{a}>(y)` is a generic call, `x = a < {b} ? c : d` a comparison.
++// An object type's last member needs no semicolon, so it is left out before a `}`
++// followed by `:`, `?` or `=` (comments may come between), which keeps the pattern
++// or the comparison alive. Before any other token it stays and decides for the
++// type. `,`, `)`, `}` and `]` are not in the list: there both readings stay alive
++// and the parser picks the wrong one for `g(e, f<{b}, c>(d))` and
++// `x = <T>f<[{b}]>(d)`, so `({a}, b) => R`, `({a}) => R` and `([{a}]: T) => R`
++// remain an ERROR. Without TYPE_MEMBER_END_MARKER the semicolon always stays:
++// `c ? () => { let a\n} : b` and `c ? class { x\n} : e` need it.
++static bool scan_closing_brace(TSLexer *lexer, const bool *valid_symbols, bool *scanned_comment) {
++    if (!valid_symbols[TYPE_MEMBER_END_MARKER]) {
++        return true;
++    }
++    // The lexer moves from here on, so the caller's `?` fallback must not run.
++    *scanned_comment = true;
++    skip(lexer);
++    bool comment_unused = false;
++    if (!scan_whitespace_and_comments(lexer, &comment_unused)) {
++        return true;
++    }
++    switch (lexer->lookahead) {
++        case ':':
++        case '?':
++        case '=':
++            return false;
++        default:
++            return true;
++    }
++}
++
++// After a modifier word: whether the next token is on the same line and can follow
++// a modifier (tsc's canFollowModifier: `[`, `{`, `*`, `...`, `#` or a property name,
++// which includes a number such as `.5`, hence a single `.`).
++// Spaces and comments on the same line are skipped.
++static bool modifier_word_is_modifier(TSLexer *lexer) {
++    for (;;) {
++        while (!is_line_terminator(lexer->lookahead) &&
++               (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead))) {
++            skip(lexer);
++        }
++        if (lexer->lookahead != '/') {
++            break;
++        }
++        skip(lexer);
++        if (lexer->lookahead != '*') {
++            // A line comment runs to the end of the line; a lone `/` cannot follow.
++            return false;
++        }
++        skip(lexer);
++        for (;;) {
++            if (lexer->eof(lexer)) {
++                return false;
++            }
++            if (is_line_terminator(lexer->lookahead)) {
++                return false;
++            }
++            if (lexer->lookahead == '*') {
++                skip(lexer);
++                if (lexer->lookahead == '/') {
++                    skip(lexer);
++                    break;
++                }
++                continue;
++            }
++            skip(lexer);
++        }
++    }
++    int32_t c = lexer->lookahead;
++    if (lexer->eof(lexer) || is_line_terminator(c)) {
++        return false;
++    }
++    return c == '[' || c == '{' || c == '*' || c == '.' || c == '#' || c == '"' || c == '\'' ||
++           iswdigit(c) || is_identifier_start(c);
++}
++
  static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols, bool *scanned_comment) {
      lexer->result_symbol = AUTOMATIC_SEMICOLON;
      lexer->mark_end(lexer);
-@@ -155,6 +228,13 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
+@@ -88,39 +319,206 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
+             return true;
+         }
+         if (lexer->lookahead == '}') {
+-            // Automatic semicolon insertion breaks detection of object patterns
+-            // in a typed context:
+-            //   type F = ({a}: {a: number}) => number;
+-            // Therefore, disable automatic semicolons when followed by typing
+-            do {
++            return scan_closing_brace(lexer, valid_symbols, scanned_comment);
++        }
++        // A block comment that contains a line terminator is a line break for ASI
++        // (`a /* x\n */ b` is two statements). The parser would otherwise consume the
++        // comment as an extra and call this scanner after it, past the line break.
++        // Other comments keep the old path: the next call starts at their newline.
++        if (lexer->lookahead == '/') {
++            // The lexer moves from here on, so the caller's `?` fallback must not run.
++            *scanned_comment = true;
++            skip(lexer);
++            if (lexer->lookahead != '*') {
++                return false;
++            }
++            skip(lexer);
++            bool line_break = false;
++            for (;;) {
++                if (lexer->eof(lexer)) {
++                    return false;
++                }
++                if (lexer->lookahead == '*') {
++                    skip(lexer);
++                    if (lexer->lookahead == '/') {
++                        skip(lexer);
++                        break;
++                    }
++                    continue;
++                }
++                if (is_line_terminator(lexer->lookahead)) {
++                    line_break = true;
++                }
+                 skip(lexer);
+-            } while (iswspace(lexer->lookahead));
+-            if (lexer->lookahead == ':') {
+-                return valid_symbols[LOGICAL_OR]; // Don't return false if we're in a ternary by checking if || is valid
+             }
+-            return true;
+-        }
+-        if (!iswspace(lexer->lookahead)) {
+-            return false;
++            if (!line_break) {
++                return false;
++            }
++            // Only spaces and comments left on the comment's last line, or a `}`: let the
++            // parser take the comment as an extra, so it stays inside the statement (a
++            // trailing comment, not a doc comment for the next declaration), and the
++            // next call decides from the line break or the `}` as main does.
++            for (;;) {
++                while (!is_line_terminator(lexer->lookahead) &&
++                       (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead))) {
++                    skip(lexer);
++                }
++                if (lexer->lookahead != '/') {
++                    break;
++                }
++                skip(lexer);
++                // `//` is a line comment; a lone `/` is division, which continues the
++                // statement across the line break as in tsc (`a /* x\n */ / 2`).
++                if (lexer->lookahead != '*') {
++                    return false;
++                }
++                skip(lexer);
++                while (!lexer->eof(lexer)) {
++                    if (lexer->lookahead == '*') {
++                        skip(lexer);
++                        if (lexer->lookahead == '/') {
++                            skip(lexer);
++                            break;
++                        }
++                        continue;
++                    }
++                    skip(lexer);
++                }
++            }
++            if (lexer->eof(lexer) || is_line_terminator(lexer->lookahead) || lexer->lookahead == '}') {
++                return false;
++            }
++            break;
+         }
+-        if (lexer->lookahead == '\n') {
++        // `\r` alone, U+2028 and U+2029 end a line as `\n` does.
++        if (is_line_terminator(lexer->lookahead)) {
++            skip(lexer);
+             break;
+         }
++        if (!iswspace(lexer->lookahead) && !is_unicode_space(lexer->lookahead)) {
++            return false;
++        }
+         skip(lexer);
+     }
+ 
+-    skip(lexer);
+-
+     if (!scan_whitespace_and_comments(lexer, scanned_comment)) {
+         return false;
+     }
+ 
++    if (lexer->lookahead == '}') {
++        return scan_closing_brace(lexer, valid_symbols, scanned_comment);
++    }
++
++    // The markers below are never produced; the grammar makes each valid right
++    // after a keyword that tsc may continue across a line break. EOF, like a `}`
++    // (handled above), still ends a statement or member that used the keyword as
++    // a name.
++    bool at_end = lexer->eof(lexer);
++    char word[16];
++
++    // `new\nFoo()`, `export\nconst x = 1`: always one construct. In an object type
++    // `export` may also be a member name (`export\n default: T` is two members), and
++    // there MEMBER_SIGNATURE_MARKER and MEMBER_END_MARKER are both valid, so the usual
++    // rules apply. Checking MEMBER_SIGNATURE_MARKER alone is not enough: the parse state
++    // after `new` in a bare block or arrow body is merged with one where it is valid
++    // (see object_type in define-grammar.js).
++    if (valid_symbols[NO_ASI_MARKER] && !(valid_symbols[MEMBER_SIGNATURE_MARKER] && valid_symbols[MEMBER_END_MARKER]) && !at_end) {
++        return false;
++    }
++
++    // `let\nx = 1`, `let\n[a] = b`: a declaration only before a binding identifier
++    // or a destructuring pattern; `let\nif (x) {}` is the identifier `let`.
++    if (valid_symbols[LET_MARKER] && !at_end) {
++        if (lexer->lookahead == '[' || lexer->lookahead == '{') {
++            return false;
++        }
++        if (is_identifier_start(lexer->lookahead)) {
++            *scanned_comment = true;
++            scan_word(lexer, word, sizeof word);
++            return word_in(word, RESERVED_WORDS);
++        }
++    }
++
++    // `static\nx = 1`, `get\nx() {}`: one member before a property name, but not
++    // before a decorator or a modifier the grammar cannot place after the keyword.
++    // `get\n*g() {}` is a field `get` and a generator; `static\n*g() {}` is one member.
++    if (valid_symbols[ACCESSOR_MARKER] && !valid_symbols[MODIFIER_MARKER] && !at_end &&
++        lexer->lookahead == '*') {
++        return true;
++    }
++    if ((valid_symbols[MODIFIER_MARKER] || valid_symbols[ACCESSOR_MARKER]) && !at_end) {
++        if (lexer->lookahead == '[' || lexer->lookahead == '#' || lexer->lookahead == '"' ||
++            lexer->lookahead == '\'' || iswdigit(lexer->lookahead)) {
++            return false;
++        }
++        if (is_identifier_start(lexer->lookahead)) {
++            *scanned_comment = true;
++            scan_word(lexer, word, sizeof word);
++            if (!word_in(word, NON_FOLLOWING_MODIFIERS)) {
++                return false;
++            }
++            // As in tsc's nextTokenIsOnSameLineAndCanFollowModifier, the word is a
++            // modifier only if the next token is on the same line and can follow one;
++            // the grammar has no modifier after `static`, so that ends the member
++            // (`static\nprivate x`). Otherwise the word is the member's name and the
++            // member continues: `static\ndeclare = 1`, `static\nprivate() {}`,
++            // `static\nprivate\n= 1`.
++            if (valid_symbols[MODIFIER_MARKER]) {
++                return modifier_word_is_modifier(lexer);
++            }
++            // After `get`/`set`, tsc's canFollowGetOrSetKeyword ignores line breaks;
++            // keep the word as the accessor's name before these followers.
++            while (lexer->lookahead == ' ' || lexer->lookahead == '\t' || is_unicode_space(lexer->lookahead)) {
++                skip(lexer);
++            }
++            switch (lexer->lookahead) {
++                case '=':
++                case '(':
++                case ':':
++                case ';':
++                case '?':
++                case '!':
++                case '<':
++                case '}':
++                    return false;
++                default:
++                    return true;
++            }
++        }
++    }
++
++    // FROM_MARKER is valid right after an export clause: `export { a }\nfrom "m"`
++    // continues with the from clause (tsc reads `from` there as the keyword whatever
++    // follows); `export { a }\nfromage()` does not.
++    if (valid_symbols[FROM_MARKER] && lexer->lookahead == 'f') {
++        *scanned_comment = true;
++        scan_word(lexer, word, sizeof word);
++        if (strcmp(word, "from") != 0) {
++            return true;
++        }
++        return false;
++    }
++
+     switch (lexer->lookahead) {
++        // After a member that cannot continue (a bare name: no `||`), a `*` or a `.5`
++        // on the next line starts a member: `x\n*g() {}`, `x\n.5 = 1`. Right after
++        // `static`, `get` or `set` they continue it (`static\n*g() {}`). Any other `.`
++        // continues a type name: `x: A\n.B`.
++        case '*':
++        case '.': {
++            if (!valid_symbols[MEMBER_END_MARKER] || valid_symbols[LOGICAL_OR] ||
++                valid_symbols[MODIFIER_MARKER] || valid_symbols[ACCESSOR_MARKER]) {
++                return false;
++            }
++            if (lexer->lookahead == '*') {
++                return true;
++            }
++            skip(lexer);
++            return iswdigit(lexer->lookahead);
++        }
+         case '`':
+         case ',':
+-        case '.':
+         case ';':
+-        case '*':
+         case '%':
+         case '>':
+         case '=':
+@@ -155,6 +553,13 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
              if (valid_symbols[LOGICAL_OR]) {
                  return false;
              }
@@ -601,7 +1671,7 @@ index ddefcdf..8997313 100644
              break;
  
              // Insert a semicolon before `--` and `++`, but not before binary `+` or `-`.
-@@ -170,9 +250,10 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
+@@ -170,9 +575,10 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
              skip(lexer);
              return lexer->lookahead != '=';
  
@@ -615,7 +1685,7 @@ index ddefcdf..8997313 100644
              //   interface Foo { name: string\n  in: string }
              // must parse `in:` as a property name, not as a keyword operator.
          case 'i':
-@@ -183,13 +264,43 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
+@@ -183,13 +589,42 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
              }
              skip(lexer);
  
@@ -624,8 +1694,8 @@ index ddefcdf..8997313 100644
 -                // Insert ASI if the next non-space char is `:` or `(` (property name),
 -                // but not if it is a space followed by an expression (keyword operator).
 -                if (lexer->lookahead == ':' || lexer->lookahead == '(') {
-+            if (!iswalnum(lexer->lookahead) && lexer->lookahead != '_' && lexer->lookahead != '$') {
-+                // `in` itself, not an identifier such as `in2` or `in$x` (those get ASI below).
++            if (!is_identifier_part(lexer->lookahead)) {
++                // `in` itself, not an identifier such as `in2`, `in$x` or `inä` (those get ASI below).
 +                // `in:` is a property name.
 +                if (lexer->lookahead == ':') {
 +                    return true;
@@ -643,14 +1713,13 @@ index ddefcdf..8997313 100644
 +                }
 +                // `x in ?` is never an expression, so `in?` starts a member.
 +                if (lexer->lookahead == '?') {
-                     return true;
-                 }
-+                // After a member that cannot continue (no `||`: a typed member, a method),
-+                // `in(`, `in<` and `in!` start a member named `in`.
-+                if (!valid_symbols[LOGICAL_OR] &&
-+                    (lexer->lookahead == '(' || lexer->lookahead == '<' || lexer->lookahead == '!')) {
 +                    return true;
 +                }
++                // After a member that cannot continue (no `||`: a bare name, a typed
++                // member, a method), `in` starts a member: `in(`, `in<`, `in!`, `in = 1`.
++                if (!valid_symbols[LOGICAL_OR]) {
+                     return true;
+                 }
 +                // After an initializer `||` is valid, and tsc reads `a = x\n in(b)` as the
 +                // operator. A parameter list followed by `:` or `{` is a method, though,
 +                // which covers `a = () => {}\n in(): void {}`: an arrow body cannot continue.
@@ -664,12 +1733,207 @@ index ddefcdf..8997313 100644
                  return false;
              }
  
-@@ -200,7 +311,7 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
+@@ -200,8 +635,9 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols,
                  skip(lexer);
              }
  
 -            if (!iswalpha(lexer->lookahead)) {
-+            if (!iswalnum(lexer->lookahead) && lexer->lookahead != '_' && lexer->lookahead != '$') {
-                 return false;
+-                return false;
++            if (!is_identifier_part(lexer->lookahead)) {
++                // `x\ninstanceof = 1` between members: a member named `instanceof`.
++                return valid_symbols[MEMBER_END_MARKER] && !valid_symbols[LOGICAL_OR];
              }
              break;
+     }
+@@ -237,7 +673,10 @@ static bool scan_ternary_qmark(TSLexer *lexer) {
+             advance(lexer);
+         }
+ 
+-        if (lexer->lookahead == ':' || lexer->lookahead == ')' || lexer->lookahead == ',') {
++        /* A ternary `?` is never followed by `]`; there it ends an optional
++           tuple element, as in `([B?])` (#107). */
++        if (lexer->lookahead == ':' || lexer->lookahead == ')' || lexer->lookahead == ',' ||
++            lexer->lookahead == ']') {
+             return false;
+         }
+ 
+@@ -279,8 +718,7 @@ static bool scan_closing_comment(TSLexer *lexer) {
+         return false;
+     }
+ 
+-    while (lexer->lookahead != 0 && lexer->lookahead != '\n' && lexer->lookahead != 0x2028 &&
+-           lexer->lookahead != 0x2029) {
++    while (lexer->lookahead != 0 && !is_line_terminator(lexer->lookahead)) {
+         advance(lexer);
+     }
+ 
+@@ -331,6 +769,115 @@ static bool scan_jsx_text(TSLexer *lexer) {
+     return saw_text;
+ }
+ 
++// `global` at the start of a statement, only when `{` follows (across line
++// breaks and comments, as in tsc). Anywhere else `global` is an identifier, so it
++// never has to be a keyword token in expression or type positions (`x<global>()`).
++// The caller has skipped leading whitespace and seen `g`. The token ends after
++// `global`; everything after it is lookahead only.
++static bool scan_global_keyword(TSLexer *lexer) {
++    for (const char *c = "global"; *c; c++) {
++        if (lexer->lookahead != *c) {
++            return false;
++        }
++        advance(lexer);
++    }
++    int32_t next = lexer->lookahead;
++    if (iswalnum(next) || next == '_' || next == '$' || next == '\\' ||
++        (next > 0x7f && !is_unicode_space(next))) {
++        return false;
++    }
++    lexer->mark_end(lexer);
++    for (;;) {
++        while (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead)) {
++            advance(lexer);
++        }
++        if (lexer->lookahead != '/') {
++            break;
++        }
++        advance(lexer);
++        if (lexer->lookahead == '*') {
++            advance(lexer);
++            for (;;) {
++                if (lexer->eof(lexer)) {
++                    return false;
++                }
++                if (lexer->lookahead == '*') {
++                    advance(lexer);
++                    if (lexer->lookahead == '/') {
++                        advance(lexer);
++                        break;
++                    }
++                } else {
++                    advance(lexer);
++                }
++            }
++        } else if (lexer->lookahead == '/') {
++            while (!lexer->eof(lexer) && !is_line_terminator(lexer->lookahead)) {
++                advance(lexer);
++            }
++        } else {
++            return false;
++        }
++    }
++    if (lexer->lookahead != '{') {
++        return false;
++    }
++    lexer->result_symbol = GLOBAL_KEYWORD;
++    return true;
++}
++
++// `asserts` starting an assertion return type, only when an identifier or keyword
++// follows on the same line (tsc's nextTokenIsIdentifierOrKeywordOnSameLine). A line
++// break, including one inside a block comment, ends the type: `asserts` is then a
++// type name. The caller has skipped leading whitespace and seen `a`. The token
++// ends after `asserts`; everything after it is lookahead only.
++static bool scan_asserts_keyword(TSLexer *lexer) {
++    for (const char *c = "asserts"; *c; c++) {
++        if (lexer->lookahead != *c) {
++            return false;
++        }
++        advance(lexer);
++    }
++    if (is_identifier_part(lexer->lookahead)) {
++        return false;
++    }
++    lexer->mark_end(lexer);
++    for (;;) {
++        while (!is_line_terminator(lexer->lookahead) &&
++               (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead))) {
++            advance(lexer);
++        }
++        if (lexer->lookahead != '/') {
++            break;
++        }
++        advance(lexer);
++        if (lexer->lookahead != '*') {
++            // `//` runs to a line break; a lone `/` is no identifier.
++            return false;
++        }
++        advance(lexer);
++        for (;;) {
++            if (lexer->eof(lexer) || is_line_terminator(lexer->lookahead)) {
++                return false;
++            }
++            if (lexer->lookahead == '*') {
++                advance(lexer);
++                if (lexer->lookahead == '/') {
++                    advance(lexer);
++                    break;
++                }
++            } else {
++                advance(lexer);
++            }
++        }
++    }
++    if (!is_identifier_start(lexer->lookahead)) {
++        return false;
++    }
++    lexer->result_symbol = ASSERTS_KEYWORD;
++    return true;
++}
++
+ static inline bool external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
+     if (valid_symbols[TEMPLATE_CHARS]) {
+         if (valid_symbols[AUTOMATIC_SEMICOLON]) {
+@@ -339,6 +886,27 @@ static inline bool external_scanner_scan(void *payload, TSLexer *lexer, const bo
+         return scan_template_chars(lexer);
+     }
+ 
++    if (valid_symbols[GLOBAL_KEYWORD] && !valid_symbols[AUTOMATIC_SEMICOLON]) {
++        while (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead)) {
++            skip(lexer);
++        }
++        // Once past a `g`, a failed scan must not fall through: the later scans
++        // would start mid-identifier (`g-->0` read as an HTML comment).
++        if (lexer->lookahead == 'g') {
++            return scan_global_keyword(lexer);
++        }
++    }
++
++    if (valid_symbols[ASSERTS_KEYWORD] && !valid_symbols[AUTOMATIC_SEMICOLON]) {
++        while (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead)) {
++            skip(lexer);
++        }
++        // As for `global`: once past an `a`, a failed scan must not fall through.
++        if (lexer->lookahead == 'a') {
++            return scan_asserts_keyword(lexer);
++        }
++    }
++
+     if (valid_symbols[JSX_TEXT] && scan_jsx_text(lexer)) {
+         return true;
+     }
+diff --git a/tree-sitter.json b/tree-sitter.json
+index 4117de7..266bfd2 100644
+--- a/tree-sitter.json
++++ b/tree-sitter.json
+@@ -76,7 +76,7 @@
+     }
+   ],
+   "metadata": {
+-    "version": "0.23.2",
++    "version": "0.25.0",
+     "license": "MIT",
+     "description": "TypeScript and TSX grammars for tree-sitter",
+     "authors": [
+diff --git a/tsx/src/scanner.c b/tsx/src/scanner.c
+index ac3f57c..8f6a247 100644
+--- a/tsx/src/scanner.c
++++ b/tsx/src/scanner.c
+@@ -9,5 +9,8 @@ unsigned tree_sitter_tsx_external_scanner_serialize(void *payload, char *buffer)
+ void tree_sitter_tsx_external_scanner_deserialize(void *payload, const char *buffer, unsigned length) {}
+ 
+ bool tree_sitter_tsx_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
++    if (valid_symbols[JSX_STRING_MARKER] && !valid_symbols[ERROR_RECOVERY]) {
++        return false;
++    }
+     return external_scanner_scan(payload, lexer, valid_symbols);
+ }

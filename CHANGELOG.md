@@ -16,6 +16,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - In Rust, a function or method passed as a value through its path, like `g.map(Graph::counts)` or `.map(Self::helper)`, now counts in its callers and impact the way a function passed by name already did, linked only when the path names it for certain: never another type's method of the same name, and never a method of a trait implementation, since which one Rust uses there depends on the type of the argument. (#3254)
 - In PHP, an include built from the file's own directory, like `require_once __DIR__ . '/inc/a.php'` or `dirname(__FILE__) . '/inc/b.php'`, now links to that file the way a plain `require_once 'lib.php'` does, and a path starting with `./` or `../` links only to the file named exactly, as PHP loads it, never one with `.php` added. (#3298)
+- TypeScript and TSX files now parse the way the TypeScript compiler reads them in many more places, such as an operator before a generic call, `as` and `!` precedence, import types and `using` declarations, so a function containing `for (using x of items)` is no longer missing from the index, and a type written `import("./m").T` links that module's `T` rather than any type of the same name; re-index TypeScript projects after upgrading.
 
 ## [1.6.3] - 2026-11-17
 

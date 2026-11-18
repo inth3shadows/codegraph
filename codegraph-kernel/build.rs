@@ -123,11 +123,14 @@ fn main() {
     // ABI 14 and lacks the patch, so it can't be reused. The
     // vendored wasm is built from these same generated sources. Layout mirrors
     // the upstream repo so scanner.c's `../../common/scanner.h` resolves
-    // unedited. See docs/grammars/tree-sitter-typescript.md for what the base
-    // and the fork each fix.
-    //   common/scanner.h           23fd656d7e82f80bf66e0b9b8ef96aa6102ef5bfd9f32c561a4caabe08b9fd34
-    //   typescript/src/parser.c    db8c411258ff82520df32ad7213be1c9a60c0cec77fdb6d28858014ae92ea0aa
-    //   tsx/src/parser.c           34f37cd33244724c9d5dc4863123f3a5f6a919f4f472c31981610f6442077394
+    // as written. The fork patches tsx/src/scanner.c (a JSX string marker
+    // outside error recovery returns early); typescript/src/scanner.c is
+    // upstream's. See docs/grammars/tree-sitter-typescript.md for what the
+    // base and the fork each fix.
+    //   common/scanner.h           ce8180d07ed12e5235c8875842a751da7d13cdcd8cdd0bfe398ec044a8e6aa9f
+    //   tsx/src/scanner.c          d66248c9a043c34b74342c8aa6ca69904faafdd39e28bdac6c6d58217e17d4ec
+    //   typescript/src/parser.c    f2436003dd7d2559a0165a10d3fcf10be2fad7969ce9f8d3c5a7a36f83bc76ae
+    //   tsx/src/parser.c           72689a20802c4151df19317ed8a0f6022e7f3269873f800ba2cbad3cd89e8bcb
     // Flags crib the crate's bindings/rust/build.rs (c11). Each parser.c is
     // ~9 MB.
     for dialect in ["typescript", "tsx"] {

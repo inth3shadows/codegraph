@@ -1,24 +1,16 @@
 {
  "tsc": "5.9.3",
  "webTreeSitter": "0.25.10",
- "generatedAt": "2026-11-08T14:10:06.960Z",
+ "generatedAt": "2026-11-17T23:41:35.867Z",
  "wasmSha256": {
-  "typescript": "abeb7a0a4eea3007ac0e83a383c0068e336b25880de9e374a57267c15ed5fe9d",
-  "tsx": "a64f018a0a2843df0d46ece1fbf87d89a0d3e5001fd94c75f9fb2e4c0fea0a77"
+  "typescript": "a167c90b5c627c3d43c0501d20a86fb6b5c4b94c4a162e98af611b5f43e82dde",
+  "tsx": "dda8256bb7c0d289ac371609a03c9532785f18466dc271475aad4562eeb18237"
  },
  "divergent": {
-  "effect": {
-   "packages/effect/src/PubSub.ts": 1381,
-   "packages/effect/typetest/schema/Schema.tst.ts": 1
-  },
+  "effect": {},
   "zod": {},
   "excalidraw": {},
   "vscode": {},
-  "local": {
-   "__tests__/fixtures/ts-syntax/gap-await-using-in-for.ts": 3,
-   "__tests__/fixtures/ts-syntax/gap-export-named-from-attributes.ts": 2,
-   "__tests__/fixtures/ts-syntax/gap-export-star-from-attributes.ts": 2,
-   "__tests__/fixtures/ts-syntax/gap-using-in-for.ts": 3
-  }
+  "local": {}
  }
 }

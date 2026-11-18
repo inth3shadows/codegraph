@@ -1,5 +1,6 @@
 #include "tree_sitter/parser.h"
 
+#include <string.h>
 #include <wctype.h>
 
 enum TokenType {
@@ -15,11 +16,23 @@ enum TokenType {
     ERROR_RECOVERY,
     MEMBER_SIGNATURE_MARKER,
     MEMBER_END_MARKER,
+    NO_ASI_MARKER,
+    LET_MARKER,
+    MODIFIER_MARKER,
+    FROM_MARKER,
+    ACCESSOR_MARKER,
+    TYPE_MEMBER_END_MARKER,
+    GLOBAL_KEYWORD,
+    ASSERTS_KEYWORD,
+    // TSX-only, never produced: quoted JSX must not scan HTML comments.
+    JSX_STRING_MARKER,
 };
 
 static void advance(TSLexer *lexer) { lexer->advance(lexer, false); }
 
 static void skip(TSLexer *lexer) { lexer->advance(lexer, true); }
+
+static bool is_line_terminator(int32_t c) { return c == '\n' || c == '\r' || c == 0x2028 || c == 0x2029; }
 
 static bool scan_template_chars(TSLexer *lexer) {
     lexer->result_symbol = TEMPLATE_CHARS;
@@ -29,7 +42,13 @@ static bool scan_template_chars(TSLexer *lexer) {
             case '`':
                 return has_content;
             case '\0':
-                return false;
+                // A raw NUL byte is template content; only the real end of input
+                // ends the scan (#61, from vmikhailov and BrokkAi).
+                if (lexer->eof(lexer)) {
+                    return false;
+                }
+                advance(lexer);
+                break;
             case '$':
                 advance(lexer);
                 if (lexer->lookahead == '{') {
@@ -44,9 +63,18 @@ static bool scan_template_chars(TSLexer *lexer) {
     }
 }
 
+// Whitespace and line terminators above ASCII that the grammar's extras skip (Zs,
+// U+200B, U+2060, U+FEFF, U+2028/9), which iswspace does not report in the C
+// locale. U+0085 is left out: tsc skips it, but the grammar's identifier token
+// accepts it.
+static bool is_unicode_space(int32_t c) {
+    return c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200B) || c == 0x2028 || c == 0x2029 ||
+           c == 0x202F || c == 0x205F || c == 0x2060 || c == 0x3000 || c == 0xFEFF;
+}
+
 static bool scan_whitespace_and_comments(TSLexer *lexer, bool *scanned_comment) {
     for (;;) {
-        while (iswspace(lexer->lookahead)) {
+        while (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead)) {
             skip(lexer);
         }
 
@@ -55,7 +83,7 @@ static bool scan_whitespace_and_comments(TSLexer *lexer, bool *scanned_comment) 
 
             if (lexer->lookahead == '/') {
                 skip(lexer);
-                while (lexer->lookahead != 0 && lexer->lookahead != '\n') {
+                while (lexer->lookahead != 0 && !is_line_terminator(lexer->lookahead)) {
                     skip(lexer);
                 }
                 *scanned_comment = true;
@@ -112,7 +140,7 @@ static bool scan_method_parameters(TSLexer *lexer) {
         if (c == '/') {
             skip(lexer);
             if (lexer->lookahead == '/') {
-                while (!lexer->eof(lexer) && lexer->lookahead != '\n') {
+                while (!lexer->eof(lexer) && !is_line_terminator(lexer->lookahead)) {
                     skip(lexer);
                 }
             } else if (lexer->lookahead == '*') {
@@ -152,6 +180,136 @@ static bool scan_method_parameters(TSLexer *lexer) {
     return false;
 }
 
+static bool is_identifier_start(int32_t c) {
+    return iswalpha(c) || c == '_' || c == '$' || c == '\\' || (c >= 0x80 && !is_unicode_space(c));
+}
+
+static bool is_identifier_part(int32_t c) { return is_identifier_start(c) || iswdigit(c); }
+
+// Skips the word at the lookahead and copies it into `word` when it is short and
+// ASCII lowercase (every keyword is); otherwise `word` is left empty.
+static void scan_word(TSLexer *lexer, char *word, unsigned size) {
+    unsigned length = 0;
+    bool keyword_like = true;
+    while (is_identifier_part(lexer->lookahead)) {
+        if (lexer->lookahead < 'a' || lexer->lookahead > 'z' || length + 1 >= size) {
+            keyword_like = false;
+        } else if (keyword_like) {
+            word[length++] = (char)lexer->lookahead;
+        }
+        skip(lexer);
+    }
+    word[keyword_like ? length : 0] = '\0';
+}
+
+static bool word_in(const char *word, const char *const *list) {
+    for (; *list; list++) {
+        if (strcmp(word, *list) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// tsc's reserved words (isReservedWord): after `let` they make `let` an identifier
+// and end the statement. `in` and `instanceof` are left out: they continue `let`
+// as an operand, as on main.
+static const char *const RESERVED_WORDS[] = {
+    "break", "case",  "catch",  "class",   "const",    "continue", "debugger", "default", "delete",
+    "do",    "else",  "enum",   "export",  "extends",  "false",    "finally",  "for",     "function",
+    "if",    "import", "new",   "null",    "return",   "super",    "switch",   "this",    "throw",
+    "true",  "try",   "typeof", "var",     "void",     "while",    "with",     NULL,
+};
+
+// Modifiers the grammar does not accept after `static`, `get` or `set`. On the next
+// line, one of them ends the member that used the keyword as a name, unless what
+// follows it makes it the name itself (see the MODIFIER_MARKER block).
+static const char *const NON_FOLLOWING_MODIFIERS[] = {
+    "public", "private", "protected", "declare", "abstract", NULL,
+};
+
+// At a `}` where a semicolon may be inserted, after a member that may be an object
+// type's last (TYPE_MEMBER_END_MARKER). Where the parser cannot yet tell an object
+// type from something else that `{` opens, the semicolon decides: only the object
+// type can take it. Two such places:
+// - a function type's parameters, object type or object pattern: `({a}: T) => R`,
+//   `({a}?: T) => R`, `({a}?) => R`, `({a} = {}) => R`, also with `a\n}`;
+// - after `<` in an expression, type arguments or a comparison with an object:
+//   `f<{a}>(y)` is a generic call, `x = a < {b} ? c : d` a comparison.
+// An object type's last member needs no semicolon, so it is left out before a `}`
+// followed by `:`, `?` or `=` (comments may come between), which keeps the pattern
+// or the comparison alive. Before any other token it stays and decides for the
+// type. `,`, `)`, `}` and `]` are not in the list: there both readings stay alive
+// and the parser picks the wrong one for `g(e, f<{b}, c>(d))` and
+// `x = <T>f<[{b}]>(d)`, so `({a}, b) => R`, `({a}) => R` and `([{a}]: T) => R`
+// remain an ERROR. Without TYPE_MEMBER_END_MARKER the semicolon always stays:
+// `c ? () => { let a\n} : b` and `c ? class { x\n} : e` need it.
+static bool scan_closing_brace(TSLexer *lexer, const bool *valid_symbols, bool *scanned_comment) {
+    if (!valid_symbols[TYPE_MEMBER_END_MARKER]) {
+        return true;
+    }
+    // The lexer moves from here on, so the caller's `?` fallback must not run.
+    *scanned_comment = true;
+    skip(lexer);
+    bool comment_unused = false;
+    if (!scan_whitespace_and_comments(lexer, &comment_unused)) {
+        return true;
+    }
+    switch (lexer->lookahead) {
+        case ':':
+        case '?':
+        case '=':
+            return false;
+        default:
+            return true;
+    }
+}
+
+// After a modifier word: whether the next token is on the same line and can follow
+// a modifier (tsc's canFollowModifier: `[`, `{`, `*`, `...`, `#` or a property name,
+// which includes a number such as `.5`, hence a single `.`).
+// Spaces and comments on the same line are skipped.
+static bool modifier_word_is_modifier(TSLexer *lexer) {
+    for (;;) {
+        while (!is_line_terminator(lexer->lookahead) &&
+               (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead))) {
+            skip(lexer);
+        }
+        if (lexer->lookahead != '/') {
+            break;
+        }
+        skip(lexer);
+        if (lexer->lookahead != '*') {
+            // A line comment runs to the end of the line; a lone `/` cannot follow.
+            return false;
+        }
+        skip(lexer);
+        for (;;) {
+            if (lexer->eof(lexer)) {
+                return false;
+            }
+            if (is_line_terminator(lexer->lookahead)) {
+                return false;
+            }
+            if (lexer->lookahead == '*') {
+                skip(lexer);
+                if (lexer->lookahead == '/') {
+                    skip(lexer);
+                    break;
+                }
+                continue;
+            }
+            skip(lexer);
+        }
+    }
+    int32_t c = lexer->lookahead;
+    if (lexer->eof(lexer) || is_line_terminator(c)) {
+        return false;
+    }
+    return c == '[' || c == '{' || c == '*' || c == '.' || c == '#' || c == '"' || c == '\'' ||
+           iswdigit(c) || is_identifier_start(c);
+}
+
 static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols, bool *scanned_comment) {
     lexer->result_symbol = AUTOMATIC_SEMICOLON;
     lexer->mark_end(lexer);
@@ -161,39 +319,206 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols, 
             return true;
         }
         if (lexer->lookahead == '}') {
-            // Automatic semicolon insertion breaks detection of object patterns
-            // in a typed context:
-            //   type F = ({a}: {a: number}) => number;
-            // Therefore, disable automatic semicolons when followed by typing
-            do {
-                skip(lexer);
-            } while (iswspace(lexer->lookahead));
-            if (lexer->lookahead == ':') {
-                return valid_symbols[LOGICAL_OR]; // Don't return false if we're in a ternary by checking if || is valid
+            return scan_closing_brace(lexer, valid_symbols, scanned_comment);
+        }
+        // A block comment that contains a line terminator is a line break for ASI
+        // (`a /* x\n */ b` is two statements). The parser would otherwise consume the
+        // comment as an extra and call this scanner after it, past the line break.
+        // Other comments keep the old path: the next call starts at their newline.
+        if (lexer->lookahead == '/') {
+            // The lexer moves from here on, so the caller's `?` fallback must not run.
+            *scanned_comment = true;
+            skip(lexer);
+            if (lexer->lookahead != '*') {
+                return false;
             }
-            return true;
-        }
-        if (!iswspace(lexer->lookahead)) {
-            return false;
-        }
-        if (lexer->lookahead == '\n') {
+            skip(lexer);
+            bool line_break = false;
+            for (;;) {
+                if (lexer->eof(lexer)) {
+                    return false;
+                }
+                if (lexer->lookahead == '*') {
+                    skip(lexer);
+                    if (lexer->lookahead == '/') {
+                        skip(lexer);
+                        break;
+                    }
+                    continue;
+                }
+                if (is_line_terminator(lexer->lookahead)) {
+                    line_break = true;
+                }
+                skip(lexer);
+            }
+            if (!line_break) {
+                return false;
+            }
+            // Only spaces and comments left on the comment's last line, or a `}`: let the
+            // parser take the comment as an extra, so it stays inside the statement (a
+            // trailing comment, not a doc comment for the next declaration), and the
+            // next call decides from the line break or the `}` as main does.
+            for (;;) {
+                while (!is_line_terminator(lexer->lookahead) &&
+                       (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead))) {
+                    skip(lexer);
+                }
+                if (lexer->lookahead != '/') {
+                    break;
+                }
+                skip(lexer);
+                // `//` is a line comment; a lone `/` is division, which continues the
+                // statement across the line break as in tsc (`a /* x\n */ / 2`).
+                if (lexer->lookahead != '*') {
+                    return false;
+                }
+                skip(lexer);
+                while (!lexer->eof(lexer)) {
+                    if (lexer->lookahead == '*') {
+                        skip(lexer);
+                        if (lexer->lookahead == '/') {
+                            skip(lexer);
+                            break;
+                        }
+                        continue;
+                    }
+                    skip(lexer);
+                }
+            }
+            if (lexer->eof(lexer) || is_line_terminator(lexer->lookahead) || lexer->lookahead == '}') {
+                return false;
+            }
             break;
+        }
+        // `\r` alone, U+2028 and U+2029 end a line as `\n` does.
+        if (is_line_terminator(lexer->lookahead)) {
+            skip(lexer);
+            break;
+        }
+        if (!iswspace(lexer->lookahead) && !is_unicode_space(lexer->lookahead)) {
+            return false;
         }
         skip(lexer);
     }
-
-    skip(lexer);
 
     if (!scan_whitespace_and_comments(lexer, scanned_comment)) {
         return false;
     }
 
+    if (lexer->lookahead == '}') {
+        return scan_closing_brace(lexer, valid_symbols, scanned_comment);
+    }
+
+    // The markers below are never produced; the grammar makes each valid right
+    // after a keyword that tsc may continue across a line break. EOF, like a `}`
+    // (handled above), still ends a statement or member that used the keyword as
+    // a name.
+    bool at_end = lexer->eof(lexer);
+    char word[16];
+
+    // `new\nFoo()`, `export\nconst x = 1`: always one construct. In an object type
+    // `export` may also be a member name (`export\n default: T` is two members), and
+    // there MEMBER_SIGNATURE_MARKER and MEMBER_END_MARKER are both valid, so the usual
+    // rules apply. Checking MEMBER_SIGNATURE_MARKER alone is not enough: the parse state
+    // after `new` in a bare block or arrow body is merged with one where it is valid
+    // (see object_type in define-grammar.js).
+    if (valid_symbols[NO_ASI_MARKER] && !(valid_symbols[MEMBER_SIGNATURE_MARKER] && valid_symbols[MEMBER_END_MARKER]) && !at_end) {
+        return false;
+    }
+
+    // `let\nx = 1`, `let\n[a] = b`: a declaration only before a binding identifier
+    // or a destructuring pattern; `let\nif (x) {}` is the identifier `let`.
+    if (valid_symbols[LET_MARKER] && !at_end) {
+        if (lexer->lookahead == '[' || lexer->lookahead == '{') {
+            return false;
+        }
+        if (is_identifier_start(lexer->lookahead)) {
+            *scanned_comment = true;
+            scan_word(lexer, word, sizeof word);
+            return word_in(word, RESERVED_WORDS);
+        }
+    }
+
+    // `static\nx = 1`, `get\nx() {}`: one member before a property name, but not
+    // before a decorator or a modifier the grammar cannot place after the keyword.
+    // `get\n*g() {}` is a field `get` and a generator; `static\n*g() {}` is one member.
+    if (valid_symbols[ACCESSOR_MARKER] && !valid_symbols[MODIFIER_MARKER] && !at_end &&
+        lexer->lookahead == '*') {
+        return true;
+    }
+    if ((valid_symbols[MODIFIER_MARKER] || valid_symbols[ACCESSOR_MARKER]) && !at_end) {
+        if (lexer->lookahead == '[' || lexer->lookahead == '#' || lexer->lookahead == '"' ||
+            lexer->lookahead == '\'' || iswdigit(lexer->lookahead)) {
+            return false;
+        }
+        if (is_identifier_start(lexer->lookahead)) {
+            *scanned_comment = true;
+            scan_word(lexer, word, sizeof word);
+            if (!word_in(word, NON_FOLLOWING_MODIFIERS)) {
+                return false;
+            }
+            // As in tsc's nextTokenIsOnSameLineAndCanFollowModifier, the word is a
+            // modifier only if the next token is on the same line and can follow one;
+            // the grammar has no modifier after `static`, so that ends the member
+            // (`static\nprivate x`). Otherwise the word is the member's name and the
+            // member continues: `static\ndeclare = 1`, `static\nprivate() {}`,
+            // `static\nprivate\n= 1`.
+            if (valid_symbols[MODIFIER_MARKER]) {
+                return modifier_word_is_modifier(lexer);
+            }
+            // After `get`/`set`, tsc's canFollowGetOrSetKeyword ignores line breaks;
+            // keep the word as the accessor's name before these followers.
+            while (lexer->lookahead == ' ' || lexer->lookahead == '\t' || is_unicode_space(lexer->lookahead)) {
+                skip(lexer);
+            }
+            switch (lexer->lookahead) {
+                case '=':
+                case '(':
+                case ':':
+                case ';':
+                case '?':
+                case '!':
+                case '<':
+                case '}':
+                    return false;
+                default:
+                    return true;
+            }
+        }
+    }
+
+    // FROM_MARKER is valid right after an export clause: `export { a }\nfrom "m"`
+    // continues with the from clause (tsc reads `from` there as the keyword whatever
+    // follows); `export { a }\nfromage()` does not.
+    if (valid_symbols[FROM_MARKER] && lexer->lookahead == 'f') {
+        *scanned_comment = true;
+        scan_word(lexer, word, sizeof word);
+        if (strcmp(word, "from") != 0) {
+            return true;
+        }
+        return false;
+    }
+
     switch (lexer->lookahead) {
+        // After a member that cannot continue (a bare name: no `||`), a `*` or a `.5`
+        // on the next line starts a member: `x\n*g() {}`, `x\n.5 = 1`. Right after
+        // `static`, `get` or `set` they continue it (`static\n*g() {}`). Any other `.`
+        // continues a type name: `x: A\n.B`.
+        case '*':
+        case '.': {
+            if (!valid_symbols[MEMBER_END_MARKER] || valid_symbols[LOGICAL_OR] ||
+                valid_symbols[MODIFIER_MARKER] || valid_symbols[ACCESSOR_MARKER]) {
+                return false;
+            }
+            if (lexer->lookahead == '*') {
+                return true;
+            }
+            skip(lexer);
+            return iswdigit(lexer->lookahead);
+        }
         case '`':
         case ',':
-        case '.':
         case ';':
-        case '*':
         case '%':
         case '>':
         case '=':
@@ -264,8 +589,8 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols, 
             }
             skip(lexer);
 
-            if (!iswalnum(lexer->lookahead) && lexer->lookahead != '_' && lexer->lookahead != '$') {
-                // `in` itself, not an identifier such as `in2` or `in$x` (those get ASI below).
+            if (!is_identifier_part(lexer->lookahead)) {
+                // `in` itself, not an identifier such as `in2`, `in$x` or `inä` (those get ASI below).
                 // `in:` is a property name.
                 if (lexer->lookahead == ':') {
                     return true;
@@ -285,10 +610,9 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols, 
                 if (lexer->lookahead == '?') {
                     return true;
                 }
-                // After a member that cannot continue (no `||`: a typed member, a method),
-                // `in(`, `in<` and `in!` start a member named `in`.
-                if (!valid_symbols[LOGICAL_OR] &&
-                    (lexer->lookahead == '(' || lexer->lookahead == '<' || lexer->lookahead == '!')) {
+                // After a member that cannot continue (no `||`: a bare name, a typed
+                // member, a method), `in` starts a member: `in(`, `in<`, `in!`, `in = 1`.
+                if (!valid_symbols[LOGICAL_OR]) {
                     return true;
                 }
                 // After an initializer `||` is valid, and tsc reads `a = x\n in(b)` as the
@@ -311,8 +635,9 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols, 
                 skip(lexer);
             }
 
-            if (!iswalnum(lexer->lookahead) && lexer->lookahead != '_' && lexer->lookahead != '$') {
-                return false;
+            if (!is_identifier_part(lexer->lookahead)) {
+                // `x\ninstanceof = 1` between members: a member named `instanceof`.
+                return valid_symbols[MEMBER_END_MARKER] && !valid_symbols[LOGICAL_OR];
             }
             break;
     }
@@ -348,7 +673,10 @@ static bool scan_ternary_qmark(TSLexer *lexer) {
             advance(lexer);
         }
 
-        if (lexer->lookahead == ':' || lexer->lookahead == ')' || lexer->lookahead == ',') {
+        /* A ternary `?` is never followed by `]`; there it ends an optional
+           tuple element, as in `([B?])` (#107). */
+        if (lexer->lookahead == ':' || lexer->lookahead == ')' || lexer->lookahead == ',' ||
+            lexer->lookahead == ']') {
             return false;
         }
 
@@ -390,8 +718,7 @@ static bool scan_closing_comment(TSLexer *lexer) {
         return false;
     }
 
-    while (lexer->lookahead != 0 && lexer->lookahead != '\n' && lexer->lookahead != 0x2028 &&
-           lexer->lookahead != 0x2029) {
+    while (lexer->lookahead != 0 && !is_line_terminator(lexer->lookahead)) {
         advance(lexer);
     }
 
@@ -442,12 +769,142 @@ static bool scan_jsx_text(TSLexer *lexer) {
     return saw_text;
 }
 
+// `global` at the start of a statement, only when `{` follows (across line
+// breaks and comments, as in tsc). Anywhere else `global` is an identifier, so it
+// never has to be a keyword token in expression or type positions (`x<global>()`).
+// The caller has skipped leading whitespace and seen `g`. The token ends after
+// `global`; everything after it is lookahead only.
+static bool scan_global_keyword(TSLexer *lexer) {
+    for (const char *c = "global"; *c; c++) {
+        if (lexer->lookahead != *c) {
+            return false;
+        }
+        advance(lexer);
+    }
+    int32_t next = lexer->lookahead;
+    if (iswalnum(next) || next == '_' || next == '$' || next == '\\' ||
+        (next > 0x7f && !is_unicode_space(next))) {
+        return false;
+    }
+    lexer->mark_end(lexer);
+    for (;;) {
+        while (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead)) {
+            advance(lexer);
+        }
+        if (lexer->lookahead != '/') {
+            break;
+        }
+        advance(lexer);
+        if (lexer->lookahead == '*') {
+            advance(lexer);
+            for (;;) {
+                if (lexer->eof(lexer)) {
+                    return false;
+                }
+                if (lexer->lookahead == '*') {
+                    advance(lexer);
+                    if (lexer->lookahead == '/') {
+                        advance(lexer);
+                        break;
+                    }
+                } else {
+                    advance(lexer);
+                }
+            }
+        } else if (lexer->lookahead == '/') {
+            while (!lexer->eof(lexer) && !is_line_terminator(lexer->lookahead)) {
+                advance(lexer);
+            }
+        } else {
+            return false;
+        }
+    }
+    if (lexer->lookahead != '{') {
+        return false;
+    }
+    lexer->result_symbol = GLOBAL_KEYWORD;
+    return true;
+}
+
+// `asserts` starting an assertion return type, only when an identifier or keyword
+// follows on the same line (tsc's nextTokenIsIdentifierOrKeywordOnSameLine). A line
+// break, including one inside a block comment, ends the type: `asserts` is then a
+// type name. The caller has skipped leading whitespace and seen `a`. The token
+// ends after `asserts`; everything after it is lookahead only.
+static bool scan_asserts_keyword(TSLexer *lexer) {
+    for (const char *c = "asserts"; *c; c++) {
+        if (lexer->lookahead != *c) {
+            return false;
+        }
+        advance(lexer);
+    }
+    if (is_identifier_part(lexer->lookahead)) {
+        return false;
+    }
+    lexer->mark_end(lexer);
+    for (;;) {
+        while (!is_line_terminator(lexer->lookahead) &&
+               (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead))) {
+            advance(lexer);
+        }
+        if (lexer->lookahead != '/') {
+            break;
+        }
+        advance(lexer);
+        if (lexer->lookahead != '*') {
+            // `//` runs to a line break; a lone `/` is no identifier.
+            return false;
+        }
+        advance(lexer);
+        for (;;) {
+            if (lexer->eof(lexer) || is_line_terminator(lexer->lookahead)) {
+                return false;
+            }
+            if (lexer->lookahead == '*') {
+                advance(lexer);
+                if (lexer->lookahead == '/') {
+                    advance(lexer);
+                    break;
+                }
+            } else {
+                advance(lexer);
+            }
+        }
+    }
+    if (!is_identifier_start(lexer->lookahead)) {
+        return false;
+    }
+    lexer->result_symbol = ASSERTS_KEYWORD;
+    return true;
+}
+
 static inline bool external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
     if (valid_symbols[TEMPLATE_CHARS]) {
         if (valid_symbols[AUTOMATIC_SEMICOLON]) {
             return false;
         }
         return scan_template_chars(lexer);
+    }
+
+    if (valid_symbols[GLOBAL_KEYWORD] && !valid_symbols[AUTOMATIC_SEMICOLON]) {
+        while (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead)) {
+            skip(lexer);
+        }
+        // Once past a `g`, a failed scan must not fall through: the later scans
+        // would start mid-identifier (`g-->0` read as an HTML comment).
+        if (lexer->lookahead == 'g') {
+            return scan_global_keyword(lexer);
+        }
+    }
+
+    if (valid_symbols[ASSERTS_KEYWORD] && !valid_symbols[AUTOMATIC_SEMICOLON]) {
+        while (iswspace(lexer->lookahead) || is_unicode_space(lexer->lookahead)) {
+            skip(lexer);
+        }
+        // As for `global`: once past an `a`, a failed scan must not fall through.
+        if (lexer->lookahead == 'a') {
+            return scan_asserts_keyword(lexer);
+        }
     }
 
     if (valid_symbols[JSX_TEXT] && scan_jsx_text(lexer)) {
