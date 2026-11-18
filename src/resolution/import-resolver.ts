@@ -10,6 +10,7 @@ import * as path from 'path';
 import { readRegularFile } from '../file-limits';
 import { Language, Node } from '../types';
 import { UnresolvedRef, ResolvedRef, ResolutionContext, ImportMapping, ReExport } from './types';
+import { skipString } from './frameworks/object-literal';
 import { applyAliases, aliasAndBaseUrlCandidates } from './path-aliases';
 import { extractLocalExportAliases } from './alias-binding';
 import { resolveWorkspaceImport, workspaceImportTargets, type WorkspaceImportTargets } from './workspace-packages';
@@ -3054,19 +3055,32 @@ const TS_JS_FILE = /\.[cm]?[jt]sx?$/i;
  * `React.ReactNode` reached its own editor `class ReactNode`, excalidraw's
  * `TChat.ChatMessage` a `ChatMessage` component, signoz's
  * `EQueryType.CLICKHOUSE` another enum's member, and outline's
- * `UnfurlResourceType.Group` the `Group` model the file imports. undefined
- * when the name was not written after a qualifier this reads
- * (`import('./x').T`, a line break), names an `import X = ns.Y` alias, or
- * names a module whose member it cannot follow; null when the qualifier is a
- * package's or a global the project doesn't declare, or has no such member —
- * so name fallbacks must not guess.
+ * `UnfurlResourceType.Group` the `Group` model the file imports. An import
+ * type, `import("./m").A.B`, is read the same way, as a path from module m's
+ * exports (`import * as ns from "./m"`), with line breaks and comments
+ * inside the call or before a `.`, and import attributes (see typeQualifier
+ * for the limits). undefined when the name was not written after a
+ * qualifier this reads (a line break inside a qualified name), names an
+ * `import X = ns.Y` alias, or names a module whose member it cannot follow;
+ * null when the qualifier is a package's or a global the project doesn't
+ * declare, or has no such member — so name fallbacks must not guess.
  */
 export function resolveTsQualifiedTypeRef(ref: UnresolvedRef, context: ResolutionContext): ResolvedRef | null | undefined {
   if (ref.referenceKind !== 'references' || !ESM_IMPORT_LANGUAGES.has(ref.language) || !TS_JS_FILE.test(ref.filePath)) return undefined;
   const qualifier = typeQualifier(ref, context);
   if (!qualifier) return undefined;
-  const head = qualifier[0]!;
-  const path = [...qualifier.slice(1), ref.referenceName];
+  if (qualifier.importType !== undefined) {
+    // `import("m").A.B`: the path starts at module m's exports, as through
+    // `import * as ns from "m"`. A module outside the project, or one without
+    // the path, links nothing (null); one this can't follow keeps the other
+    // strategies (undefined), as a namespace import's path does.
+    const imp = { source: qualifier.importType, isDefault: false, isNamespace: true, exportedName: '*' };
+    const target = importedTypeMember(imp, [...qualifier.names, ref.referenceName], ref, context);
+    if (target === undefined) return undefined;
+    return target ? { original: ref, targetNodeId: target.id, confidence: 0.9, resolvedBy: 'import' } : null;
+  }
+  const head = qualifier.names[0]!;
+  const path = [...qualifier.names.slice(1), ref.referenceName];
   const imp = context.getImportMappings(ref.filePath, ref.language).find((m) => m.localName === head);
   let target: Node | null | undefined;
   if (imp) {
@@ -3074,7 +3088,7 @@ export function resolveTsQualifiedTypeRef(ref: UnresolvedRef, context: Resolutio
   } else {
     if (tsGlobalScope(ref.filePath, context)?.importAliases.has(head)) return undefined;
     target = ownTypeMember(head, path, ref, context);
-    if (target === undefined) target = globalTypeMember(qualifier.join('.'), ref, context) ?? null;
+    if (target === undefined) target = globalTypeMember(qualifier.names.join('.'), ref, context) ?? null;
   }
   if (target === undefined) return undefined;
   return target ? { original: ref, targetNodeId: target.id, confidence: 0.9, resolvedBy: imp ? 'import' : 'qualified-name' } : null;
@@ -3082,13 +3096,24 @@ export function resolveTsQualifiedTypeRef(ref: UnresolvedRef, context: Resolutio
 
 /**
  * The names a type's last name was written after, first to last: `['React']`
- * for `React.ReactNode`, `['a', 'b']` for `a.b.C`. Null for a name written
- * alone, after an expression (`import('./x').T`), or not where the reference
- * puts it.
+ * for `React.ReactNode`, `['a', 'b']` for `a.b.C`, written on the reference's
+ * own line with only spaces between. When the path starts at an import type,
+ * `importType` is its module: `{names: ['Outer'], importType: './ns'}` for
+ * `import("./ns").Outer.Inner`, `{names: [], importType: './m'}` for
+ * `import("./m").T`. An import type may break lines and hold comments inside
+ * its call and before a `.`, and a second (attributes) argument, as long as
+ * its `import` starts within IMPORT_TYPE_LINES lines of the reference. Not
+ * read: a line break or comment right after a `.` (`import("m").⏎ T`), a
+ * `//` comment whose text holds `*\/`, and a `//` inside a block comment
+ * that spans lines; each cost of the walk is linear in the reference's line,
+ * so a one-line generated file with many import types costs more. Null for a name
+ * written alone, after any other expression, or not where the reference puts
+ * it.
  */
-function typeQualifier(ref: UnresolvedRef, context: ResolutionContext): string[] | null {
-  const line = context.getFileLines?.(ref.filePath)?.[ref.line - 1] ?? context.readFile(ref.filePath)?.split(/\r?\n/)[ref.line - 1];
-  if (!line?.startsWith(ref.referenceName, ref.column)) return null;
+function typeQualifier(ref: UnresolvedRef, context: ResolutionContext): { names: string[]; importType?: string } | null {
+  const lines = context.getFileLines?.(ref.filePath) ?? context.readFile(ref.filePath)?.split(/\r?\n/);
+  const line = lines?.[ref.line - 1];
+  if (!lines || !line?.startsWith(ref.referenceName, ref.column)) return null;
   const names: string[] = [];
   let i = ref.column - 1;
   for (;;) {
@@ -3096,13 +3121,133 @@ function typeQualifier(ref: UnresolvedRef, context: ResolutionContext): string[]
     if (line[i] !== '.') break;
     i--;
     while (i >= 0 && (line[i] === ' ' || line[i] === '\t')) i--;
+    // `import("m").T`, or one whose import ends before a comment or an
+    // earlier line: read through the lines around it
+    if (i < 0 || line[i] === ')' || line[i] === '/') return importTypeQualifier(lines, ref);
     const end = i + 1;
     while (i >= 0 && /[\w$]/.test(line[i]!)) i--;
     const name = line.slice(i + 1, end);
     if (!/^[A-Za-z_$][\w$]*$/.test(name)) return null;
     names.unshift(name);
   }
-  return names.length > 0 ? names : null;
+  return names.length > 0 ? { names } : null;
+}
+
+/**
+ * typeQualifier for a path that may start at an import type: the same walk
+ * over the reference's line and the IMPORT_TYPE_LINES lines before it,
+ * passing line breaks and comments. Null unless an import type heads it.
+ */
+function importTypeQualifier(lines: readonly string[], ref: UnresolvedRef): { names: string[]; importType: string } | null {
+  const before = lines.slice(Math.max(0, ref.line - 1 - IMPORT_TYPE_LINES), ref.line - 1);
+  const text = [...before, lines[ref.line - 1]!].join('\n');
+  const names: string[] = [];
+  let i = text.length - lines[ref.line - 1]!.length + ref.column - 1;
+  for (;;) {
+    i = skipTriviaBack(text, i);
+    if (text[i] !== '.') return null;
+    i = skipTriviaBack(text, i - 1);
+    if (text[i] === ')') {
+      const importType = importTypeEndingAt(text, i);
+      return importType !== null ? { names, importType } : null;
+    }
+    const end = i + 1;
+    while (i >= 0 && /[\w$]/.test(text[i]!)) i--;
+    const name = text.slice(i + 1, end);
+    if (!/^[A-Za-z_$][\w$]*$/.test(name)) return null;
+    names.unshift(name);
+  }
+}
+
+/** How many lines before a reference an import type's `import` may start. */
+const IMPORT_TYPE_LINES = 12;
+
+/**
+ * The index of the last code character at or before `i`, past whitespace,
+ * line breaks, `/* … *\/` comments and a line's `//` comment; -1 when none.
+ */
+function skipTriviaBack(text: string, i: number): number {
+  for (;;) {
+    while (i >= 0 && /\s/.test(text[i]!)) i--;
+    if (i >= 1 && text[i] === '/' && text[i - 1] === '*') {
+      const open = text.lastIndexOf('/*', i - 2);
+      if (open < 0) return -1;
+      i = open - 1;
+      continue;
+    }
+    const lineStart = text.lastIndexOf('\n', i) + 1;
+    const comment = lineCommentStart(text, lineStart, i + 1);
+    if (comment >= 0) {
+      i = comment - 1;
+      continue;
+    }
+    return i;
+  }
+}
+
+/** Where a `//` comment starts in `text[from, to)`, skipping strings and block comments; -1 when there is none. */
+function lineCommentStart(text: string, from: number, to: number): number {
+  for (let k = from; k < to; k++) {
+    const c = text[k];
+    if (c === '"' || c === "'" || c === '`') {
+      const e = skipString(text, k);
+      if (e < 0) return -1;
+      k = e;
+    } else if (c === '/' && text[k + 1] === '/') {
+      return k;
+    } else if (c === '/' && text[k + 1] === '*') {
+      const e = text.indexOf('*/', k + 2);
+      if (e < 0) return -1;
+      k = e + 1;
+    }
+  }
+  return -1;
+}
+
+/**
+ * The module of the import type `import("m", …)` whose closing `)` is at
+ * `text[close]`, or null when no import type ends there. Parses forward from
+ * each `import` before it, so a match is a whole, well-formed call.
+ */
+function importTypeEndingAt(text: string, close: number): string | null {
+  for (let at = text.lastIndexOf('import', close); at >= 0; at = at === 0 ? -1 : text.lastIndexOf('import', at - 1)) {
+    if (at > 0 && /[\w$.]/.test(text[at - 1]!)) continue;
+    const call = parseImportCall(text, at + 'import'.length);
+    if (call && call.close === close) return call.source;
+  }
+  return null;
+}
+
+/** After `import` at `i`: `( "m" [, …] )`, as its module and the index of its `)`; null otherwise. */
+function parseImportCall(text: string, i: number): { source: string; close: number } | null {
+  const skip = (j: number): number => {
+    for (;;) {
+      while (j < text.length && /\s/.test(text[j]!)) j++;
+      if (text.startsWith('//', j)) { const e = text.indexOf('\n', j); j = e < 0 ? text.length : e; continue; }
+      if (text.startsWith('/*', j)) { const e = text.indexOf('*/', j + 2); if (e < 0) return text.length; j = e + 2; continue; }
+      return j;
+    }
+  };
+  let j = skip(i);
+  if (text[j] !== '(') return null;
+  j = skip(j + 1);
+  if (text[j] !== '"' && text[j] !== "'") return null;
+  const end = skipString(text, j);
+  if (end < 0) return null;
+  const source = text.slice(j + 1, end);
+  if (!source || /[\\\n]/.test(source)) return null;
+  // the rest of the arguments, to the `)` that closes the call
+  let depth = 0;
+  for (let k = end + 1; k < text.length; k++) {
+    const c = text[k]!;
+    if (c === '"' || c === "'" || c === '`') { const e = skipString(text, k); if (e < 0) return null; k = e; continue; }
+    if (text.startsWith('//', k)) { const e = text.indexOf('\n', k); if (e < 0) return null; k = e; continue; }
+    if (text.startsWith('/*', k)) { const e = text.indexOf('*/', k + 2); if (e < 0) return null; k = e + 1; continue; }
+    if (c === '(' || c === '{' || c === '[') depth++;
+    else if (c === '}' || c === ']') depth--;
+    else if (c === ')') { if (depth === 0) return { source, close: k }; depth--; }
+  }
+  return null;
 }
 
 /**
@@ -3112,7 +3257,7 @@ function typeQualifier(ref: UnresolvedRef, context: ResolutionContext): string[]
  * null for a package the repository doesn't declare, or a container without
  * the member; undefined when the module's export can't be followed.
  */
-function importedTypeMember(imp: ImportMapping, path: string[], ref: UnresolvedRef, context: ResolutionContext): Node | null | undefined {
+function importedTypeMember(imp: Pick<ImportMapping, 'source' | 'isDefault' | 'isNamespace' | 'exportedName'>, path: string[], ref: UnresolvedRef, context: ResolutionContext): Node | null | undefined {
   const file = resolveImportPath(imp.source, ref.filePath, ref.language, context);
   let found: Node | undefined;
   let rest: string[];

@@ -2,13 +2,15 @@
 
 `src/extraction/wasm/tree-sitter-{typescript,tsx}.wasm` and the kernel's
 vendored C (`codegraph-kernel/grammars/typescript/`) are built from
-**inth3shadows/tree-sitter-typescript** commit `ed828ca`, our own fork of the
-grammar. This is the one place that names the commit; the code comments point here. It is private while it is being burned in, so the public,
-reproducible form is
+**inth3shadows/tree-sitter-typescript** release `v0.25.2` (commit `1e68d2a`, 2026-11-18; published as `tree-sitter-typescript-next` 0.25.2 on crates.io and npm), our own fork of the
+grammar. This is the one place that names the commit; the code comments point here. The fork is public (MIT).
+Its reproducible form from the original base is
 [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript)
 (MIT) commit `53071c97beb59f6ddc197a3473d22882ad756918` with
-`tree-sitter-typescript.patch` applied to `common/define-grammar.js` and
-`common/scanner.h`. The two give byte-identical `common/` sources.
+`tree-sitter-typescript.patch` applied to `common/define-grammar.js`,
+`common/scanner.h`, `tsx/src/scanner.c` and `tree-sitter.json` (whose version the generated
+parser records). The two give byte-identical sources, and `tree-sitter generate` gives
+byte-identical `parser.c` files.
 
 The lineage is tree-sitter/tree-sitter-typescript v0.23.2, which has had no
 commit since 2025-01-30 (tree-sitter/tree-sitter#6091); then marionebl's fork;
@@ -19,14 +21,16 @@ kernel compiles the same generated C (build.rs) in place of the
 `tree-sitter-typescript` crate, so the two paths stay table-identical
 (`kernel-grammar-parity.test.ts`) and share one external scanner.
 
-| file | base (marionebl 53071c9) sha256 | ours (fork ed828ca) sha256 |
+| file | base (marionebl 53071c9) sha256 | ours (fork v0.25.2) sha256 |
 |---|---|---|
-| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `73b4e3dad330d0683871c4ffb27987e19ddf3488ba14664d3e15e7a4cae137dd` |
-| `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `23fd656d7e82f80bf66e0b9b8ef96aa6102ef5bfd9f32c561a4caabe08b9fd34` |
-| `typescript/src/parser.c` | (regenerated) | `db8c411258ff82520df32ad7213be1c9a60c0cec77fdb6d28858014ae92ea0aa` |
-| `tsx/src/parser.c` | (regenerated) | `34f37cd33244724c9d5dc4863123f3a5f6a919f4f472c31981610f6442077394` |
-| `tree-sitter-typescript.wasm` | — | `abeb7a0a4eea3007ac0e83a383c0068e336b25880de9e374a57267c15ed5fe9d` |
-| `tree-sitter-tsx.wasm` | — | `a64f018a0a2843df0d46ece1fbf87d89a0d3e5001fd94c75f9fb2e4c0fea0a77` |
+| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `a6896ee4914d464899fcfb0658dd0048b0c464161599e48a9712420be5da4a5c` |
+| `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `ce8180d07ed12e5235c8875842a751da7d13cdcd8cdd0bfe398ec044a8e6aa9f` |
+| `tsx/src/scanner.c` | `d563cd30b2f39718c9ae4292795c5ce03a2ad01954ba3a86ef84c2781a736673` | `d66248c9a043c34b74342c8aa6ca69904faafdd39e28bdac6c6d58217e17d4ec` |
+| `tree-sitter.json` | `4f39daa6a0bde84506cdeaf0b4460ed262df880030b3e6073868d0c746932291` | `5519029bd93240aa13b83db962aab985eaf1f359b69a7a96c61f6d917b4452dc` |
+| `typescript/src/parser.c` | (regenerated) | `83c7c1dc70b5062809c35d1aafc737218ab501fa5cc08f32a275a660721c3721` |
+| `tsx/src/parser.c` | (regenerated) | `1094e54097329927ec9b24827fa40d863fd352c1be2b96c48aa2ae6885cff97f` |
+| `tree-sitter-typescript.wasm` | — | `f956278af2135853d4e13bc897b640589145847c2dc56719110f114cd9f80247` |
+| `tree-sitter-tsx.wasm` | — | `b631c451f8c589972ed63e0a4fa8b7f9b93b9fbae61adf8878e07f6567f90397` |
 
 ## What the base fixes (marionebl, over v0.23.2)
 
@@ -86,6 +90,34 @@ kernel compiles the same generated C (build.rs) in place of the
   6242 -> 7391 (tsx), wasm +15%; parsing 3,000 vscode files ran at the same 2.8-3.0 MB/s with the
   same load time and RSS. Most of it is the class-body placement (after a field initializer).
 
+Since `ed828ca` (the previous vendored commit), the fork moved to 0.24.0 and fixed how
+expressions and types nest, as tsc nests them. The fork's `CHANGELOG.md` has each case:
+
+- An operator before a generic call or a typed tag applies to the whole call: `await f<T>(x)`
+  is an `await_expression` around the call, and `a + b<T>(c)`, ``!f<T>`c` `` and
+  ``f(sql<Row, Err>`x`)`` nest as in tsc.
+- `await x as T` casts the awaited value; `as` and `satisfies` take tsc's relational
+  precedence (`a ?? b as T` is `a ?? (b as T)`).
+- A non-null assertion binds to the operand before it (`a + b!` is `a + (b!)`), and after
+  `new` to the constructor (`new a.b!.C()`).
+- `readonly` and a constructor type's return type nest like `keyof` and a function type's;
+  a constructor type may return a type predicate or an assertion; `asserts` names a type
+  unless an identifier follows on the same line.
+- A cast to a three-segment qualified name, and an optional tuple element inside a
+  parenthesized type, keep their whole span.
+- New nodes: `import_type` for an import used as a type (`(import("m").A)[]` and
+  `f<import("m").Y>()` now parse; codegraph follows `import("m").A.B` through module m's
+  exports, as `import * as ns from "m"`, and links nothing for a module outside the project), and `using_declaration` for `using` / `await using`,
+  also in `for` heads. A re-export takes import attributes (`export * from "x" with {…}`).
+- A same-line comment after the closing brace of a method, a function or arrow expression, or a
+  static block belongs to what holds that body, not to the body (fork #115, in 0.25.1).
+- `let as = 1` and `let satisfies = …` declare variables; a mapped type's key may be named
+  `type`; `global { … }` without `declare`; a default-exported function signature may omit
+  its name (codegraph then records no function for it).
+
+Before this update, a `for (using r of rs)` head made the whole enclosing function an ERROR
+and codegraph recorded no function and no calls for it; now both are recorded.
+
 Every fix was gated by the differential (no new or worse file) and by a tsc fixture for its
 construct. The fork's `CHANGELOG.md` lists node-type changes. `__tests__/typescript-grammar-fork-shapes.test.ts` pins the
 node shapes and the call edges codegraph derives from them.
@@ -98,17 +130,18 @@ node shapes and the call edges codegraph derives from them.
 - Other words that lex as keywords where a type starts still fail as tuple labels:
   `[void: T]`, `[null: T]`, `[undefined: T]`, `[this: T]`, `[typeof: T]`, `[infer: T]`,
   `[true: T]`, `[false: T]`, `[import: T]`, `[abstract: T]` (`[unique: T]` works).
-- An operator in front of a typed tag takes the tag's call: ``a + b<T>`c` `` and
-  ``!f<T>`c` `` parse as a call whose function is `a + b` / `!f`, with no error. Generic
-  calls have always done the same (`a + b<T>(c)`); behind `await` codegraph still records
-  the call. This includes the generic/unary binding in `typeof obj?.method<T>(x)`.
-  A typed tag with two or more type arguments inside an argument list or array
-  (``f(sql<Row, Err>`x`)``) still parses as two comparisons.
-- Effect's two remaining failures: `let as = …` (`as` reads as the keyword) and one
-  unexplained whole-file error in `Schema.tst.ts`.
 - Not in the corpora but known: `abstract` and `readonly` as type names; ASI after a
   bare modifier/member name before a generator, `in` or `instanceof`, or across a
-  multi-line comment (fork #26). `(import("m").A)[]` and `f<import("m").Y>()` also fail.
+  multi-line comment (fork #26).
+- A type predicate on a parameter named `asserts` (`(asserts) => asserts is T`) is an ERROR.
+- codegraph reads an import type's module from the source text, so some layouts are not
+  recognized and their name is matched by name alone: an `import(` that starts more than 12 lines
+  before the name, a line break or comment right after the `.` (`import("m").⏎ T`), a `//`
+  comment whose text holds `*/`, or a `//` inside a multi-line block comment between `)` and `.`.
+  A one-line generated `.d.ts` with many import types also costs time quadratic in its length.
+  (Tracked: read the module from the `import_type` node at extraction instead.)
+- In a parenthesized, multi-line arrow that returns an arrow (`((\n (): D => (a, b) => …))`),
+  the arrow nests one level off from tsc's tree (no ERROR; found in 2 files of nestjs/nest).
 - The parser accepts some forms tsc rejects, such as `<out extends X>` and `<out in>`, and a bare
   `\x`/`\u` in an untagged template (``const a = `\u` ``) or in a type template with a
   substitution (``type T = `\u${string}` ``).
@@ -129,20 +162,36 @@ node shapes and the call edges codegraph derives from them.
 Divergent files are those tsc parses clean and tree-sitter does not, from
 `node scripts/ts-differential.mjs` (tsc 5.9.3, web-tree-sitter 0.25.10).
 
-| corpus | files | v0.23.2 + old patch | marionebl 53071c9 | previous (fork PR #15) | now |
-|---|---|---|---|---|---|
-| Effect-TS/effect 7a87ff9 | 2,056 | 185 | 29 | 29 | 2 |
-| colinhacks/zod 2554b70 | 515 | 0 | 0 | 0 | 0 |
-| excalidraw/excalidraw dd2f8fc (.ts + .tsx) | 695 | 5 | 5 | 0 | 0 |
-| microsoft/vscode ca43fc94 `src/` | 11,267 | 11 | 11 | 3 | 0 |
-| **total** | | **201** | **45** | **32** | **2** |
+| corpus | files | v0.23.2 + old patch | marionebl 53071c9 | fork PR #15 | fork ed828ca | now (v0.25.2) |
+|---|---|---|---|---|---|---|
+| Effect-TS/effect 7a87ff9 | 2,056 | 185 | 29 | 29 | 2 | 0 |
+| colinhacks/zod 2554b70 | 515 | 0 | 0 | 0 | 0 | 0 |
+| excalidraw/excalidraw dd2f8fc (.ts + .tsx) | 695 | 5 | 5 | 0 | 0 | 0 |
+| microsoft/vscode ca43fc94 `src/` | 11,267 | 11 | 11 | 3 | 0 | 0 |
+| **total** | | **201** | **45** | **32** | **2** | **0** |
 
-Four unrelated `gap-*` fixtures remain; the static-accessor gap is now a normal
-regression fixture. The fork's corpus passes 146/146 tests.
+No `gap-*` fixture remains: `using` and `await using` in `for` heads and import attributes on
+`export … from` parse now, and those four are ordinary regression fixtures. The fork's
+corpus passes 244/244 tests.
+
+The differential sees parse errors only. Tree accuracy (`scripts/tree-accuracy.mjs` in the
+fork: each node of the tree against the node tsc 5.9.3 builds for the same span) was also
+measured on five repositories the fork was never tuned on, 13,134 files tsc parses cleanly:
+angular/angular `packages` 9f4c159, nestjs/nest 085f83a, vitejs/vite `packages` 60c260d,
+trpc/trpc 4817d77 and shadcn-ui/ui 968d8cb.
+
+| build | wrong nodes | missed nodes | files with an ERROR |
+|---|---|---|---|
+| v0.23.2 | 2,430 | 886 | 43 |
+| fork ed828ca | 2,374 | 848 | 6 |
+| fork v0.25.2 | 63 | 14 | 4 |
+
+53 of the 63 wrong nodes are one counting convention, not a parse error: the grammar
+nests a `type_predicate` inside `asserts` (as v0.23.2 does), where tsc has one node.
 
 ## Rebuild
 
-From the fork (once public) or from marionebl plus the patch:
+From the fork, or from marionebl plus the patch:
 
 ```bash
 git clone https://github.com/marionebl/tree-sitter-typescript
@@ -162,8 +211,8 @@ npx -y tree-sitter-cli@0.25.10 build --wasm -o tree-sitter-tsx.wasm tsx
 
 Check each `generate` exit code, and check that both `parser.c` files say
 `LANGUAGE_VERSION 15`: piping `generate` hides a failure, and `build` then compiles
-marionebl's checked-in ABI 14 parser without complaint. (The patch carries only
-`common/`; the fork's own corpus tests are not in it.) `build --wasm` uses the
+marionebl's checked-in ABI 14 parser without complaint. (The patch carries the
+grammar sources and `tree-sitter.json`; the fork's own corpus tests are not in it.) `build --wasm` uses the
 `emscripten/emsdk` Docker image when no local emcc is present; the wasm bytes depend on
 the emsdk build, so `parser.c` is the reproducible artifact. After updating either side,
 rebuild the kernel (`npm run build:kernel`), run `kernel-grammar-parity.test.ts` and
@@ -179,8 +228,9 @@ Fixes land in the fork first, under its differential. To pick one up:
    `codegraph-kernel/grammars/typescript/` (same layout), and the built
    `tree-sitter-{typescript,tsx}.wasm` into `src/extraction/wasm/`.
 2. Regenerate `tree-sitter-typescript.patch` as `git diff 53071c9 <commit> --
-   common/define-grammar.js common/scanner.h`.
-3. Update the commit and the hashes here and in `codegraph-kernel/build.rs`'s comment.
+   common/define-grammar.js common/scanner.h tsx/src/scanner.c tree-sitter.json`.
+3. Update the commit and the hashes here and in `codegraph-kernel/build.rs`'s comment
+   (`common/scanner.h`, `tsx/src/scanner.c` and both `parser.c`).
 4. `npm run build:kernel`, then `kernel-grammar-parity.test.ts`,
    `typescript-member-asi-parse.test.ts`, `typescript-variance-parse.test.ts` and
    `typescript-grammar-fork-shapes.test.ts`, and re-baseline this repo's differential.
