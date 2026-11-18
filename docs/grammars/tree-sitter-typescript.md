@@ -2,7 +2,7 @@
 
 `src/extraction/wasm/tree-sitter-{typescript,tsx}.wasm` and the kernel's
 vendored C (`codegraph-kernel/grammars/typescript/`) are built from
-**inth3shadows/tree-sitter-typescript** release `v0.25.0` (commit `92d973d`, 2026-11-17; on crates.io as `tree-sitter-typescript-next` 0.25.0), our own fork of the
+**inth3shadows/tree-sitter-typescript** release `v0.25.2` (commit `1e68d2a`, 2026-11-18; published as `tree-sitter-typescript-next` 0.25.2 on crates.io and npm), our own fork of the
 grammar. This is the one place that names the commit; the code comments point here. The fork is public (MIT).
 Its reproducible form from the original base is
 [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript)
@@ -21,16 +21,16 @@ kernel compiles the same generated C (build.rs) in place of the
 `tree-sitter-typescript` crate, so the two paths stay table-identical
 (`kernel-grammar-parity.test.ts`) and share one external scanner.
 
-| file | base (marionebl 53071c9) sha256 | ours (fork v0.25.0) sha256 |
+| file | base (marionebl 53071c9) sha256 | ours (fork v0.25.2) sha256 |
 |---|---|---|
-| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `441d9c383d709d8d8c59fbc0708331e288014b56bea200fcda318bbd0a9ac781` |
+| `common/define-grammar.js` | `1791f937a3d122b49b6d9cc539f6ce8462bf3ea30c2b170904221c11702b4899` | `a6896ee4914d464899fcfb0658dd0048b0c464161599e48a9712420be5da4a5c` |
 | `common/scanner.h` | `2bf0b2ca94babda0682baee5031b152a69ff058a752407775c0419094ebfd1a7` | `ce8180d07ed12e5235c8875842a751da7d13cdcd8cdd0bfe398ec044a8e6aa9f` |
 | `tsx/src/scanner.c` | `d563cd30b2f39718c9ae4292795c5ce03a2ad01954ba3a86ef84c2781a736673` | `d66248c9a043c34b74342c8aa6ca69904faafdd39e28bdac6c6d58217e17d4ec` |
-| `tree-sitter.json` | `4f39daa6a0bde84506cdeaf0b4460ed262df880030b3e6073868d0c746932291` | `9486d4d09a44a1a8d8eac7b5a1327daa1f8387996f44d4dec89518ab946325bc` |
-| `typescript/src/parser.c` | (regenerated) | `f2436003dd7d2559a0165a10d3fcf10be2fad7969ce9f8d3c5a7a36f83bc76ae` |
-| `tsx/src/parser.c` | (regenerated) | `72689a20802c4151df19317ed8a0f6022e7f3269873f800ba2cbad3cd89e8bcb` |
-| `tree-sitter-typescript.wasm` | — | `a167c90b5c627c3d43c0501d20a86fb6b5c4b94c4a162e98af611b5f43e82dde` |
-| `tree-sitter-tsx.wasm` | — | `dda8256bb7c0d289ac371609a03c9532785f18466dc271475aad4562eeb18237` |
+| `tree-sitter.json` | `4f39daa6a0bde84506cdeaf0b4460ed262df880030b3e6073868d0c746932291` | `5519029bd93240aa13b83db962aab985eaf1f359b69a7a96c61f6d917b4452dc` |
+| `typescript/src/parser.c` | (regenerated) | `83c7c1dc70b5062809c35d1aafc737218ab501fa5cc08f32a275a660721c3721` |
+| `tsx/src/parser.c` | (regenerated) | `1094e54097329927ec9b24827fa40d863fd352c1be2b96c48aa2ae6885cff97f` |
+| `tree-sitter-typescript.wasm` | — | `f956278af2135853d4e13bc897b640589145847c2dc56719110f114cd9f80247` |
+| `tree-sitter-tsx.wasm` | — | `b631c451f8c589972ed63e0a4fa8b7f9b93b9fbae61adf8878e07f6567f90397` |
 
 ## What the base fixes (marionebl, over v0.23.2)
 
@@ -109,6 +109,8 @@ expressions and types nest, as tsc nests them. The fork's `CHANGELOG.md` has eac
   `f<import("m").Y>()` now parse; codegraph follows `import("m").A.B` through module m's
   exports, as `import * as ns from "m"`, and links nothing for a module outside the project), and `using_declaration` for `using` / `await using`,
   also in `for` heads. A re-export takes import attributes (`export * from "x" with {…}`).
+- A same-line comment after the closing brace of a method, a function or arrow expression, or a
+  static block belongs to what holds that body, not to the body (fork #115, in 0.25.1).
 - `let as = 1` and `let satisfies = …` declare variables; a mapped type's key may be named
   `type`; `global { … }` without `declare`; a default-exported function signature may omit
   its name (codegraph then records no function for it).
@@ -160,7 +162,7 @@ node shapes and the call edges codegraph derives from them.
 Divergent files are those tsc parses clean and tree-sitter does not, from
 `node scripts/ts-differential.mjs` (tsc 5.9.3, web-tree-sitter 0.25.10).
 
-| corpus | files | v0.23.2 + old patch | marionebl 53071c9 | fork PR #15 | fork ed828ca | now (v0.25.0) |
+| corpus | files | v0.23.2 + old patch | marionebl 53071c9 | fork PR #15 | fork ed828ca | now (v0.25.2) |
 |---|---|---|---|---|---|---|
 | Effect-TS/effect 7a87ff9 | 2,056 | 185 | 29 | 29 | 2 | 0 |
 | colinhacks/zod 2554b70 | 515 | 0 | 0 | 0 | 0 | 0 |
@@ -182,7 +184,7 @@ trpc/trpc 4817d77 and shadcn-ui/ui 968d8cb.
 |---|---|---|---|
 | v0.23.2 | 2,430 | 886 | 43 |
 | fork ed828ca | 2,374 | 848 | 6 |
-| fork v0.25.0 (same grammar as d558bd2) | 63 | 14 | 4 |
+| fork v0.25.2 | 63 | 14 | 4 |
 
 53 of the 63 wrong nodes are one counting convention, not a parse error: the grammar
 nests a `type_predicate` inside `asserts` (as v0.23.2 does), where tsc has one node.

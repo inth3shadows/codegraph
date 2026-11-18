@@ -1,5 +1,5 @@
 diff --git a/common/define-grammar.js b/common/define-grammar.js
-index 016c151..3727fa2 100644
+index 016c151..58ac76c 100644
 --- a/common/define-grammar.js
 +++ b/common/define-grammar.js
 @@ -1,5 +1,16 @@
@@ -62,9 +62,14 @@ index 016c151..3727fa2 100644
  
      supertypes: ($, previous) => previous.concat([
        $.type,
-@@ -16,10 +61,16 @@ module.exports = function defineGrammar(dialect) {
+@@ -15,11 +60,21 @@ module.exports = function defineGrammar(dialect) {
+     ]),
  
      precedences: ($, previous) => previous.concat([
++      // `=> {` starts a body, as statement_block outranks 'object' in JavaScript; where a
++      // `function` may be a declaration or an expression (`export default`), the
++      // declaration's body wins, as 'declaration' outranks 'literal' (#115)
++      [$.statement_block, $._method_body, 'object'],
        [
 +        // 'member' ranks above this row, as in JavaScript's ladder. It makes a
 +        // postfix `!` bind before a type assertion, `<T>x!` is `<T>(x!)` (#98), and
@@ -80,7 +85,7 @@ index 016c151..3727fa2 100644
          $.await_expression,
          $.arrow_function,
        ],
-@@ -28,13 +79,14 @@ module.exports = function defineGrammar(dialect) {
+@@ -28,13 +83,14 @@ module.exports = function defineGrammar(dialect) {
          'instantiation',
        ],
        [
@@ -97,7 +102,7 @@ index 016c151..3727fa2 100644
        ],
        [$.mapped_type_clause, $.primary_expression],
        [$.accessibility_modifier, $.primary_expression],
-@@ -47,40 +99,38 @@ module.exports = function defineGrammar(dialect) {
+@@ -47,40 +103,38 @@ module.exports = function defineGrammar(dialect) {
        [$.tuple_type, $.array_type, $.pattern, $.type],
        [$.readonly_type, $.pattern],
        [$.readonly_type, $.primary_expression],
@@ -148,7 +153,7 @@ index 016c151..3727fa2 100644
  
        [$._call_signature, $.function_type],
        [$._call_signature, $.constructor_type],
-@@ -93,6 +143,13 @@ module.exports = function defineGrammar(dialect) {
+@@ -93,6 +147,13 @@ module.exports = function defineGrammar(dialect) {
        [$.primary_expression, $.primary_type],
        [$.primary_expression, $.generic_type],
        [$.primary_expression, $.predefined_type],
@@ -162,7 +167,7 @@ index 016c151..3727fa2 100644
        [$.primary_expression, $.pattern, $.primary_type],
        [$._parameter_name, $.primary_type],
        [$.pattern, $.primary_type],
-@@ -111,6 +168,20 @@ module.exports = function defineGrammar(dialect) {
+@@ -111,6 +172,20 @@ module.exports = function defineGrammar(dialect) {
        [$.array_pattern, $.tuple_type],
  
        [$.template_literal_type, $.template_string],
@@ -183,7 +188,7 @@ index 016c151..3727fa2 100644
      ]).concat(
        dialect === 'typescript' ? [
          [$.primary_type, $.type_parameter],
-@@ -127,10 +198,18 @@ module.exports = function defineGrammar(dialect) {
+@@ -127,10 +202,18 @@ module.exports = function defineGrammar(dialect) {
        ].includes(rule.name))
        .concat([
          $._type_identifier,
@@ -202,7 +207,7 @@ index 016c151..3727fa2 100644
        public_field_definition: $ => seq(
          repeat(field('decorator', $.decorator)),
          optional(choice(
-@@ -138,12 +217,12 @@ module.exports = function defineGrammar(dialect) {
+@@ -138,12 +221,12 @@ module.exports = function defineGrammar(dialect) {
            seq($.accessibility_modifier, optional('declare')),
          )),
          choice(
@@ -218,7 +223,7 @@ index 016c151..3727fa2 100644
          optional(choice('?', '!')),
          field('type', optional($.type_annotation)),
          optional($._initializer),
-@@ -173,9 +252,30 @@ module.exports = function defineGrammar(dialect) {
+@@ -173,9 +256,30 @@ module.exports = function defineGrammar(dialect) {
        call_expression: $ => choice(
          prec('call', seq(
            field('function', choice($.expression, $.import)),
@@ -250,7 +255,7 @@ index 016c151..3727fa2 100644
          prec('template_call', seq(
            field('function', choice($.primary_expression, $.new_expression)),
            field('arguments', $.template_string),
-@@ -190,17 +290,34 @@ module.exports = function defineGrammar(dialect) {
+@@ -190,17 +294,34 @@ module.exports = function defineGrammar(dialect) {
  
        new_expression: $ => prec.right('new', seq(
          'new',
@@ -291,7 +296,7 @@ index 016c151..3727fa2 100644
  
        _augmented_assignment_lhs: ($, previous) => choice(previous, $.non_null_expression),
  
-@@ -269,27 +386,55 @@ module.exports = function defineGrammar(dialect) {
+@@ -269,27 +390,55 @@ module.exports = function defineGrammar(dialect) {
          '/>',
        )),
  
@@ -362,7 +367,7 @@ index 016c151..3727fa2 100644
        import_clause: $ => choice(
          $.namespace_import,
          $.named_imports,
-@@ -317,69 +462,172 @@ module.exports = function defineGrammar(dialect) {
+@@ -317,69 +466,172 @@ module.exports = function defineGrammar(dialect) {
          $._semicolon,
        ),
  
@@ -477,8 +482,8 @@ index 016c151..3727fa2 100644
 +        $.identifier,
 +        keywordName($, 'as'),
 +        keywordName($, 'satisfies'),
-+      ),
-+
+       ),
+ 
 +      // The JavaScript rule, with a using declaration as the initializer (#69).
 +      for_statement: $ => seq(
 +        'for',
@@ -495,8 +500,8 @@ index 016c151..3727fa2 100644
 +        field('increment', optional($._expressions)),
 +        ')',
 +        field('body', $.statement),
-       ),
- 
++      ),
++
 +      // The JavaScript rule, with _binding_identifier for the declared name.
 +      _for_header: $ => seq(
 +        '(',
@@ -556,7 +561,7 @@ index 016c151..3727fa2 100644
          $._call_signature,
        ),
  
-@@ -400,11 +648,22 @@ module.exports = function defineGrammar(dialect) {
+@@ -400,11 +652,22 @@ module.exports = function defineGrammar(dialect) {
        function_signature: $ => seq(
          optional('async'),
          'function',
@@ -579,7 +584,7 @@ index 016c151..3727fa2 100644
        decorator: $ => seq(
          '@',
          choice(
-@@ -439,7 +698,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -439,7 +702,7 @@ module.exports = function defineGrammar(dialect) {
          repeat(choice(
            seq(
              repeat(field('decorator', $.decorator)),
@@ -588,7 +593,7 @@ index 016c151..3727fa2 100644
              optional($._semicolon),
            ),
            // As it happens for functions, the semicolon insertion should not
-@@ -450,37 +709,36 @@ module.exports = function defineGrammar(dialect) {
+@@ -450,37 +713,85 @@ module.exports = function defineGrammar(dialect) {
            //     }
            // The same rule applies for functions and that's why we use
            // "_function_signature_automatic_semicolon".
@@ -617,27 +622,75 @@ index 016c151..3727fa2 100644
 -        optional('static'),
 -        optional($.override_modifier),
 -        optional('readonly'),
--        optional('async'),
--        optional(choice('get', 'set', '*')),
--        field('name', $._property_name),
--        optional('?'),
--        $._call_signature,
 +        methodSignature($, $._property_name, false),
-+        field('body', $.statement_block),
++        field('body', alias($._method_body, $.statement_block)),
 +      )),
 +
 +      _class_method_definition: $ => prec.left(seq(
 +        methodSignature($, $._class_member_name),
-         field('body', $.statement_block),
++        field('body', alias($._method_body, $.statement_block)),
++      )),
++
++      // The body of a method, a function or arrow expression, or a static block takes no
++      // automatic semicolon after its `}`, which would pull a same-line comment after it
++      // into the body (#115). The comment then belongs to what holds the body (class_body,
++      // an object, a call's arguments, or the statement). tree-sitter-javascript 0.23.1
++      // agrees for methods, static blocks and object or class-field values, and keeps the
++      // comment in the body elsewhere. A block that is itself a statement, or a function
++      // declaration's body, keeps the automatic semicolon and the comment (#38).
++      _method_body: $ => seq('{', repeat($.statement), '}'),
++
++      // As tree-sitter-javascript's, with the body above.
++      function_expression: $ => prec('literal', seq(
+         optional('async'),
+-        optional(choice('get', 'set', '*')),
+-        field('name', $._property_name),
+-        optional('?'),
++        'function',
++        field('name', optional($.identifier)),
+         $._call_signature,
+-        field('body', $.statement_block),
++        field('body', alias($._method_body, $.statement_block)),
++      )),
++
++      generator_function: $ => prec('literal', seq(
++        optional('async'),
++        'function',
++        '*',
++        field('name', optional($.identifier)),
++        $._call_signature,
++        field('body', alias($._method_body, $.statement_block)),
        )),
  
++      arrow_function: $ => seq(
++        optional('async'),
++        choice(
++          field('parameter', choice(
++            alias($._reserved_identifier, $.identifier),
++            $.identifier,
++          )),
++          $._call_signature,
++        ),
++        '=>',
++        field('body', choice(
++          $.expression,
++          alias($._method_body, $.statement_block),
++        )),
++      ),
++
++      class_static_block: $ => seq(
++        'static',
++        optional($._automatic_semicolon),
++        field('body', alias($._method_body, $.statement_block)),
++      ),
++
        declaration: ($, previous) => choice(
          previous,
 +        $.using_declaration,
          $.function_signature,
          $.abstract_class_declaration,
          $.module,
-@@ -497,13 +755,17 @@ module.exports = function defineGrammar(dialect) {
+@@ -497,13 +808,17 @@ module.exports = function defineGrammar(dialect) {
          $.expression,
        )),
  
@@ -657,7 +710,7 @@ index 016c151..3727fa2 100644
          $.expression,
          'satisfies',
          $.type,
-@@ -552,6 +814,19 @@ module.exports = function defineGrammar(dialect) {
+@@ -552,6 +867,19 @@ module.exports = function defineGrammar(dialect) {
          ),
        ),
  
@@ -677,7 +730,7 @@ index 016c151..3727fa2 100644
        class: $ => prec('literal', seq(
          repeat(field('decorator', $.decorator)),
          'class',
-@@ -606,7 +881,12 @@ module.exports = function defineGrammar(dialect) {
+@@ -606,7 +934,12 @@ module.exports = function defineGrammar(dialect) {
          $._semicolon,
        ),
  
@@ -691,7 +744,7 @@ index 016c151..3727fa2 100644
          field('module', choice($.identifier, $.nested_identifier)),
          '.',
          field('name', $._type_identifier),
-@@ -626,6 +906,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -626,6 +959,7 @@ module.exports = function defineGrammar(dialect) {
            $._type_identifier,
            $.nested_type_identifier,
            $.generic_type,
@@ -699,7 +752,7 @@ index 016c151..3727fa2 100644
          ))),
        ),
  
-@@ -700,42 +981,32 @@ module.exports = function defineGrammar(dialect) {
+@@ -700,42 +1034,32 @@ module.exports = function defineGrammar(dialect) {
          field('pattern', choice($.pattern, $.this)),
        ),
  
@@ -761,7 +814,7 @@ index 016c151..3727fa2 100644
          choice($.type_predicate, $.identifier, $.this),
        ),
  
-@@ -749,17 +1020,17 @@ module.exports = function defineGrammar(dialect) {
+@@ -749,17 +1073,17 @@ module.exports = function defineGrammar(dialect) {
          $.readonly_type,
          $.constructor_type,
          $.infer_type,
@@ -783,7 +836,7 @@ index 016c151..3727fa2 100644
          '?',
          field('type', $.type_annotation),
        ),
-@@ -781,7 +1052,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -781,7 +1105,7 @@ module.exports = function defineGrammar(dialect) {
          field('type_parameters', optional($.type_parameters)),
          field('parameters', $.formal_parameters),
          '=>',
@@ -792,7 +845,7 @@ index 016c151..3727fa2 100644
        )),
  
        primary_type: $ => choice(
-@@ -805,6 +1076,29 @@ module.exports = function defineGrammar(dialect) {
+@@ -805,6 +1129,29 @@ module.exports = function defineGrammar(dialect) {
          $.intersection_type,
          $.union_type,
          'const',
@@ -822,7 +875,7 @@ index 016c151..3727fa2 100644
        ),
  
        template_type: $ => seq('${', choice($.primary_type, $.infer_type), '}'),
-@@ -814,6 +1108,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -814,6 +1161,7 @@ module.exports = function defineGrammar(dialect) {
          repeat(choice(
            alias($._template_chars, $.string_fragment),
            $.escape_sequence,
@@ -830,7 +883,7 @@ index 016c151..3727fa2 100644
            $.template_type,
          )),
          '`',
-@@ -866,18 +1161,24 @@ module.exports = function defineGrammar(dialect) {
+@@ -866,18 +1214,24 @@ module.exports = function defineGrammar(dialect) {
        ),
  
        // Type query expressions are more restrictive than regular expressions
@@ -859,7 +912,7 @@ index 016c151..3727fa2 100644
          )),
        ),
        _type_query_subscript_expression: $ => seq(
-@@ -886,44 +1187,31 @@ module.exports = function defineGrammar(dialect) {
+@@ -886,44 +1240,31 @@ module.exports = function defineGrammar(dialect) {
            $.this,
            alias($._type_query_subscript_expression, $.subscript_expression),
            alias($._type_query_member_expression, $.member_expression),
@@ -910,7 +963,7 @@ index 016c151..3727fa2 100644
        ),
  
        lookup_type: $ => seq(
-@@ -934,7 +1222,8 @@ module.exports = function defineGrammar(dialect) {
+@@ -934,7 +1275,8 @@ module.exports = function defineGrammar(dialect) {
        ),
  
        mapped_type_clause: $ => seq(
@@ -920,7 +973,7 @@ index 016c151..3727fa2 100644
          'in',
          field('type', $.type),
          optional(seq('as', field('alias', $.type))),
-@@ -967,7 +1256,11 @@ module.exports = function defineGrammar(dialect) {
+@@ -967,7 +1309,11 @@ module.exports = function defineGrammar(dialect) {
          'boolean',
          'string',
          'symbol',
@@ -933,7 +986,7 @@ index 016c151..3727fa2 100644
          'void',
          'unknown',
          'string',
-@@ -987,8 +1280,11 @@ module.exports = function defineGrammar(dialect) {
+@@ -987,8 +1333,11 @@ module.exports = function defineGrammar(dialect) {
          optional(seq(
            optional(choice(',', ';')),
            sepBy1(
@@ -946,7 +999,7 @@ index 016c151..3727fa2 100644
                $.export_statement,
                $.property_signature,
                $.call_signature,
-@@ -997,7 +1293,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -997,7 +1346,7 @@ module.exports = function defineGrammar(dialect) {
                $.method_signature,
              ),
            ),
@@ -955,7 +1008,7 @@ index 016c151..3727fa2 100644
          )),
          choice('}', '|}'),
        ),
-@@ -1029,7 +1325,12 @@ module.exports = function defineGrammar(dialect) {
+@@ -1029,7 +1378,12 @@ module.exports = function defineGrammar(dialect) {
        type_parameter: $ => seq(
          optional('const'),
          optional($.variance),
@@ -969,7 +1022,7 @@ index 016c151..3727fa2 100644
          field('constraint', optional($.constraint)),
          field('value', optional($.default_type)),
        ),
-@@ -1086,8 +1387,17 @@ module.exports = function defineGrammar(dialect) {
+@@ -1086,8 +1440,17 @@ module.exports = function defineGrammar(dialect) {
        ),
        readonly_type: $ => seq('readonly', $.type),
  
@@ -989,7 +1042,7 @@ index 016c151..3727fa2 100644
  
        function_type: $ => prec.left(seq(
          field('type_parameters', optional($.type_parameters)),
-@@ -1099,6 +1409,7 @@ module.exports = function defineGrammar(dialect) {
+@@ -1099,6 +1462,7 @@ module.exports = function defineGrammar(dialect) {
        _type_identifier: $ => alias($.identifier, $.type_identifier),
  
        _reserved_identifier: (_, previous) => choice(
@@ -997,7 +1050,7 @@ index 016c151..3727fa2 100644
          'declare',
          'namespace',
          'type',
-@@ -1116,20 +1427,114 @@ module.exports = function defineGrammar(dialect) {
+@@ -1116,20 +1480,114 @@ module.exports = function defineGrammar(dialect) {
          'export',
          'object',
          'new',
@@ -1115,7 +1168,7 @@ index 016c151..3727fa2 100644
   */
  function commaSep1(rule) {
    return sepBy1(',', rule);
-@@ -1140,8 +1545,7 @@ function commaSep1(rule) {
+@@ -1140,8 +1598,7 @@ function commaSep1(rule) {
   *
   * @param {RuleOrLiteral} rule
   *
@@ -1125,7 +1178,7 @@ index 016c151..3727fa2 100644
   */
  function commaSep(rule) {
    return sepBy(',', rule);
-@@ -1154,7 +1558,7 @@ function commaSep(rule) {
+@@ -1154,7 +1611,7 @@ function commaSep(rule) {
   *
   * @param {RuleOrLiteral} rule
   *
@@ -1134,7 +1187,7 @@ index 016c151..3727fa2 100644
   */
  function sepBy(sep, rule) {
    return optional(sepBy1(sep, rule));
-@@ -1167,7 +1571,7 @@ function sepBy(sep, rule) {
+@@ -1167,7 +1624,7 @@ function sepBy(sep, rule) {
   *
   * @param {RuleOrLiteral} rule
   *
@@ -1912,7 +1965,7 @@ index ddefcdf..3aab467 100644
          return true;
      }
 diff --git a/tree-sitter.json b/tree-sitter.json
-index 4117de7..266bfd2 100644
+index 4117de7..72aaba3 100644
 --- a/tree-sitter.json
 +++ b/tree-sitter.json
 @@ -76,7 +76,7 @@
@@ -1920,7 +1973,7 @@ index 4117de7..266bfd2 100644
    ],
    "metadata": {
 -    "version": "0.23.2",
-+    "version": "0.25.0",
++    "version": "0.25.2",
      "license": "MIT",
      "description": "TypeScript and TSX grammars for tree-sitter",
      "authors": [

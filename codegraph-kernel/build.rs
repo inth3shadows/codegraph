@@ -127,8 +127,8 @@ fn main() {
     // base and the fork each fix.
     //   common/scanner.h           ce8180d07ed12e5235c8875842a751da7d13cdcd8cdd0bfe398ec044a8e6aa9f
     //   tsx/src/scanner.c          d66248c9a043c34b74342c8aa6ca69904faafdd39e28bdac6c6d58217e17d4ec
-    //   typescript/src/parser.c    f2436003dd7d2559a0165a10d3fcf10be2fad7969ce9f8d3c5a7a36f83bc76ae
-    //   tsx/src/parser.c           72689a20802c4151df19317ed8a0f6022e7f3269873f800ba2cbad3cd89e8bcb
+    //   typescript/src/parser.c    83c7c1dc70b5062809c35d1aafc737218ab501fa5cc08f32a275a660721c3721
+    //   tsx/src/parser.c           1094e54097329927ec9b24827fa40d863fd352c1be2b96c48aa2ae6885cff97f
     // Flags crib the crate's bindings/rust/build.rs (c11). Each parser.c is
     // ~9 MB.
     for dialect in ["typescript", "tsx"] {
