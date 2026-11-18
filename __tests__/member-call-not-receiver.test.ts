@@ -72,12 +72,14 @@ describe('a member call through an import is not a call of the import itself', (
     expect(callsOf(cg, 'run')).toEqual(['express.js:Router', 'express.js:createApplication']);
   });
 
-  it('leaves a static property assigned to an exported function unresolved', async () => {
+  // Upstream #3380 indexes `User.all = function …` as User's static method, so
+  // the call reaches that method; it still never links `User` itself.
+  it('links a static property assigned to an exported function to that static method, not the function', async () => {
     const cg = await indexProject({
       'user.js': "module.exports = User;\nfunction User(name) { this.name = name; }\nUser.all = function (fn) { fn(null, []); };\n",
       'app.js': "const User = require('./user');\nfunction run() {\n  User.all(() => {});\n  new User('a');\n}\nmodule.exports = run;\n",
     });
-    expect(callsOf(cg, 'run')).toEqual([]);
+    expect(callsOf(cg, 'run')).toEqual(['user.js:User::all']);
   });
 
   it('does not guess another class for a member of an imported function', async () => {

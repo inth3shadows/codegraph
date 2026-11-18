@@ -4,23 +4,10 @@
 > as the ground truth for other tools. Wrong edges are worse than missing ones: a
 > fabricated call makes every tool built on the graph confidently wrong. The fixes it carries now:
 >
-> - **Impact is fast again.** `codegraph impact`, `codegraph_impact` and the viewer's blast
->   radius had become 2–3x slower on busy symbols; the answer itself was unchanged
->   (upstream [#3249](https://github.com/colbymchenry/codegraph/pull/3249), fixes #3248).
-> - **Undeclared packages stay packages.** A JS/TS import of a package your `package.json` doesn't list
->   but your project has installed (hoisted in a monorepo, say) no longer links to an unrelated
->   project function of the same name (upstream [#3278](https://github.com/colbymchenry/codegraph/pull/3278), fixes #3271).
 > - **Claude Code gets all of CodeGraph's guidance.** Claude Code cuts an MCP server's
 >   instructions at 4,096 characters, so the rules for stale-index warnings and unindexed
 >   projects never reached the agent; the guidance now fits, with those rules first
 >   (upstream [#1529](https://github.com/colbymchenry/codegraph/pull/1529) by zyrill).
-> - **Python overloads link to the code that runs.** A call to a function or method declared with
->   `typing.overload` links to the implementation instead of the first `@overload` stub
->   (upstream [#3216](https://github.com/colbymchenry/codegraph/pull/3216) by nilotpal-n7, fixes #2963).
-> - **Java static calls follow the wildcard import.** With `import com.x.b.*;`, `Util.log("x")`
->   links to `com.x.b.Util` instead of a same-named class in a package the file doesn't import
->   (upstream [#3138](https://github.com/colbymchenry/codegraph/pull/3138) by johnhldiver-beep,
->   fixes #2976's static call).
 > - **A named pipe can't stall indexing.** A FIFO named like a file CodeGraph reads (`package.json`,
 >   `go.mod`, `.gitignore`, `codegraph.json`, a `.vbproj`, or a lock file in `.codegraph/`) made
 >   `codegraph init`, `index` and `sync` wait forever; it is now skipped
@@ -37,16 +24,12 @@
 > - **A member a CommonJS module doesn't export links nowhere.** `utils.missing()` on a
 >   `require('./utils')` that has no `missing` no longer links to an unrelated class's method of
 >   that name, while a module whose `module.exports` is an instance or class keeps its members
->   (fork fix for upstream #3272).
+>   (fork fix for upstream #3272; upstream's own fix, #3364, is merged with it, and the fork
+  keeps the edge for a member the module exports under that name, such as an alias).
 > - **PHP includes from the file's own directory link.** `require_once __DIR__ . '/inc/a.php'`,
 >   `dirname(__FILE__) . '/inc/b.php'` and `dirname(__DIR__) . '/config/c.php'` now link to the
 >   file PHP loads, and a `./` or `../` include links only to the exact path written (upstream
 >   [#3327](https://github.com/colbymchenry/codegraph/pull/3327), fixes #3298).
-> - **A Rust method passed as a value counts as a use.** `g.map(Graph::counts)`, `.map(Self::helper)`
->   and `.or_else(fs::default_sep)` now show in that function's callers and impact, resolved as the
->   same path written as a call; a method of an `impl Trait for T` block, or of another type than
->   the path names, gets no edge, since which one Rust uses is past what the index can tell (upstream
->   [#3330](https://github.com/colbymchenry/codegraph/pull/3330), fixes #3254).
 > - **A member call on an imported function isn't a call of the function.** `express.static()` no
 >   longer links to `createApplication`, nor `User.all()` to `User`, and such a call never falls back
 >   to an unrelated class's method of the same name (fork fix).
@@ -64,7 +47,10 @@
 >   covers variance only; see `docs/grammars/tree-sitter-typescript.md`). Re-index TypeScript
 >   projects after updating.
 >
-> Earlier fork fixes are now in upstream: `codegraph sync` on an index from an older engine
+> Earlier fork fixes are now in upstream: a Rust method passed as a value through its path (#3330,
+> landed as our commit), installed but undeclared packages (#3278, likewise), impact's single edge
+> query (#3249, likewise), Python `typing.overload` calls (#3216's approach, as upstream #3349), Java
+> static calls through a wildcard import (as upstream #3347), `codegraph sync` on an index from an older engine
 > (#1842, which upstream made a warning rather than a refusal), imports onto an exported
 > object's method (#2990), sync after a delete or rename (#3004), `package.json`-only
 > framework changes in `codegraph status` (#3005), skipped files re-linking their importers
