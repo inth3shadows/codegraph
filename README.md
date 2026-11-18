@@ -33,19 +33,18 @@
 > - **A member call on an imported function isn't a call of the function.** `express.static()` no
 >   longer links to `createApplication`, nor `User.all()` to `User`, and such a call never falls back
 >   to an unrelated class's method of the same name (fork fix).
-> - **Much more TypeScript parses.** The TypeScript grammar is built from
->   [marionebl/tree-sitter-typescript](https://github.com/marionebl/tree-sitter-typescript),
->   a maintained fork of the stalled upstream grammar, with two fixes from
->   [dokimasia's fork](https://github.com/dokimasia/tree-sitter-typescript) and our own, kept in
->   our grammar fork (checked against tsc in its CI). Variance annotations
->   (`interface Stream<out A, in E>`), generic overloads after a member with no `;`, tagged
->   templates with type arguments (``sql<Row>`...` ``), `export type *`, `import("m").X[]`,
->   keyword-named tuple labels and template-literal escapes no longer turn a declaration, and in
->   large files the whole file, into a parse error that indexes as almost nothing. On Effect, Zod,
->   Excalidraw and VS Code, the files that tsc accepts but the grammar rejects drop from 201 to 3
->   (upstream [#3226](https://github.com/colbymchenry/codegraph/pull/3226)
->   covers variance only; see `docs/grammars/tree-sitter-typescript.md`). Re-index TypeScript
->   projects after updating.
+> - **TypeScript parses the way tsc reads it.** The TypeScript and TSX grammars come from our
+>   own fork, [inth3shadows/tree-sitter-typescript](https://github.com/inth3shadows/tree-sitter-typescript)
+>   v0.25.2 (`tree-sitter-typescript-next` on crates.io and npm), which its CI checks against tsc.
+>   On Effect, Zod, Excalidraw and VS Code, the files tsc accepts but the grammar rejects drop from
+>   201 to 0, and on five repositories the fork was never tuned on (angular, nest, vite, trpc,
+>   shadcn-ui) wrong or missed expression and type nodes drop from 2,430/886 to 63/14. Variance
+>   annotations, `using` declarations, import types and tagged templates with type arguments no
+>   longer turn a function, or a whole file, into a parse error that indexes as almost nothing;
+>   expressions nest as tsc nests them (`await f<T>()`, `a ?? b as T`, `a + b!`); and an import
+>   type `import("m").T` links that module's `T`, not a namesake. Re-index TypeScript projects after
+>   updating (upstream [#3226](https://github.com/colbymchenry/codegraph/pull/3226) covers variance
+>   only; see `docs/grammars/tree-sitter-typescript.md`).
 >
 > Earlier fork fixes are now in upstream: a Rust method passed as a value through its path (#3330,
 > landed as our commit), installed but undeclared packages (#3278, likewise), impact's single edge
