@@ -25,11 +25,7 @@
 >   `require('./utils')` that has no `missing` no longer links to an unrelated class's method of
 >   that name, while a module whose `module.exports` is an instance or class keeps its members
 >   (fork fix for upstream #3272; upstream's own fix, #3364, is merged with it, and the fork
-  keeps the edge for a member the module exports under that name, such as an alias).
-> - **PHP includes from the file's own directory link.** `require_once __DIR__ . '/inc/a.php'`,
->   `dirname(__FILE__) . '/inc/b.php'` and `dirname(__DIR__) . '/config/c.php'` now link to the
->   file PHP loads, and a `./` or `../` include links only to the exact path written (upstream
->   [#3327](https://github.com/colbymchenry/codegraph/pull/3327), fixes #3298).
+>   keeps the edge for a member the module exports under that name, such as an alias).
 > - **A member call on an imported function isn't a call of the function.** `express.static()` no
 >   longer links to `createApplication`, nor `User.all()` to `User`, and such a call never falls back
 >   to an unrelated class's method of the same name (fork fix).
@@ -46,7 +42,8 @@
 >   updating (upstream [#3226](https://github.com/colbymchenry/codegraph/pull/3226) covers variance
 >   only; see `docs/grammars/tree-sitter-typescript.md`).
 >
-> Earlier fork fixes are now in upstream: a Rust method passed as a value through its path (#3330,
+> Earlier fork fixes are now in upstream: PHP includes built from `__DIR__` (#3327, landed as our
+> commit in #3404, with the native-kernel side), a Rust method passed as a value through its path (#3330,
 > landed as our commit), installed but undeclared packages (#3278, likewise), impact's single edge
 > query (#3249, likewise), Python `typing.overload` calls (#3216's approach, as upstream #3349), Java
 > static calls through a wildcard import (as upstream #3347), `codegraph sync` on an index from an older engine
