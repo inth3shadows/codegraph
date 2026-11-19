@@ -139,7 +139,8 @@ describe('initialize names our tools the way OpenCode lists them (#1267)', () =>
         expect(instructions).toContain('if the server is registered under another key, that key replaces the first `codegraph_`');
         // The CLI and the environment variables read as they do for anyone else.
         expect(instructions).toContain('`codegraph init`');
-        if (base() === SERVER_INSTRUCTIONS) expect(instructions).toContain('`CODEGRAPH_EXPLORE_DEDUP=1`');
+        // Fork: the condensed instructions (#1529) don't name this variable; check it only where the base text does.
+        if (base().includes('`CODEGRAPH_EXPLORE_DEDUP=1`')) expect(instructions).toContain('`CODEGRAPH_EXPLORE_DEDUP=1`');
         // Nothing else changes.
         expect(asForOtherClients(instructions)).toBe(initializeInstructions(base()));
       }
