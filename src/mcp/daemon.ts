@@ -166,7 +166,7 @@ export function projectGoneReason(projectRoot: string, pidPath: string, pid: num
   }
   let raw: string;
   try {
-    raw = fs.readFileSync(pidPath, 'utf8');
+    raw = readRegularFile(pidPath, 'utf8');
   } catch (err) {
     return isMissing(err) ? `its lock file ${pidPath} was removed` : null;
   }
