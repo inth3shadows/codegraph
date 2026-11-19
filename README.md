@@ -12,6 +12,10 @@
 >   `go.mod`, `.gitignore`, `codegraph.json`, a `.vbproj`, or a lock file in `.codegraph/`) made
 >   `codegraph init`, `index` and `sync` wait forever; it is now skipped
 >   (upstream [#3309](https://github.com/colbymchenry/codegraph/pull/3309), fixes #3308).
+> - **The prompt hook reaches the running daemon under a umask of `0002`.** With Ubuntu's default
+>   umask, `.codegraph/` is group-writable, so the hook refused the daemon's socket and ran its own
+>   cold explore on every prompt; the daemon now listens in the private runtime folder instead
+>   (upstream [#3418](https://github.com/colbymchenry/codegraph/pull/3418), fixes #3417).
 > - **Bash and shell scripts are indexed.** `.sh`, `.bash`, `.bats` and shebang scripts get their
 >   functions, variables and `source` edges, and a call links only to a function the shell would
 >   run there: one the script defines or sources, the last definition read winning, never a
