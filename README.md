@@ -33,6 +33,12 @@
 > - **A member call on an imported function isn't a call of the function.** `express.static()` no
 >   longer links to `createApplication`, nor `User.all()` to `User`, and such a call never falls back
 >   to an unrelated class's method of the same name (fork fix).
+> - **A canvas context in an untyped local takes no project method by name.** In TypeScript,
+>   `const ctx = document.createElement('canvas').getContext('2d')!`, a local holding that canvas,
+>   or a canvas from a same-file function declared to return `HTMLCanvasElement` no longer links
+>   `ctx.translate()` to the project's only `translate`; a project's own augmentation of the DOM
+>   types keeps its edges (upstream [#3499](https://github.com/colbymchenry/codegraph/pull/3499),
+>   fixes #3444).
 > - **TypeScript parses the way tsc reads it.** The TypeScript and TSX grammars come from our
 >   own fork, [inth3shadows/tree-sitter-typescript](https://github.com/inth3shadows/tree-sitter-typescript)
 >   v0.25.2 (`tree-sitter-typescript-next` on crates.io and npm), which its CI checks against tsc.
