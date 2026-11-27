@@ -39,6 +39,12 @@
 >   `ctx.translate()` to the project's only `translate`; a project's own augmentation of the DOM
 >   types keeps its edges (upstream [#3499](https://github.com/colbymchenry/codegraph/pull/3499),
 >   fixes #3444).
+> - **A `.tsx` call takes no lone method of its name past a `.ts` one.** An untyped receiver in a
+>   `.tsx` file no longer links to the only `.tsx` method of a name when a `.ts` file has a method of
+>   that name too (and the other way round), unless that method is in the same class hierarchy or the
+>   by-name filters would drop it: excalidraw's `scene.mutateElement()` in components stops going to
+>   `App.mutateElement` (upstream [#3500](https://github.com/colbymchenry/codegraph/pull/3500),
+>   fixes #3443).
 > - **TypeScript parses the way tsc reads it.** The TypeScript and TSX grammars come from our
 >   own fork, [inth3shadows/tree-sitter-typescript](https://github.com/inth3shadows/tree-sitter-typescript)
 >   v0.25.2 (`tree-sitter-typescript-next` on crates.io and npm), which its CI checks against tsc.
